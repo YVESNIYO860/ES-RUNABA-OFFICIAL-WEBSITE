@@ -273,10 +273,10 @@ const Navbar = () => {
 
                 {!user ? (
                   <Link
-                    to="/staff-login"
+                    to="/elearning"
                     className="bg-school-blue text-white px-4 xl:px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-school-blue/20 whitespace-nowrap"
                   >
-                    Staff Login
+                    E-Learning
                   </Link>
                 ) : (
                   <div className="flex items-center gap-3">
@@ -374,13 +374,15 @@ const Navbar = () => {
                 {/* Login / portal */}
                 <div className="space-y-2 pt-1">
                   {!user ? (
-                    <Link
-                      to="/staff-login"
-                      onClick={() => setIsOpen(false)}
-                      className="w-full flex items-center justify-center gap-2 bg-school-blue text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-school-blue/20"
-                    >
-                      Staff Login
-                    </Link>
+                    <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+                      <Link 
+                        to="/elearning" 
+                        onClick={() => setIsOpen(false)}
+                        className="w-full flex items-center justify-center gap-2 bg-school-blue text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-school-blue/20"
+                      >
+                        E-Learning
+                      </Link>
+                    </div>
                   ) : (
                     <>
                       <Link

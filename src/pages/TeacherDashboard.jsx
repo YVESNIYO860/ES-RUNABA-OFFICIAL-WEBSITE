@@ -28,7 +28,7 @@ const TeacherDashboard = () => {
   }, []);
 
   if (!user || user.role !== 'teacher') {
-    return <Navigate to="/staff-login" />;
+    return <Navigate to="/elearning" />;
   }
 
   return (

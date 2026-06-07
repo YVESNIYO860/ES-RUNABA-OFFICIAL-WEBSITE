@@ -47,7 +47,7 @@ function AppContent() {
           <Route path="student-life" element={<StudentLife />} />
           <Route path="gallery" element={<Gallery />} />
           <Route path="contact" element={<Contact />} />
-          <Route path="staff-login" element={<TeacherLogin />} />
+          <Route path="elearning" element={<TeacherLogin />} />
           <Route path="teacher-dashboard" element={<TeacherDashboard />} />
           <Route path="student-dashboard" element={<StudentDashboard />} />
           <Route path="search" element={<SearchResults />} />
