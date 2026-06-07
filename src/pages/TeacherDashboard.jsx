@@ -1272,3 +1272,5 @@ const AnalyticsTab = () => {
     </div>
   );
 };
+
+export default TeacherDashboard;
