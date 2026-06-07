@@ -81,6 +81,9 @@ export function initTranslateState() {
   if (!cookie || cookie === '/en/en') {
     setTranslateCookies(saved);
   }
+
+  // Ensure script is loaded so translation applies
+  ensureTranslateScript();
 }
 
 /** Fix corrupted school name from old translations or typos */

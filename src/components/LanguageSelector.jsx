@@ -52,8 +52,6 @@ const LanguageSelector = ({
       : 'right-0 left-auto min-w-[11rem] max-w-[calc(100vw-2rem)]';
 
   return (
-    <>
-      <div id="google_translate_element" className="hidden" aria-hidden="true" />
       <div ref={ref} className={`relative ${fullWidth ? 'w-full' : ''} ${className}`}>
         <button
           type="button"
@@ -122,7 +120,6 @@ const LanguageSelector = ({
           </ul>
         )}
       </div>
-    </>
   );
 };
 
