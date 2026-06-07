@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-school-blue: #003366;
+  --color-school-green: #2E7D32;
+  --color-school-light: #F5F5F5;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    @apply text-slate-800 font-sans transition-colors duration-300;
+    background-color: var(--color-school-light);
+    margin: 0;
+  }
+
+  .dark body {
+    @apply text-slate-200;
+    background-color: #0f172a;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-school-blue;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    @apply text-slate-100;
+  }
+}
+
+/* Google Translate — hide widget UI, banners, and hover-on-text tooltips */
+.goog-te-banner-frame,
+.skiptranslate iframe.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-te-menu-frame,
+div[id^="goog-gt-"],
+.goog-tooltip,
+.goog-tooltip:hover {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body {
+  top: 0 !important;
+}
+#google_translate_element,
+.goog-te-gadget {
+  font-size: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+.goog-te-gadget .goog-te-combo {
+  display: none !important;
+}
+/* No highlight / pop-up when hovering links or words */
+.goog-text-highlight,
+font[style*="vertical-align: inherit"] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.goog-text-highlight:hover {
+  background: transparent !important;
+}
+/* Brand & UI must not be auto-translated */
+.notranslate,
+[translate="no"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Header notice marquee */
+@keyframes announcement-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.announcement-marquee {
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 6%,
+    black 94%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 6%,
+    black 94%,
+    transparent 100%
+  );
+}
+
+.announcement-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: announcement-marquee 28s linear infinite;
+}
+
+.announcement-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+.announcement-marquee-item {
+  flex-shrink: 0;
+  padding-right: 4rem;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  color: inherit;
+}
+
+@media (min-width: 640px) {
+  .announcement-marquee-item {
+    font-size: 0.75rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .announcement-marquee-item {
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-marquee {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+
+  .announcement-marquee-track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .announcement-marquee-item:last-child {
+    display: none;
+  }
+
+  .announcement-marquee-item {
+    padding-right: 0;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@layer components {
+  .nav-link {
+    @apply text-slate-600 hover:text-school-blue transition-colors font-medium cursor-pointer;
+  }
+  
+  .btn-primary {
+    @apply bg-school-blue text-white px-6 py-2 rounded-md hover:opacity-90 transition-all font-medium inline-block text-center cursor-pointer;
+  }
+  
+  .btn-secondary {
+    @apply bg-school-green text-white px-6 py-2 rounded-md hover:opacity-90 transition-all font-medium inline-block text-center cursor-pointer;
+  }
+
+  .card {
+    @apply bg-white p-6 rounded-lg shadow-sm border border-slate-100 hover:shadow-md transition-shadow;
+  }
+
+  .dark .card {
+    @apply bg-slate-800 border-slate-700 text-slate-200 shadow-slate-900/50;
+  }
+
+  .dark .nav-link {
+    @apply text-slate-300 hover:text-school-green;
+  }
+
+  .dark .btn-primary {
+    @apply bg-school-blue hover:bg-blue-800;
+  }
+}
+
+@layer utilities {
+  .section-padding {
+    @apply py-16 px-4 md:px-8 max-w-7xl mx-auto;
+  }
+}
+
+/* Dark mode — common page surfaces */
+.dark .bg-white {
+  @apply bg-slate-900;
+}
+.dark .bg-slate-50 {
+  @apply bg-slate-950;
+}
+.dark .bg-slate-100 {
+  @apply bg-slate-800;
+}
+.dark .text-slate-800,
+.dark .text-slate-900 {
+  @apply text-slate-100;
+}
+.dark .text-slate-700 {
+  @apply text-slate-200;
+}
+.dark .text-slate-600,
+.dark .text-slate-500 {
+  @apply text-slate-400;
+}
+.dark .border-slate-100,
+.dark .border-slate-200 {
+  @apply border-slate-700;
+}
+.dark .border-slate-300 {
+  @apply border-slate-600;
+}
