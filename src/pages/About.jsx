@@ -379,9 +379,11 @@ const About = () => {
                   style={{ perspective: '800px', transformStyle: 'preserve-3d' }}
                   className="w-40 h-40 md:w-52 md:h-52 rounded-[2rem] overflow-hidden border-4 border-school-green/40 shadow-[0_0_60px_rgba(46,125,50,0.3)]"
                 >
-                  <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-                    <span className="text-7xl">👨‍💼</span>
-                  </div>
+                  <img
+                    src={about.headTeacher?.image || '/runaba-logo.png'}
+                    alt={about.headTeacher?.name || 'Headmaster'}
+                    className="w-full h-full object-cover"
+                  />
                 </motion.div>
               </div>
 

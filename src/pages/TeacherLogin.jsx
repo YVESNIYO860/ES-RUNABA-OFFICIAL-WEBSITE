@@ -45,7 +45,6 @@ const TeacherLogin = () => {
         <div className="absolute inset-0 bg-school-blue/80"></div>
 
         <div className="relative z-10 text-center">
-          {/* School Logo / Icon */}
           <div className="w-24 h-24 bg-school-green rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl border-4 border-white/20">
             <GraduationCap size={48} className="text-white" />
           </div>
@@ -55,7 +54,7 @@ const TeacherLogin = () => {
           <div className="w-16 h-1 bg-school-green mx-auto mb-8"></div>
           
           <p className="text-white/60 text-sm leading-relaxed max-w-xs">
-            Welcome to the {branding.schoolName} Management Portal. This access is reserved for authorized school administrators and staff.
+            Welcome to the {branding.schoolName} E-Learning Portal. This access is reserved for authorized school administrators and staff.
           </p>
 
           <div className="mt-12 grid grid-cols-3 gap-4 text-center">
@@ -74,24 +73,25 @@ const TeacherLogin = () => {
       </div>
 
       {/* Right Panel - Login Form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-slate-50 px-6 py-16 md:py-0">
+      <div className="w-full md:w-1/2 min-h-screen flex items-center justify-center bg-slate-50 px-4 sm:px-6 py-12 md:py-0">
         <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
+          className="w-full max-w-sm sm:max-w-md"
         >
-          {/* Mobile logo */}
-          <div className="md:hidden text-center mb-10">
-            <div className="w-16 h-16 bg-school-blue rounded-full flex items-center justify-center mx-auto mb-3">
-              <GraduationCap size={32} className="text-white" />
+          {/* Mobile header */}
+          <div className="md:hidden text-center mb-8">
+            <div className="w-20 h-20 bg-school-blue rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <GraduationCap size={40} className="text-white" />
             </div>
-            <h1 className="text-2xl font-black text-school-blue uppercase">{branding.schoolName}</h1>
+            <h1 className="text-2xl font-black text-school-blue uppercase tracking-tight">{branding.schoolName}</h1>
+            <p className="text-school-green font-bold text-xs tracking-widest uppercase mt-1">{branding.motto}</p>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-3xl font-black text-slate-800">Admin Portal</h2>
-            <p className="text-slate-500 mt-2">Sign in to manage site content or access staff features</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-800">E-Learning Portal</h2>
+            <p className="text-slate-500 mt-2 text-sm sm:text-base">Sign in to manage site content or access staff features</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -99,7 +99,7 @@ const TeacherLogin = () => {
               <motion.div 
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-3 border border-red-200"
+                className="p-4 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-3 border border-red-200"
               >
                 <AlertCircle size={18} />
                 {error}
@@ -113,10 +113,11 @@ const TeacherLogin = () => {
                 <input 
                   type="text" 
                   required
+                  autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
-                  className="w-full pl-12 pr-4 py-3.5 rounded-lg bg-white border-2 border-slate-200 text-slate-800 focus:border-school-blue focus:ring-0 outline-none transition-all placeholder:text-slate-300 text-sm"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-slate-200 text-slate-800 focus:border-school-blue focus:ring-0 outline-none transition-all placeholder:text-slate-300 text-base"
                 />
               </div>
             </div>
@@ -128,10 +129,11 @@ const TeacherLogin = () => {
                 <input 
                   type="password" 
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3.5 rounded-lg bg-white border-2 border-slate-200 text-slate-800 focus:border-school-blue focus:ring-0 outline-none transition-all placeholder:text-slate-300 text-sm"
+                  className="w-full pl-12 pr-4 py-4 rounded-xl bg-white border-2 border-slate-200 text-slate-800 focus:border-school-blue focus:ring-0 outline-none transition-all placeholder:text-slate-300 text-base"
                 />
               </div>
             </div>
@@ -139,15 +141,13 @@ const TeacherLogin = () => {
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-school-blue hover:bg-[#0a192f] text-white font-bold py-4 rounded-lg mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-60 group text-base shadow-lg hover:shadow-school-blue/30"
+              className="w-full bg-school-blue hover:bg-[#0a192f] text-white font-bold py-4 rounded-xl mt-2 flex items-center justify-center gap-2 transition-all disabled:opacity-60 group text-base shadow-lg shadow-school-blue/20 active:scale-95 touch-manipulation"
             >
-                <>
-                  Sign In
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                </>
+              Sign In
+              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
             </button>
 
-            <div className="mt-4 p-3 bg-slate-100 rounded-lg border border-slate-200 text-center text-xs text-slate-500">
+            <div className="mt-4 p-3 bg-slate-100 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
               <span className="font-bold text-slate-600">Demo:</span> username: <code className="bg-white px-1 py-0.5 rounded border">teacher</code> / password: <code className="bg-white px-1 py-0.5 rounded border">runaba2024</code>
             </div>
           </form>

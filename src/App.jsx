@@ -18,7 +18,7 @@ import NewsAndNotices from './pages/NewsAndNotices';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import SchoolLoader from './components/SchoolLoader';
-import CookieBanner from './components/CookieBanner';
+
 
 function App() {
   return (
@@ -55,7 +55,7 @@ function AppContent() {
           <Route path="news" element={<NewsAndNotices />} />
         </Route>
       </Routes>
-      <CookieBanner />
+
     </Router>
   );
 }
