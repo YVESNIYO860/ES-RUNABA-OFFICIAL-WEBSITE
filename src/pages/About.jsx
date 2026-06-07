@@ -228,6 +228,200 @@ const About = () => {
         </div>
       </section>
 
+      {/* Headteacher History — 3D Cards */}
+      <section className="py-28 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #003366 50%, #0f172a 100%)' }}>
+        {/* Animated background orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-school-green/10 rounded-full blur-[120px] animate-pulse pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-school-blue/5 rounded-full blur-[200px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
+          {/* Section Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
+          >
+            <span className="text-school-green font-black tracking-[0.5em] uppercase text-[10px] block mb-4">Leadership Legacy</span>
+            <h2 className="text-5xl md:text-7xl font-black text-white italic tracking-tighter leading-none mb-6">
+              Headteachers
+              <span className="block text-school-green">Through the Ages</span>
+            </h2>
+            <div className="w-32 h-1 bg-gradient-to-r from-school-green to-blue-400 mx-auto rounded-full" />
+            <p className="text-slate-400 mt-6 max-w-xl mx-auto text-lg font-light">
+              The visionary leaders who shaped the soul of ES RUNABA over two decades of excellence.
+            </p>
+          </motion.div>
+
+          {/* 3D Flip Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                era: '2003 – 2009',
+                name: 'First Headmaster',
+                title: 'The Founder',
+                tenure: '6 Years',
+                achievement: 'Laid the very foundation of ES RUNABA, building a culture of discipline and academic ambition from a single vision.',
+                icon: '🏛️',
+                color: 'from-amber-500 to-orange-600',
+                glow: 'shadow-amber-500/30',
+                number: '01',
+              },
+              {
+                era: '2009 – 2017',
+                name: 'Second Headmaster',
+                title: 'The Builder',
+                tenure: '8 Years',
+                achievement: 'Expanded student enrollment, launched science labs, and secured the school\'s first national examination milestones.',
+                icon: '📐',
+                color: 'from-blue-500 to-cyan-500',
+                glow: 'shadow-blue-500/30',
+                number: '02',
+              },
+              {
+                era: '2017 – Present',
+                name: 'Fr. BAZAMANZA Jean Nepomuscene',
+                title: 'The Transformer',
+                tenure: '7+ Years',
+                achievement: 'Spearheaded a golden era of 99% national exam pass rates, built a modern refectory & state-of-the-art labs, and brought a new digital dimension to learning.',
+                icon: '🏆',
+                color: 'from-school-green to-emerald-400',
+                glow: 'shadow-green-500/30',
+                number: '03',
+              },
+            ].map((ht, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 50, rotateX: -15 }}
+                whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.6 }}
+                whileHover={{ y: -12, rotateY: 3, scale: 1.02 }}
+                style={{ perspective: '1000px', transformStyle: 'preserve-3d' }}
+                className={`relative group cursor-pointer rounded-[2rem] shadow-2xl ${ht.glow}`}
+              >
+                {/* Card */}
+                <div
+                  className="relative rounded-[2rem] border border-white/10 overflow-hidden h-full"
+                  style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(20px)' }}
+                >
+                  {/* Top gradient strip */}
+                  <div className={`h-2 w-full bg-gradient-to-r ${ht.color}`} />
+
+                  {/* Number watermark */}
+                  <div className="absolute top-4 right-6 text-[5rem] font-black text-white/5 leading-none select-none">
+                    {ht.number}
+                  </div>
+
+                  {/* Icon circle with 3D effect */}
+                  <div className="px-8 pt-8 pb-4">
+                    <motion.div
+                      whileHover={{ rotateY: 360 }}
+                      transition={{ duration: 0.8 }}
+                      className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${ht.color} flex items-center justify-center text-4xl mb-6 shadow-2xl`}
+                      style={{ boxShadow: `0 20px 40px rgba(0,0,0,0.3)` }}
+                    >
+                      {ht.icon}
+                    </motion.div>
+
+                    {/* Era badge */}
+                    <span className={`inline-block text-[10px] font-black uppercase tracking-widest bg-gradient-to-r ${ht.color} bg-clip-text text-transparent mb-3`}>
+                      {ht.era}
+                    </span>
+
+                    <h3 className="text-2xl font-black text-white mb-1 leading-tight">{ht.name}</h3>
+                    <p className={`text-sm font-black uppercase tracking-widest bg-gradient-to-r ${ht.color} bg-clip-text text-transparent mb-6`}>
+                      "{ht.title}"
+                    </p>
+
+                    <p className="text-slate-400 text-sm leading-relaxed font-light">
+                      {ht.achievement}
+                    </p>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-8 pb-8 pt-4 border-t border-white/5 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">Tenure</p>
+                        <p className="text-white font-black text-lg">{ht.tenure}</p>
+                      </div>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${ht.color} flex items-center justify-center shadow-lg opacity-80 group-hover:opacity-100 transition-opacity`}>
+                        <span className="text-white font-black text-xs">✦</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hover glow overlay */}
+                  <div className={`absolute inset-0 rounded-[2rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br ${ht.color} pointer-events-none`} style={{ opacity: 0 }} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Current headteacher spotlight */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.4 }}
+            className="relative rounded-[3rem] overflow-hidden border border-white/10 p-8 md:p-12"
+            style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(30px)' }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-school-green/5 to-blue-500/5 pointer-events-none" />
+            <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
+              {/* Photo */}
+              <div className="shrink-0">
+                <motion.div
+                  whileHover={{ rotateY: 10, rotateX: -5, scale: 1.05 }}
+                  transition={{ type: 'spring', stiffness: 200 }}
+                  style={{ perspective: '800px', transformStyle: 'preserve-3d' }}
+                  className="w-40 h-40 md:w-52 md:h-52 rounded-[2rem] overflow-hidden border-4 border-school-green/40 shadow-[0_0_60px_rgba(46,125,50,0.3)]"
+                >
+                  <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
+                    <span className="text-7xl">👨‍💼</span>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 text-center md:text-left">
+                <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block mb-3">Current Leader</span>
+                <h3 className="text-3xl md:text-4xl font-black text-white mb-2">
+                  Fr. BAZAMANZA Jean Nepomuscene
+                </h3>
+                <p className="text-school-green font-bold uppercase tracking-widest text-sm mb-6">Headmaster · Since 2017</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  {[
+                    { label: 'Pass Rate Achieved', value: '99%', icon: '📈' },
+                    { label: 'Years Leading', value: '7+', icon: '📅' },
+                    { label: 'Infrastructure Projects', value: '5+', icon: '🏗️' },
+                  ].map((stat, i) => (
+                    <motion.div
+                      key={i}
+                      whileHover={{ scale: 1.05, rotateY: 5 }}
+                      style={{ perspective: '600px' }}
+                      className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center"
+                    >
+                      <span className="text-2xl block mb-1">{stat.icon}</span>
+                      <p className="text-2xl font-black text-school-green">{stat.value}</p>
+                      <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">{stat.label}</p>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <p className="text-slate-300 leading-relaxed italic font-light">
+                  "Under Father BAZAMANZA's transformative leadership, ES RUNABA has experienced its most remarkable era — 
+                  from a 60% pass rate to a near-perfect 99%, and from basic facilities to world-class laboratories and a modern refectory."
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Mission & Vision */}
       <section className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
