@@ -72,8 +72,9 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-8 text-center text-xs text-slate-400">
+        <div className="mt-8 text-center text-xs text-slate-400 space-y-1">
           <p>© {new Date().getFullYear()} {branding.schoolName}. All rights reserved.</p>
+          <p className="opacity-70">Designed and maintained by NIYONKURU Yves</p>
         </div>
       </div>
     </footer>

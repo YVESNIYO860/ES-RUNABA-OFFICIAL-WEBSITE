@@ -44,9 +44,143 @@ const teachersData = [
 ];
 
 const routines = [
-  { day: 'Monday', time: '07:30 AM', event: 'Morning Assembly', type: 'Community & Discipline', icon: <Users size={20} /> },
-  { day: 'Wednesday', time: '04:00 PM', event: 'Sports & PE', type: 'Physical Excellence', icon: <Target size={20} /> },
-  { day: 'Friday', time: '04:30 PM', event: 'Holy Mass', type: 'Spiritual Growth', icon: <ShieldCheck size={20} /> }
+  {
+    day: 'Monday',
+    event: 'Lesson-Focused Day',
+    type: 'Academic Priority',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 07:30', label: 'Lesson block 1: Core subjects' },
+      { time: '07:30 - 08:00', label: 'Short break & guidance' },
+      { time: '08:00 - 10:30', label: 'Lesson block 2: Labs and electives' },
+      { time: '10:30 - 11:00', label: 'Recess / mentorship' },
+      { time: '11:00 - 13:00', label: 'Lesson block 3: Academic review' },
+      { time: '13:00 - 14:00', label: 'Lunch & rest' },
+      { time: '14:00 - 16:00', label: 'Afternoon lessons' },
+      { time: '16:00 - 17:30', label: 'Sports, clubs or workshops' },
+      { time: '17:30 - 19:00', label: 'Study hall / homework' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Prep for tomorrow / lights out' }
+    ]
+  },
+  {
+    day: 'Tuesday',
+    event: 'Lesson-Focused Day',
+    type: 'Academic Priority',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 07:30', label: 'Lesson block 1: Core subjects' },
+      { time: '07:30 - 08:00', label: 'Short break & guidance' },
+      { time: '08:00 - 10:30', label: 'Lesson block 2: Labs and electives' },
+      { time: '10:30 - 11:00', label: 'Recess / mentorship' },
+      { time: '11:00 - 13:00', label: 'Lesson block 3: Academic review' },
+      { time: '13:00 - 14:00', label: 'Lunch & rest' },
+      { time: '14:00 - 16:00', label: 'Afternoon lessons' },
+      { time: '16:00 - 17:30', label: 'Sports, clubs or workshops' },
+      { time: '17:30 - 19:00', label: 'Study hall / homework' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Prep for tomorrow / lights out' }
+    ]
+  },
+  {
+    day: 'Wednesday',
+    event: 'Lesson-Focused Day',
+    type: 'Academic Priority',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 07:30', label: 'Lesson block 1: Core subjects' },
+      { time: '07:30 - 08:00', label: 'Short break & guidance' },
+      { time: '08:00 - 10:30', label: 'Lesson block 2: Labs and electives' },
+      { time: '10:30 - 11:00', label: 'Recess / mentorship' },
+      { time: '11:00 - 13:00', label: 'Lesson block 3: Academic review' },
+      { time: '13:00 - 14:00', label: 'Lunch & rest' },
+      { time: '14:00 - 16:00', label: 'Afternoon lessons' },
+      { time: '16:00 - 17:30', label: 'Sports, clubs or workshops' },
+      { time: '17:30 - 19:00', label: 'Study hall / homework' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Prep for tomorrow / lights out' }
+    ]
+  },
+  {
+    day: 'Thursday',
+    event: 'Lesson-Focused Day',
+    type: 'Academic Priority',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 07:30', label: 'Lesson block 1: Core subjects' },
+      { time: '07:30 - 08:00', label: 'Short break & guidance' },
+      { time: '08:00 - 10:30', label: 'Lesson block 2: Labs and electives' },
+      { time: '10:30 - 11:00', label: 'Recess / mentorship' },
+      { time: '11:00 - 13:00', label: 'Lesson block 3: Academic review' },
+      { time: '13:00 - 14:00', label: 'Lunch & rest' },
+      { time: '14:00 - 16:00', label: 'Afternoon lessons' },
+      { time: '16:00 - 17:30', label: 'Sports, clubs or workshops' },
+      { time: '17:30 - 19:00', label: 'Study hall / homework' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Prep for tomorrow / lights out' }
+    ]
+  },
+  {
+    day: 'Friday',
+    event: 'Lesson-Focused Day',
+    type: 'Academic Priority',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 07:30', label: 'Lesson block 1: Core subjects' },
+      { time: '07:30 - 08:00', label: 'Short break & guidance' },
+      { time: '08:00 - 10:30', label: 'Lesson block 2: Labs and electives' },
+      { time: '10:30 - 11:00', label: 'Recess / mentorship' },
+      { time: '11:00 - 13:00', label: 'Lesson block 3: Academic review' },
+      { time: '13:00 - 14:00', label: 'Lunch & rest' },
+      { time: '14:00 - 16:00', label: 'Afternoon lessons' },
+      { time: '16:00 - 17:30', label: 'Sports, clubs or workshops' },
+      { time: '17:30 - 19:00', label: 'Study hall / homework' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Prep for tomorrow / lights out' }
+    ]
+  },
+  {
+    day: 'Saturday',
+    event: 'Weekend Enrichment',
+    type: 'Revision & Activities',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 08:00', label: 'Revision lessons' },
+      { time: '08:00 - 09:00', label: 'Skills workshop' },
+      { time: '09:00 - 10:00', label: 'Community service' },
+      { time: '10:00 - 12:00', label: 'Sports & clubs' },
+      { time: '12:00 - 13:00', label: 'Lunch & rest' },
+      { time: '13:00 - 15:00', label: 'Project work / tutorials' },
+      { time: '15:00 - 17:00', label: 'Quiet study' },
+      { time: '17:00 - 19:00', label: 'Free time / mentoring' },
+      { time: '19:00 - 20:30', label: 'Dinner & discussion' },
+      { time: '20:30 - 21:50', label: 'Personal reflection & prep' }
+    ]
+  },
+  {
+    day: 'Sunday',
+    event: 'Weekend Reflection',
+    type: 'Rest & Preparation',
+    icon: <CalendarDays size={20} />,
+    slots: [
+      { time: '05:30 - 06:00', label: 'Morning assembly & devotion' },
+      { time: '06:00 - 08:00', label: 'Quiet reading & study' },
+      { time: '08:00 - 10:00', label: 'Faith & values session' },
+      { time: '10:00 - 12:00', label: 'Family engagement / service' },
+      { time: '12:00 - 13:00', label: 'Lunch & rest' },
+      { time: '13:00 - 15:00', label: 'Guided study' },
+      { time: '15:00 - 17:00', label: 'Preparation for the week' },
+      { time: '17:00 - 19:00', label: 'Team reflection & planning' },
+      { time: '19:00 - 20:30', label: 'Dinner & quiet reading' },
+      { time: '20:30 - 21:50', label: 'Rest and lights out prep' }
+    ]
+  }
 ];
 
 const timelineData = [
@@ -278,56 +412,60 @@ const About = () => {
       </section>
 
       {/* Weekly Routine Section */}
-      <section id="routine" className="py-24 bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-fixed opacity-10 blur-[2px]"></div>
+      <section id="routine" className="py-24 bg-slate-50 text-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.18),_transparent_45%)] pointer-events-none"></div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="space-y-4">
-              <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block">Time Management</span>
+              <span className="text-school-blue font-black tracking-[0.4em] uppercase text-[10px] block">Time Management</span>
               <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">School Routine</h2>
-              <div className="w-24 h-1.5 bg-school-green shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
+              <div className="w-24 h-1.5 bg-school-blue shadow-[0_0_15px_rgba(59,130,246,0.4)]"></div>
             </div>
-            <p className="max-w-md text-slate-400 font-medium italic text-right">
-              "A structured day is the foundation of a structured mind. We plan our routines to balance academics and character."
+            <p className="max-w-md text-slate-600 font-medium italic text-right">
+              "A structured day is the foundation of a structured mind. Our routine runs Monday through Sunday from 05:30 AM to 09:50 PM."
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {routines.map((item, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 backdrop-blur-md border border-white/10 p-10 rounded-[2.5rem] group hover:bg-school-green/10 transition-all border-l-4 border-l-school-green"
+                transition={{ delay: index * 0.05 }}
+                className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-md hover:shadow-xl transition-all"
               >
                 <div className="flex justify-between items-start mb-8">
-                  <div className="p-4 bg-school-green text-white rounded-2xl shadow-[0_10px_20px_rgba(34,197,94,0.3)] group-hover:scale-110 transition-transform">
+                  <div className="p-4 bg-school-blue/10 text-school-blue rounded-2xl shadow-sm">
                     {item.icon}
                   </div>
-                  <span className="text-4xl font-black opacity-20 group-hover:opacity-40 transition-opacity uppercase tracking-tighter">{item.day}</span>
+                  <span className="text-3xl font-black opacity-20 uppercase tracking-tighter">{item.day}</span>
                 </div>
-                <h4 className="text-2xl font-black mb-1 italic uppercase tracking-tight">{item.event}</h4>
-                <p className="text-school-green text-[10px] font-black tracking-[0.2em] uppercase mb-6">{item.type}</p>
-                <div className="pt-6 border-t border-white/10 flex items-center gap-3">
-                   <div className="bg-white/10 w-2 h-2 rounded-full animate-pulse"></div>
-                   <span className="font-mono text-xl tracking-widest">{item.time}</span>
+                <h4 className="text-2xl font-black mb-2 uppercase tracking-tight">{item.event}</h4>
+                <p className="text-slate-500 text-sm mb-6">{item.type}</p>
+                <div className="space-y-3">
+                  {item.slots.map((slot, slotIndex) => (
+                    <div key={slotIndex} className="flex items-start gap-3 text-slate-600 text-sm">
+                      <span className="font-mono text-xs text-school-blue w-24">{slot.time}</span>
+                      <span className="leading-tight">{slot.label}</span>
+                    </div>
+                  ))}
                 </div>
               </motion.div>
             ))}
           </div>
 
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="mt-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
              {[
-               { t: '08:00 AM', e: 'Morning Lessons' },
-               { t: '10:30 AM', e: 'Short Break' },
-               { t: '12:30 PM', e: 'Lunch Break' },
-               { t: '02:00 PM', e: 'Afternoon Session' }
+               { t: '05:30 AM', e: 'Day begins' },
+               { t: '08:00 AM', e: 'Academic lessons' },
+               { t: '12:30 PM', e: 'Midday break' },
+               { t: '09:50 PM', e: 'Day closes' }
              ].map((s, i) => (
-               <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/5 text-center">
-                  <p className="text-school-green font-mono text-sm mb-1">{s.t}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.e}</p>
+               <div key={i} className="bg-white border border-slate-200 p-6 rounded-3xl text-center shadow-sm">
+                  <p className="text-school-blue font-mono text-sm mb-2">{s.t}</p>
+                  <p className="text-slate-500 text-xs font-semibold uppercase tracking-[0.3em]">{s.e}</p>
                </div>
              ))}
           </div>

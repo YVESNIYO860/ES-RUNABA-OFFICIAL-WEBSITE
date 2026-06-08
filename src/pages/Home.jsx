@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Quote, CheckCircle } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Quote, CheckCircle, Play, Pause } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/TranslationContext';
@@ -90,7 +90,7 @@ const HeroSlideshow = ({ slides }) => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 1, delay: 0.4 }}
-                className="text-4xl sm:text-5xl md:text-6xl lg:text-[5rem] font-black text-white mb-6 leading-[1.1] tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] font-sans"
+                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-[1.1] tracking-tight drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] font-sans"
               >
                 {slides[current].title.split(' ').map((word, i) => (
                   <motion.span 
@@ -109,14 +109,14 @@ const HeroSlideshow = ({ slides }) => {
                 {slides[current].subtitle}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                <Link to="/about" className="group relative overflow-hidden bg-school-green text-white px-8 py-4 rounded-full font-bold text-lg tracking-wide transition-all shadow-[0_8px_20px_rgba(34,197,94,0.3)] hover:shadow-[0_8px_25px_rgba(34,197,94,0.5)] hover:-translate-y-1 flex items-center justify-center gap-3 z-10 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <Link to="/about" className="group relative overflow-hidden bg-school-green text-white px-6 py-2.5 rounded-full font-semibold text-sm md:text-base tracking-wide transition-all shadow-[0_4px_12px_rgba(34,197,94,0.3)] hover:shadow-[0_6px_16px_rgba(34,197,94,0.4)] hover:-translate-y-0.5 flex items-center justify-center gap-2 z-10 w-full sm:w-auto">
                   <div className="absolute inset-0 w-0 bg-white/20 transition-all duration-300 ease-out group-hover:w-full z-[-1]"></div>
-                  {replaceSchoolName(t('homeHeroButton1'))} <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+                  {replaceSchoolName(t('homeHeroButton1'))} <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16} />
                 </Link>
                 <Link
                   to="/academics"
-                  className="px-8 py-4 rounded-full text-white font-bold text-lg border-2 border-white/20 backdrop-blur-md hover:bg-white hover:text-slate-900 transition-all shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:-translate-y-1 flex items-center justify-center w-full sm:w-auto"
+                  className="px-6 py-2.5 rounded-full text-white font-semibold text-sm md:text-base border-2 border-white/20 backdrop-blur-md hover:bg-white hover:text-slate-900 transition-all shadow-[0_4px_12px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 flex items-center justify-center w-full sm:w-auto"
                 >
                   {t('homeHeroButton2')}
                 </Link>
@@ -212,7 +212,7 @@ const Home = () => {
 
       {/* Parallax Section 1 */}
       <section 
-        className="relative py-32 md:py-40 bg-fixed bg-center bg-cover flex items-center justify-center border-y-8 border-school-green/20" 
+        className="relative py-20 md:py-28 bg-fixed bg-center bg-cover flex items-center justify-center border-y-8 border-school-green/20" 
         style={{ backgroundImage: "url('/slide_campus.png')" }}
       >
         <div className="absolute inset-0 bg-[#0a192f]/80 mix-blend-multiply"></div>
@@ -292,7 +292,7 @@ const Home = () => {
       </section>
 
       {/* Expansive About Section */}
-      <section className="py-24 bg-slate-50 relative overflow-hidden">
+      <section className="py-16 bg-slate-50 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/3 h-1/2 bg-school-green/5 rounded-bl-[100px] pointer-events-none"></div>
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col lg:flex-row items-center gap-16">
           <motion.div 
@@ -455,8 +455,9 @@ const Home = () => {
         </div>
       </section>
 
+
       {/* Final CTA Section */}
-      <section className="relative py-28 border-t-8 border-school-green/10 flex items-center justify-center overflow-hidden">
+      <section className="relative py-20 border-t-8 border-school-green/10 flex items-center justify-center overflow-hidden">
         <motion.div 
           initial={{ scale: 1.1 }}
           whileInView={{ scale: 1 }}
