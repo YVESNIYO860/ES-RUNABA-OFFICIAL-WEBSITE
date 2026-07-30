@@ -32,7 +32,7 @@ const Footer = () => {
   const branding = siteContent?.general || { schoolName: "ES RUNABA" };
 
   return (
-    <footer className="bg-school-blue dark:bg-slate-950 text-white pt-12 pb-8 border-t border-transparent dark:border-slate-800 transition-colors duration-300">
+    <footer className="text-white pt-12 pb-8 border-t border-transparent dark:border-slate-800 transition-colors duration-300" style={{ backgroundColor: '#01050D' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 border-b border-white/10 pb-12">
           {/* School Info */}
@@ -104,7 +104,7 @@ const Footer = () => {
               title="Admin Login"
             >
               ©
-            </span> {new Date().getFullYear()}{' '}
+            </span> 2003-2026 {' '}
             <SchoolBrand name={branding.schoolName} className="inline" />. All rights reserved.
           </p>
         </div>
