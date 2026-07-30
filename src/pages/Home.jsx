@@ -488,10 +488,10 @@ const Home = () => {
           initial={{ scale: 1.05, opacity: 0.98 }}
           whileInView={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center bg-fixed"
           style={{ backgroundImage: `url('${ctaBackground}')` }}
         />
-        <div className="absolute inset-0 bg-black/10" />
+        <div className="absolute inset-0 bg-black/30" />
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -503,14 +503,14 @@ const Home = () => {
           <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter" style={{ textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
             Ready to Start Your Journey?
           </h2>
-          <p className="text-xl md:text-2xl text-slate-300 font-light mb-12 leading-relaxed">
+          <p className="text-xl md:text-2xl text-slate-200 font-light mb-12 leading-relaxed">
             Join the <SchoolBrand name={siteContent.general.schoolName} className="text-white font-bold inline" /> family and build a foundation for lifelong success.
           </p>
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Link to="/contact#contact-form" className="inline-flex items-center gap-4 bg-school-green text-white px-12 py-6 font-black text-lg uppercase tracking-widest rounded-full hover:bg-green-500 transition-all shadow-[0_20px_40px_rgba(34,197,94,0.4)]">
+            <Link to="/contact#contact-form" className="inline-flex items-center justify-center gap-4 bg-school-blue text-white px-12 py-5 font-black text-lg uppercase tracking-[0.22em] rounded-3xl border-2 border-school-blue shadow-[0_24px_60px_rgba(59,130,246,0.28)] hover:bg-[#0b4e9b] transition-all">
               Apply Now <ArrowRight size={24} />
             </Link>
           </motion.div>
