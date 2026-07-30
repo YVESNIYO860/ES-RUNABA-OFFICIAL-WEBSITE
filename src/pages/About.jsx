@@ -147,7 +147,6 @@ const About = () => {
             className="w-full lg:w-1/2 space-y-8"
           >
             <div className="space-y-4">
-              <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block">School in Action</span>
               <h2 className="text-4xl md:text-5xl font-black italic tracking-tighter text-slate-900 leading-[1.1]">Where Theory Meets Hands-On Innovation</h2>
               <div className="w-24 h-1.5 bg-school-green"></div>
             </div>
@@ -177,7 +176,6 @@ const About = () => {
 
         <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
           <div className="text-center mb-16">
-            <span className="text-school-green font-bold tracking-widest uppercase text-sm mb-2 block">Journey Through Time</span>
             <h2 className="text-4xl font-bold text-slate-800">Our History</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 rounded-full"></div>
           </div>
@@ -213,7 +211,7 @@ const About = () => {
                                 <User size={16} className="text-slate-500" />
                             </div>
                             <div className="text-left">
-                               <p className="text-xs text-slate-400 uppercase font-bold tracking-wider leading-none">Headmaster</p>
+                               <p className="text-xs text-slate-400 leading-none">Headmaster</p>
                                <p className="text-sm font-semibold text-slate-700">{item.leader}</p>
                             </div>
                         </div>
@@ -283,7 +281,6 @@ const About = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="space-y-4">
-              <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block">Time Management</span>
               <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">School Routine</h2>
               <div className="w-24 h-1.5 bg-school-green shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
             </div>
@@ -327,7 +324,7 @@ const About = () => {
              ].map((s, i) => (
                <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/5 text-center">
                   <p className="text-school-green font-mono text-sm mb-1">{s.t}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{s.e}</p>
+                  <p className="text-sm text-slate-400">{s.e}</p>
                </div>
              ))}
           </div>
@@ -338,7 +335,6 @@ const About = () => {
       <section id="faculty" className="py-24 bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="text-center mb-20">
-            <span className="text-school-green font-black tracking-[0.3em] uppercase text-[10px] mb-4 block">The Pillars of Science</span>
             <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter italic">Our Distinguished Faculty</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
           </div>
@@ -370,9 +366,9 @@ const About = () => {
                   <div className="mb-4">
                     <div className="flex justify-between items-start mb-2">
                        <h3 className="text-xl font-bold text-slate-800 leading-tight">{teacher.name}</h3>
-                       <span className="bg-slate-900 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter whitespace-nowrap">{teacher.level}</span>
+                       <p className="text-sm font-semibold text-slate-900">{teacher.level}</p>
                     </div>
-                    <p className="text-school-green text-[10px] font-black uppercase tracking-widest">{teacher.subjects}</p>
+                    <p className="text-slate-600 text-sm">{teacher.subjects}</p>
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-slate-200 mt-auto">
@@ -417,7 +413,7 @@ const About = () => {
               </div>
               <div className="pt-6 border-t border-white/20">
                 <p className="font-bold text-2xl text-school-green tracking-tight">{about.headTeacher.name}</p>
-                <p className="text-slate-400 font-medium tracking-wide uppercase text-sm mt-1">{about.headTeacher.role}</p>
+                <p className="text-slate-400 font-medium text-sm mt-1">{about.headTeacher.role}</p>
               </div>
             </div>
           </div>

@@ -349,7 +349,7 @@ const Home = () => {
               className="absolute -bottom-8 -right-8 z-20 bg-school-green text-white p-8 rounded-3xl shadow-2xl hidden md:block border-4 border-white"
             >
               <div className="text-5xl font-black mb-1 flex items-center gap-1">20<span className="text-2xl text-white/80">+</span></div>
-              <p className="text-xs uppercase tracking-[0.2em] font-black opacity-90 leading-tight">Years of Academic<br/>Excellence</p>
+              <p className="text-sm font-semibold text-white/90 leading-tight">Years of Academic Excellence</p>
             </motion.div>
           </motion.div>
           <motion.div 
@@ -360,10 +360,6 @@ const Home = () => {
             className="w-full lg:w-1/2 space-y-8 relative z-10"
           >
             <div>
-              <span className="text-school-green font-bold tracking-widest uppercase text-sm flex items-center gap-2 mb-3">
-                <div className="w-6 h-[2px] bg-school-green"></div>
-                Discover <SchoolBrand name={siteContent.general.schoolName} className="inline" />
-              </span>
               <h2 className="text-4xl md:text-5xl font-extrabold text-slate-800 leading-tight">
                 {home.about.discoverTitle}
               </h2>
@@ -402,7 +398,6 @@ const Home = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="text-school-green font-bold uppercase tracking-[0.3em] text-[10px] mb-4 block">Voices of Success</span>
             <h2 className="text-4xl md:text-5xl font-black text-slate-900 mt-2 tracking-tight italic">Our Community Story</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
           </motion.div>
@@ -435,7 +430,7 @@ const Home = () => {
                   </div>
                 </button>
                 <p className="font-black text-slate-900 text-lg leading-tight uppercase tracking-tight">NIYONKURU Yves</p>
-                <p className="text-school-green text-[10px] font-black uppercase tracking-[0.2em] mt-1.5">Alumni · Creative Dev</p>
+                <p className="text-school-green text-sm font-semibold mt-1.5">Alumni · Creative Dev</p>
               </div>
               <div className="flex-1 text-center md:text-left">
                 <div className="flex justify-center md:justify-start gap-1 mb-4">
@@ -469,7 +464,7 @@ const Home = () => {
                   </div>
                   <div>
                     <p className="font-bold text-slate-800 text-sm">{t.name}</p>
-                    <p className="text-school-green text-xs font-bold uppercase tracking-wide">{t.role}</p>
+                    <p className="text-school-green text-sm font-semibold">{t.role}</p>
                   </div>
                 </div>
               </div>
@@ -499,7 +494,7 @@ const Home = () => {
           viewport={{ once: true }}
           className="relative z-10 text-center px-6 max-w-4xl mx-auto"
         >
-          <span className="text-school-green text-xs font-black uppercase tracking-[0.4em] mb-6 block">Future Ready</span>
+          <p className="text-school-green text-sm font-semibold mb-6">Future Ready</p>
           <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter" style={{ textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
             Ready to Start Your Journey?
           </h2>
