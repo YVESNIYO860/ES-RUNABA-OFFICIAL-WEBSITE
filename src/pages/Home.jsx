@@ -250,13 +250,13 @@ const Home = () => {
           <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Link
               to="/about"
-              className="w-full sm:w-auto px-8 py-4 bg-school-blue text-white rounded-3xl font-bold text-lg tracking-wide shadow-[0_18px_50px_rgba(14,165,233,0.28)] border border-school-blue/70 transition-transform duration-200 hover:-translate-y-1 hover:bg-school-blue/95 flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-8 py-4 bg-[#0A94F0] text-white rounded-3xl font-bold text-lg tracking-wide shadow-[0_18px_50px_rgba(10,148,240,0.28)] border border-[#0A94F0]/70 transition-transform duration-200 hover:-translate-y-1 hover:bg-[#0784d8] flex items-center justify-center gap-3"
             >
               Explore <SchoolBrand name={siteContent.general.schoolName} className="inline" /> <ArrowRight className="transition-transform" />
             </Link>
             <Link
               to="/academics"
-              className="w-full sm:w-auto px-8 py-4 bg-white text-school-blue font-bold text-lg tracking-wide rounded-3xl border-2 border-school-blue shadow-[0_16px_40px_rgba(59,130,246,0.18)] hover:bg-slate-50 transition-all flex items-center justify-center"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-[#0A94F0] font-bold text-lg tracking-wide rounded-3xl border-2 border-[#0A94F0] shadow-[0_16px_40px_rgba(10,148,240,0.18)] hover:bg-slate-50 transition-all flex items-center justify-center"
             >
               Discover Programs
             </Link>
@@ -510,7 +510,7 @@ const Home = () => {
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Link to="/contact#contact-form" className="inline-flex items-center justify-center gap-4 bg-school-blue text-white px-12 py-5 font-black text-lg uppercase tracking-[0.22em] rounded-3xl border-2 border-school-blue shadow-[0_24px_60px_rgba(59,130,246,0.28)] hover:bg-[#0b4e9b] transition-all">
+            <Link to="/contact#contact-form" className="inline-flex items-center justify-center gap-4 bg-[#0A94F0] text-white px-12 py-5 font-black text-lg uppercase tracking-[0.22em] rounded-3xl border-2 border-[#0A94F0] shadow-[0_24px_60px_rgba(10,148,240,0.28)] hover:bg-[#0784d8] transition-all">
               Apply Now <ArrowRight size={24} />
             </Link>
           </motion.div>
