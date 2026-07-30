@@ -248,12 +248,15 @@ const Home = () => {
             Discover a campus where tradition meets innovation, preparing students for a <span className="text-school-green font-bold">limitless future</span>.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center">
-            <Link to="/about" className="relative overflow-hidden bg-gradient-to-r from-[#0ea5e9] via-[#14b8a6] to-[#22c55e] text-white px-8 py-4 rounded-full font-bold text-lg tracking-wide transition-transform duration-200 shadow-[0_18px_60px_rgba(14,165,233,0.35)] hover:-translate-y-1 hover:shadow-[0_22px_70px_rgba(14,165,233,0.55)] w-full sm:w-auto flex items-center justify-center gap-3">
+            <Link
+              to="/about"
+              className="w-full sm:w-auto px-8 py-4 bg-school-blue text-white rounded-3xl font-bold text-lg tracking-wide shadow-[0_18px_50px_rgba(14,165,233,0.28)] border border-school-blue/70 transition-transform duration-200 hover:-translate-y-1 hover:bg-school-blue/95 flex items-center justify-center gap-3"
+            >
               Explore <SchoolBrand name={siteContent.general.schoolName} className="inline" /> <ArrowRight className="transition-transform" />
             </Link>
             <Link
               to="/academics"
-              className="relative overflow-hidden bg-white/95 text-slate-900 px-8 py-4 rounded-full font-bold text-lg tracking-wide border border-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.15)] transition-transform duration-200 hover:-translate-y-1 hover:bg-slate-100 w-full sm:w-auto flex items-center justify-center"
+              className="w-full sm:w-auto px-8 py-4 bg-white text-school-blue font-bold text-lg tracking-wide rounded-3xl border-2 border-school-blue shadow-[0_16px_40px_rgba(59,130,246,0.18)] hover:bg-slate-50 transition-all flex items-center justify-center"
             >
               Discover Programs
             </Link>
