@@ -12,7 +12,7 @@ const teachersData = [
     level: 'O-Level',
     phone: '+250 783 883 046',
     bio: 'Dedicated to simplifying complex mathematical concepts and driving digital literacy.',
-    image: 'https://images.unsplash.com/photo-1544717305-27a734ef1904?q=80&w=800&auto=format&fit=crop'
+    image: '/slide_lab.png'
   },
   {
     name: 'Mrs. UWIMANA Diane',
@@ -21,7 +21,7 @@ const teachersData = [
     level: 'A-Level',
     phone: '+250 783 883 112',
     bio: 'Fostering a deep appreciation for the biological sciences and laboratory research.',
-    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop'
+    image: '/slide_campus.png'
   },
   {
     name: 'Mr. NSHIMIYIMANA Eric',
@@ -30,7 +30,7 @@ const teachersData = [
     level: 'A-Level',
     phone: '+250 783 883 055',
     bio: 'Expert in environmental science and physics methodology with over a decade of mentorship.',
-    image: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=800&auto=format&fit=crop'
+    image: '/slide_sports.png'
   },
   {
     name: 'Ms. MUKAMANA Solange',
@@ -39,7 +39,7 @@ const teachersData = [
     level: 'O-Level',
     phone: '+250 783 883 099',
     bio: 'Passionate about communication skills and empowering students with business mindsets.',
-    image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=800&auto=format&fit=crop'
+    image: '/slide_graduation.png'
   }
 ];
 
@@ -71,7 +71,7 @@ const About = () => {
          {/* Fixed Background Image */}
          <div 
            className="absolute inset-x-0 inset-y-0 bg-cover bg-center bg-fixed"
-           style={{ backgroundImage: `url('${schoolPhotoUrls[0] ?? 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop'}')` }}
+           style={{ backgroundImage: `url('${schoolPhotoUrls[0] ?? '/slide_campus.png'}')` }}
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/20" />
@@ -173,7 +173,7 @@ const About = () => {
       {/* NEW: School History Timeline */}
       <section id="history" className="py-20 bg-slate-50 relative overflow-hidden">
         {/* Decorative background grid */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-school-green/10 opacity-30 pointer-events-none"></div>
 
         <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
           <div className="text-center mb-16">
@@ -475,7 +475,7 @@ const About = () => {
 
       {/* Weekly Routine Section */}
       <section id="routine" className="py-24 bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-fixed opacity-10 blur-[2px]"></div>
+        <div className="absolute inset-0 bg-[url('/slide_campus.png')] bg-cover bg-fixed opacity-10 blur-[2px]"></div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="space-y-4">

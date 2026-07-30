@@ -33,7 +33,7 @@ const Academics = () => {
       <section className="relative h-[55vh] min-h-[400px] flex items-center justify-center overflow-hidden">
          {/* Fixed Background Image */}
          <div 
-           className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-fixed"
+           className="absolute inset-0 bg-[url('/slide_lab.png')] bg-cover bg-center bg-fixed"
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/30" />
@@ -194,7 +194,7 @@ const Academics = () => {
                 <div className="absolute -inset-4 bg-school-green/20 rounded-[3rem] blur-3xl group-hover:bg-school-green/30 transition-all"></div>
                 <div className="relative rounded-[3rem] overflow-hidden aspect-[4/5] shadow-2xl border-4 border-white/20">
                   <img 
-                    src="https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=2070&auto=format&fit=crop" 
+                    src="/slide_lab.png" 
                     alt="Science Lab" 
                     className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000"
                   />

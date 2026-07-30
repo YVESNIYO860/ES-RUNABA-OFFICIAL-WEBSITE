@@ -15,14 +15,14 @@ const Gallery = () => {
   });
 
   const defaultImages = [
-    { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070', caption: 'Main Building' },
-    { url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=2070', caption: 'Students in Class' },
-    { url: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=2070', caption: 'Science Lab Session' },
-    { url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=2090', caption: 'Basketball Tournament' },
-    { url: 'https://images.unsplash.com/photo-1517466787573-087754b2b09d?q=80&w=1972', caption: 'Football Field' },
-    { url: 'https://images.unsplash.com/photo-1544168190-79c17527004f?q=80&w=1976', caption: 'Graduation Day' },
-    { url: 'https://images.unsplash.com/photo-1524178232363-1fb28f74b671?q=80&w=2070', caption: 'School Library' },
-    { url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073', caption: 'Reading Garden' },
+    { url: '/slide_classroom.png', caption: 'Main Building' },
+    { url: '/slide_sports.png', caption: 'Students in Class' },
+    { url: '/slide_lab.png', caption: 'Science Lab Session' },
+    { url: '/slide_graduation.png', caption: 'Graduation Day' },
+    { url: '/slide_campus.png', caption: 'Campus View' },
+    { url: '/runaba-logo.png', caption: 'School Logo' },
+    { url: '/slide_classroom.png', caption: 'Learning Space' },
+    { url: '/slide_sports.png', caption: 'Sports Event' },
   ];
 
   const displayedImages = images.length > 0 ? images : defaultImages;
@@ -35,7 +35,7 @@ const Gallery = () => {
       <section className="relative h-[55vh] min-h-[400px] flex items-center justify-center overflow-hidden">
          {/* Fixed Background Image */}
          <div 
-           className="absolute inset-x-0 inset-y-0 bg-[url('https://images.unsplash.com/photo-1511649475669-e288648b2339?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-fixed"
+           className="absolute inset-x-0 inset-y-0 bg-[url('/slide_classroom.png')] bg-cover bg-center bg-fixed"
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/30" />

@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
           about: {
             discoverTitle: "Shaping the Leaders of Tomorrow",
             discoverText: "Founded in 2003, ES RUNABA has evolved into a premier educational institution in Burera. We provide a holistic learning environment where academic excellence meets character development, guided by a visionary leadership team.",
-            discoverImage: "https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop",
+            discoverImage: "/slide_campus.png",
             passRate: "99% National Exam Pass Rate: Across both O-Level & A-Level.",
             staffRate: "100% Dedicated Staff: Passionate and certified educators.",
             facilities: ['Modern Science Labs', 'Extensive Library', 'Sports Complex', 'Secure Environment', 'ICT Integration', 'Mentorship Programs']
@@ -50,14 +50,14 @@ export const AuthProvider = ({ children }) => {
         },
         about: {
           hero: {
-            image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop",
+            image: "/slide_campus.png",
             motto: "HUMILITY, UNITY, GOD'S LOVE"
           },
           headTeacher: {
             name: "Father BAZAMANZA Jean Nepomuscene",
             role: "Head Teacher, ES RUNABA",
             message: "Welcome to ES RUNABA. We are dedicated to creating a nurturing and dynamic environment. By building modern facilities like our new refectory and laboratories, we have transformed our students' experience, proudly driving our national exam success rate to 99% in both O-Level and A-Level. Excellence is our standard.",
-            image: "https://images.unsplash.com/photo-1544168190-79c17527004f?q=80&w=1976&auto=format&fit=crop"
+            image: "/builder.jpeg"
           }
         }
       };

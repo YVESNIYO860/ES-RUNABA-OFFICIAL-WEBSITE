@@ -5,92 +5,92 @@ import { useAuth } from '../context/AuthContext';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 
 const activities = [
-  { 
+  {
     name: 'Debate Club', icon: <Mic2 size={28} />, category: 'Club',
     desc: 'Sharpen public speaking and critical thinking skills in a competitive environment.',
     color: 'bg-blue-600',
     photos: [
-      'https://images.unsplash.com/photo-1571624436279-b272aff752b5?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1529070538774-1843cb3265df?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop',
+      '/slide_classroom.png',
+      '/slide_campus.png',
+      '/slide_lab.png',
+      '/slide_graduation.png',
     ]
   },
-  { 
+  {
     name: 'Environmental Club', icon: <Trees size={28} />, category: 'Club',
     desc: 'Join tree planting and sustainability initiatives to protect our local ecosystem.',
     color: 'bg-green-700',
     photos: [
-      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1542621334-a254cf47733d?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1622359416413-eb89d81373ed?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=1200&auto=format&fit=crop',
+      '/slide_campus.png',
+      '/slide_sports.png',
+      '/slide_classroom.png',
+      '/slide_lab.png',
     ]
   },
-  { 
+  {
     name: 'Science Club', icon: <BookHeart size={28} />, category: 'Club',
     desc: 'Discover biology, chemistry, and physics through exciting hands-on experiments.',
     color: 'bg-purple-700',
     photos: [
-      'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1576086213369-97a306d36557?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1581093458791-9f3c3900df4b?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1628595351029-c2bf17511435?q=80&w=1200&auto=format&fit=crop',
+      '/slide_lab.png',
+      '/slide_campus.png',
+      '/slide_classroom.png',
+      '/slide_graduation.png',
     ]
   },
-  { 
+  {
     name: 'Traditional Dance', icon: <Users2 size={28} />, category: 'Culture',
     desc: 'Celebrate and preserve our Rwandan culture through high-energy performances.',
     color: 'bg-amber-700',
     photos: [
-      'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1594913612716-e5b1fd919bd4?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1533147670608-2a2f9776d3ac?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1504609813442-a8924e83f76e?q=80&w=1200&auto=format&fit=crop',
+      '/slide_sports.png',
+      '/slide_campus.png',
+      '/slide_classroom.png',
+      '/slide_graduation.png',
     ]
   },
-  { 
+  {
     name: 'Football', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Compete in inter-school tournaments and build incredible teamwork on the pitch.',
     color: 'bg-school-blue',
     photos: [
-      'https://images.unsplash.com/photo-1518622358385-8ea7d0794bf6?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1553773077-91673515eaaf?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1431324155629-1a6d0a6eb4f2?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?q=80&w=1200&auto=format&fit=crop',
+      '/slide_sports.png',
+      '/slide_campus.png',
+      '/slide_graduation.png',
+      '/slide_classroom.png',
     ]
   },
-  { 
+  {
     name: 'Basketball', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Improve cardiovascular endurance and court strategy with our varsity team.',
     color: 'bg-orange-600',
     photos: [
-      'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1518063319789-7217e6706b04?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1519861531473-9200262188bf?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1504450758481-7338eba7524a?q=80&w=1200&auto=format&fit=crop',
+      '/slide_sports.png',
+      '/slide_graduation.png',
+      '/slide_classroom.png',
+      '/slide_lab.png',
     ]
   },
-  { 
+  {
     name: 'Volleyball', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Master the spike, improve reflexes, and build team synchrony on the court.',
     color: 'bg-red-600',
     photos: [
-      'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1593786274422-901d36a9aeff?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1588667623912-74768eff1b5d?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1547592180-85f173990554?q=80&w=1200&auto=format&fit=crop',
+      '/slide_sports.png',
+      '/slide_graduation.png',
+      '/slide_campus.png',
+      '/slide_classroom.png',
     ]
   },
-  { 
+  {
     name: "Girls' Empowerment", icon: <Users2 size={28} />, category: 'Society',
     desc: 'A safe space to build leadership skills, confidence, and career readiness.',
     color: 'bg-pink-600',
     photos: [
-      'https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=1200&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=1200&auto=format&fit=crop',
+      '/slide_campus.png',
+      '/slide_classroom.png',
+      '/slide_graduation.png',
+      '/slide_lab.png',
     ]
   },
 ];
@@ -221,7 +221,7 @@ const StudentLife = () => {
          {/* Fixed Background Image */}
          <div 
            className="absolute inset-x-0 inset-y-0 bg-cover bg-center bg-fixed"
-           style={{ backgroundImage: `url('${schoolPhotoUrls[2] ?? 'https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop'}')` }}
+           style={{ backgroundImage: `url('${schoolPhotoUrls[2] ?? '/slide_campus.png'}')` }}
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/40" />
@@ -305,7 +305,7 @@ const StudentLife = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto relative z-10">
           <div className="group relative overflow-hidden rounded-[2rem] h-96 shadow-2xl">
             <img 
-              src="https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=2090&auto=format&fit=crop" 
+              src="/slide_sports.png" 
               alt="Basketball" 
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
             />
@@ -318,7 +318,7 @@ const StudentLife = () => {
           </div>
           <div className="group relative overflow-hidden rounded-[2rem] h-96 shadow-2xl">
             <img 
-              src="https://images.unsplash.com/photo-1517466787573-087754b2b09d?q=80&w=1972&auto=format&fit=crop" 
+              src="/slide_campus.png" 
               alt="Football" 
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
             />

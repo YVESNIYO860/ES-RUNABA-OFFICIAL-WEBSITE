@@ -45,7 +45,7 @@ const Contact = () => {
          {/* Fixed Background Image */}
          <div 
            className="absolute inset-0 bg-cover bg-center bg-fixed"
-           style={{ backgroundImage: `url('${schoolPhotoUrls[1] ?? 'https://images.unsplash.com/photo-1577563908411-5079b6a1d824?q=80&w=2070&auto=format&fit=crop'}')` }}
+           style={{ backgroundImage: `url('${schoolPhotoUrls[1] ?? '/slide_campus.png'}')` }}
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/30" />

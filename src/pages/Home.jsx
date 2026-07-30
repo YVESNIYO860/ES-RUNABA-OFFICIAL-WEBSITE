@@ -331,7 +331,7 @@ const Home = () => {
           >
             <div className="relative z-10 rounded-3xl overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.2)] border-8 border-white p-0">
               <img
-                src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop"
+                src="/slide_campus.png"
                 alt="Students studying"
                 className="w-full h-[600px] object-cover scale-105 hover:scale-100 transition-transform duration-1000"
               />
