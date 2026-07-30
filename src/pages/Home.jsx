@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Q
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolBrand from '../components/SchoolBrand';
-import { heroSlides } from '../utils/schoolPhotoUrls';
+import { heroSlides, schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 
 /* ─── Slideshow Data ──────────────────────────────────────────────── */
 const slides = heroSlides.length > 0 ? heroSlides : [
@@ -334,7 +334,7 @@ const Home = () => {
           >
             <div className="relative z-10 rounded-3xl overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.2)] border-8 border-white p-0">
               <img
-                src="/slide_campus.png"
+                src={schoolPhotoUrls[0] ?? '/slide_campus.png'}
                 alt="Students studying"
                 className="w-full h-[600px] object-cover scale-105 hover:scale-100 transition-transform duration-1000"
               />
