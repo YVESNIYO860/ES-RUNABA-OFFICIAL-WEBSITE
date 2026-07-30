@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 
 const teachersData = [
   {
@@ -69,7 +70,8 @@ const About = () => {
       <section className="relative h-[55vh] min-h-[400px] flex items-center justify-center overflow-hidden">
          {/* Fixed Background Image */}
          <div 
-           className="absolute inset-x-0 inset-y-0 bg-[url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-fixed"
+           className="absolute inset-x-0 inset-y-0 bg-cover bg-center bg-fixed"
+           style={{ backgroundImage: `url('${schoolPhotoUrls[0] ?? 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop'}')` }}
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/20" />
