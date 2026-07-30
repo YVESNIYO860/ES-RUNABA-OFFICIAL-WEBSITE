@@ -7,10 +7,11 @@ import { initTranslateState } from './utils/translate.js'
 initTranslateState()
 
 const storedTheme = localStorage.getItem('es_runaba_theme')
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
+if (storedTheme === 'dark') {
   document.documentElement.classList.add('dark')
   document.documentElement.style.colorScheme = 'dark'
+} else {
+  document.documentElement.style.colorScheme = 'light'
 }
 
 createRoot(document.getElementById('root')).render(

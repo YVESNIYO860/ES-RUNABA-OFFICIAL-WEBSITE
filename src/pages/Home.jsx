@@ -4,9 +4,10 @@ import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Q
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolBrand from '../components/SchoolBrand';
+import { heroSlides } from '../utils/schoolPhotoUrls';
 
 /* ─── Slideshow Data ──────────────────────────────────────────────── */
-const slides = [
+const slides = heroSlides.length > 0 ? heroSlides : [
   {
     src: '/slide_classroom.png',
     title: 'WELCOME TO ES RUNABA',
@@ -102,27 +103,17 @@ const HeroSlideshow = ({ slides }) => {
       </AnimatePresence>
 
       {/* Content Container */}
-      <div className="absolute inset-0 z-10 flex flex-col justify-center pb-24 md:pb-0 px-6 md:px-16 lg:px-24">
-        <div className="max-w-7xl w-full mx-auto flex flex-col items-start mt-16 md:mt-0">
+      <div className="absolute inset-0 z-10 flex items-center justify-center px-6 md:px-16 lg:px-24">
+        <div className="max-w-7xl w-full mx-auto flex flex-col items-center justify-center min-h-[70vh] text-center">
           <AnimatePresence mode="wait">
             <motion.div
               key={`text-${current}`}
-              initial={{ opacity: 0, y: 40, x: -20 }}
-              animate={{ opacity: 1, y: 0, x: 0 }}
-              exit={{ opacity: 0, y: -20, x: 20 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
               className="w-full max-w-4xl relative"
             >
-              {/* Accents (Vertical Line) */}
-              <div className="absolute -left-6 md:-left-12 top-4 bottom-4 w-1.5 bg-school-green rounded-full shadow-[0_0_15px_rgba(34,197,94,0.5)] hidden md:block"></div>
-
-              <div className="mb-6 flex items-center gap-4 hidden md:flex">
-                <span className="px-5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold uppercase tracking-[0.25em] shadow-xl">
-                  {slideList[current].title.split(' ')[0]}
-                </span>
-                <div className="h-[1px] w-24 bg-white/40"></div>
-              </div>
-
               <motion.h1 
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -143,22 +134,11 @@ const HeroSlideshow = ({ slides }) => {
                 ))}
               </motion.h1>
 
-              <p className="text-lg md:text-xl lg:text-2xl text-slate-100 mb-10 max-w-2xl leading-relaxed font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+              <p className="text-lg md:text-xl lg:text-2xl text-slate-100 mb-10 max-w-3xl leading-relaxed font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
                 {slideList[current].subtitle}
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                <Link to="/about" className="group relative overflow-hidden bg-school-green text-white px-8 py-4 rounded-full font-bold text-lg tracking-wide transition-all shadow-[0_8px_20px_rgba(34,197,94,0.3)] hover:shadow-[0_8px_25px_rgba(34,197,94,0.5)] hover:-translate-y-1 flex items-center justify-center gap-3 z-10 w-full sm:w-auto">
-                  <div className="absolute inset-0 w-0 bg-white/20 transition-all duration-300 ease-out group-hover:w-full z-[-1]"></div>
-                  Explore <SchoolBrand name={siteContent.general.schoolName} className="inline" /> <ArrowRight className="group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link
-                  to="/academics"
-                  className="px-8 py-4 rounded-full text-white font-bold text-lg border-2 border-white/20 backdrop-blur-md hover:bg-white hover:text-slate-900 transition-all shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:-translate-y-1 flex items-center justify-center w-full sm:w-auto"
-                >
-                  Discover Programs
-                </Link>
-              </div>
+
             </motion.div>
           </AnimatePresence>
         </div>
@@ -221,6 +201,8 @@ const Home = () => {
   if (!siteContent) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
 
   const home = siteContent?.home || { hero: [], about: { discoverTitle: '', discoverText: '', discoverImage: '', passRate: '', staffRate: '', facilities: [] } };
+  const hero = heroSlides.length > 0 ? heroSlides : home.hero;
+  const ctaBackground = hero[hero.length - 1]?.src ?? hero[0]?.src ?? '/slide_campus.png';
 
   return (
     <div className="flex flex-col">
@@ -242,12 +224,12 @@ const Home = () => {
         </div>
       )}
       {/* Hero Slideshow */}
-      <HeroSlideshow slides={home.hero} />
+      <HeroSlideshow slides={hero} />
 
       {/* Parallax Section 1 */}
       <section 
         className="relative py-32 md:py-40 bg-fixed bg-center bg-cover flex items-center justify-center border-y-8 border-school-green/20" 
-        style={{ backgroundImage: "url('/slide_campus.png')" }}
+        style={{ backgroundImage: `url('${heroSlides[0]?.src ?? '/slide_campus.png'}')` }}
       >
         <div className="absolute inset-0 bg-[#0a192f]/80 mix-blend-multiply"></div>
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a192f]/50 to-transparent"></div>
@@ -265,6 +247,17 @@ const Home = () => {
           <p className="text-xl md:text-3xl text-white/90 font-light drop-shadow-md leading-relaxed">
             Discover a campus where tradition meets innovation, preparing students for a <span className="text-school-green font-bold">limitless future</span>.
           </p>
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center">
+            <Link to="/about" className="relative overflow-hidden bg-gradient-to-r from-[#0ea5e9] via-[#14b8a6] to-[#22c55e] text-white px-8 py-4 rounded-full font-bold text-lg tracking-wide transition-transform duration-200 shadow-[0_18px_60px_rgba(14,165,233,0.35)] hover:-translate-y-1 hover:shadow-[0_22px_70px_rgba(14,165,233,0.55)] w-full sm:w-auto flex items-center justify-center gap-3">
+              Explore <SchoolBrand name={siteContent.general.schoolName} className="inline" /> <ArrowRight className="transition-transform" />
+            </Link>
+            <Link
+              to="/academics"
+              className="relative overflow-hidden bg-white/95 text-slate-900 px-8 py-4 rounded-full font-bold text-lg tracking-wide border border-white/80 shadow-[0_18px_60px_rgba(15,23,42,0.15)] transition-transform duration-200 hover:-translate-y-1 hover:bg-slate-100 w-full sm:w-auto flex items-center justify-center"
+            >
+              Discover Programs
+            </Link>
+          </div>
         </motion.div>
       </section>
 
@@ -487,17 +480,17 @@ const Home = () => {
       </section>
 
       {/* Final CTA Section */}
-      <section className="relative py-28 border-t-8 border-school-green/10 flex items-center justify-center overflow-hidden">
-        <motion.div 
-          initial={{ scale: 1.1 }}
-          whileInView={{ scale: 1 }}
-          transition={{ duration: 10, ease: "linear" }}
-          className="absolute inset-x-0 inset-y-0 bg-[url('/slide_graduation.png')] bg-cover bg-center bg-fixed opacity-40"
+      <section className="relative py-28 min-h-[560px] border-t-8 border-school-green/10 flex items-center justify-center overflow-hidden">
+        <motion.div
+          initial={{ scale: 1.05, opacity: 0.98 }}
+          whileInView={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('${ctaBackground}')` }}
         />
-        {/* Deep branded School Blue overlay instead of black or white */}
-        <div className="absolute inset-0 bg-school-blue/60" />
-        
-        <motion.div 
+        <div className="absolute inset-0 bg-black/10" />
+
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}

@@ -88,7 +88,7 @@ const SchoolLoader = () => {
           className="text-sm italic font-medium tracking-wide uppercase"
           style={{ color: gold }}
         >
-          Ora Pro Nobis
+          HUMILITY, UNITY, GOD'S LOVE
         </motion.p>
       </div>
     </div>

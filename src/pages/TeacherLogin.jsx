@@ -13,7 +13,7 @@ const TeacherLogin = () => {
   
   const { loginTeacher, siteContent } = useAuth();
   const navigate = useNavigate();
-  const branding = siteContent?.general || { schoolName: "ES RUNABA", motto: "ORA PRO NOBIS", logo: "/runaba-logo.png" };
+  const branding = siteContent?.general || { schoolName: "ES RUNABA", motto: "HUMILITY, UNITY, GOD'S LOVE", logo: "/runaba-logo.png" };
 
   const handleSubmit = (e) => {
     e.preventDefault();

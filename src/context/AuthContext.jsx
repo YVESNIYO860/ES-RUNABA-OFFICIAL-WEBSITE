@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     const defaultContent = {
         general: {
           schoolName: "ES RUNABA",
-          motto: "ORA PRO NOBIS",
+          motto: "HUMILITY, UNITY, GOD'S LOVE",
           logo: "/runaba-logo.png",
           contact: {
             phone: "+250 783 883 046",
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
         about: {
           hero: {
             image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070&auto=format&fit=crop",
-            motto: "Ora Pro Nobis"
+            motto: "HUMILITY, UNITY, GOD'S LOVE"
           },
           headTeacher: {
             name: "Father BAZAMANZA Jean Nepomuscene",
@@ -112,8 +112,20 @@ export const AuthProvider = ({ children }) => {
         };
 
         const merged = deepMerge(defaultContent, parsed);
+        const normalizeMotto = (value) => {
+          const motto = String(value || '').trim();
+          return ['ORA PRO NOBIS', 'Ora Pro Nobis', 'Ora Pro nobis'].includes(motto)
+            ? "HUMILITY, UNITY, GOD'S LOVE"
+            : motto || defaultContent.general.motto;
+        };
+
+        merged.general.motto = normalizeMotto(merged.general.motto);
+        if (merged.about?.hero) {
+          merged.about.hero.motto = normalizeMotto(merged.about.hero.motto);
+        }
+
         merged.general.schoolName = normalizeSchoolName(merged.general.schoolName);
-        if (merged.general.schoolName !== parsed.general?.schoolName) {
+        if (merged.general.schoolName !== parsed.general?.schoolName || merged.general.motto !== parsed.general?.motto || (merged.about?.hero?.motto !== parsed.about?.hero?.motto)) {
           localStorage.setItem('es_runaba_content', JSON.stringify(merged));
         }
         setSiteContent(merged);

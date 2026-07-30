@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 
 const Contact = () => {
   const { siteContent } = useAuth();
@@ -43,7 +44,8 @@ const Contact = () => {
       <section className="relative h-[55vh] min-h-[400px] flex items-center justify-center overflow-hidden">
          {/* Fixed Background Image */}
          <div 
-           className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1577563908411-5079b6a1d824?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-fixed"
+           className="absolute inset-0 bg-cover bg-center bg-fixed"
+           style={{ backgroundImage: `url('${schoolPhotoUrls[1] ?? 'https://images.unsplash.com/photo-1577563908411-5079b6a1d824?q=80&w=2070&auto=format&fit=crop'}')` }}
          />
          {/* Minimal Clarity Overlay */}
          <div className="absolute inset-0 bg-black/30" />

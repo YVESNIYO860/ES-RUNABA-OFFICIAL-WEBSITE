@@ -17,7 +17,6 @@ import { useAuth } from '../context/AuthContext';
 import GlobalSearch from './GlobalSearch';
 import HeaderUtilities from './HeaderUtilities';
 import SchoolBrand from './SchoolBrand';
-import AnnouncementMarquee from './AnnouncementMarquee';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -86,11 +85,19 @@ const Navbar = () => {
 
   const branding = siteContent?.general || {
     schoolName: 'ES RUNABA',
-    motto: 'ORA PRO NOBIS',
+    motto: "HUMILITY, UNITY, GOD'S LOVE",
     logo: '/runaba-logo.png',
     contact: { email: 'info@esrunaba.edu', phone: '+250 783 883 046' },
     announcement: { text: '', isActive: false },
   };
+
+  const effectiveMotto = [
+    'ORA PRO NOBIS',
+    'Ora Pro Nobis',
+    'Ora Pro nobis',
+  ].includes((branding.motto || '').trim())
+    ? "HUMILITY, UNITY, GOD'S LOVE"
+    : branding.motto;
 
   const phone = branding.contact?.phone || '+250 783 883 046';
   const email = branding.contact?.email || 'info@esrunaba.edu';
@@ -98,45 +105,29 @@ const Navbar = () => {
   return (
     <>
       {/* Desktop top bar */}
-      <div className="bg-slate-900 text-white/80 py-2 border-b border-white/5 hidden lg:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-4 text-[11px] font-bold tracking-widest uppercase min-w-0">
-          <div className="flex items-center gap-4 lg:gap-6 min-w-0 shrink">
+      <div className="bg-slate-900 text-white/80 py-0.5 border-b border-white/5 hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center gap-2 text-[9px] font-semibold tracking-[0.22em] uppercase min-w-0">
+          <div className="flex items-center gap-3 lg:gap-4 min-w-0 shrink">
             <a
               href={`mailto:${email}`}
-              className="flex items-center gap-2 hover:text-school-green transition-colors truncate max-w-[14rem] xl:max-w-none"
+              className="flex items-center gap-1.5 hover:text-school-green transition-colors truncate max-w-[14rem] xl:max-w-none"
             >
-              <Mail size={12} className="text-school-green shrink-0" />
+              <Mail size={9} className="text-school-green shrink-0" />
               <span className="truncate">{email}</span>
             </a>
             <div className="w-px h-3 bg-white/20 shrink-0" />
             <a
               href={`tel:${phone.replace(/\s/g, '')}`}
-              className="flex items-center gap-2 hover:text-school-green transition-colors whitespace-nowrap shrink-0"
+              className="flex items-center gap-1.5 hover:text-school-green transition-colors whitespace-nowrap shrink-0"
             >
-              <Phone size={12} className="text-school-green shrink-0" />
+              <Phone size={9} className="text-school-green shrink-0" />
               {phone}
             </a>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <HeaderUtilities variant="top" />
             <div className="w-px h-3 bg-white/20" />
-            <form onSubmit={onTopSearchSubmit} className="relative hidden xl:block">
-              <input
-                type="search"
-                value={topSearch}
-                onChange={(e) => setTopSearch(e.target.value)}
-                placeholder="Search our school..."
-                className="bg-white/5 border border-white/10 rounded-full px-4 py-1 w-40 2xl:w-48 text-[10px] text-white focus:outline-none focus:border-school-green/50 focus:bg-white/10 transition-all placeholder:text-white/20 tracking-normal"
-              />
-              <button
-                type="submit"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-school-green transition-colors"
-              >
-                <Search size={12} />
-              </button>
-            </form>
-            <div className="w-px h-3 bg-white/20 hidden xl:block" />
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-[9px]">
               <span className="text-white/30 hidden 2xl:inline">Connect:</span>
               <a
                 href="https://facebook.com"
@@ -145,7 +136,7 @@ const Navbar = () => {
                 className="hover:text-school-green transition-all hover:scale-110"
                 aria-label="Facebook"
               >
-                <Facebook size={14} />
+                <Facebook size={11} />
               </a>
               <a
                 href="https://wa.me/250783883046"
@@ -154,7 +145,7 @@ const Navbar = () => {
                 className="hover:text-school-green transition-all hover:scale-110"
                 aria-label="WhatsApp"
               >
-                <MessageCircle size={14} />
+                <MessageCircle size={11} />
               </a>
               <a
                 href="https://youtube.com"
@@ -163,7 +154,7 @@ const Navbar = () => {
                 className="hover:text-school-green transition-all hover:scale-110"
                 aria-label="YouTube"
               >
-                <Youtube size={14} />
+                <Youtube size={11} />
               </a>
             </div>
           </div>
@@ -171,22 +162,22 @@ const Navbar = () => {
       </div>
 
       {/* Mobile / tablet slim bar: contact + utilities */}
-      <div className="lg:hidden bg-slate-900 text-white/90 py-1.5 border-b border-white/5">
+      <div className="lg:hidden bg-slate-900 text-white/90 py-0.5 border-b border-white/5">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <a
               href={`tel:${phone.replace(/\s/g, '')}`}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-school-green/30 shrink-0"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-white/10 hover:bg-school-green/30 shrink-0"
               aria-label="Call school"
             >
-              <Phone size={14} className="text-school-green" />
+              <Phone size={12} className="text-school-green" />
             </a>
             <a
               href={`mailto:${email}`}
-              className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-school-green/30 shrink-0"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-white/10 hover:bg-school-green/30 shrink-0"
               aria-label="Email school"
             >
-              <Mail size={14} className="text-school-green" />
+              <Mail size={12} className="text-school-green" />
             </a>
             <span className="text-[9px] sm:text-[10px] font-bold truncate hidden min-[400px]:inline text-white/70 max-w-[8rem] sm:max-w-[12rem]">
               {phone}
@@ -196,27 +187,9 @@ const Navbar = () => {
         </div>
       </div>
 
-      <AnimatePresence>
-        {branding.announcement?.isActive && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-school-blue text-white overflow-hidden relative z-[60]"
-          >
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 flex items-center gap-3 min-w-0">
-              <div className="bg-school-green text-white text-[9px] sm:text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest shrink-0 border border-white/20 shadow-sm">
-                Notice
-              </div>
-              <AnnouncementMarquee text={branding.announcement?.text} />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-50 shadow-sm dark:shadow-slate-950/50 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex justify-between items-center gap-2 min-h-[4rem] sm:min-h-[5rem] py-2 sm:py-0">
+          <div className="flex justify-between items-center gap-2 min-h-[3.5rem] sm:min-h-[4.5rem] py-1 sm:py-0">
             {/* Logo — shrinks on small screens */}
             <div className="flex items-center min-w-0 flex-1 sm:flex-initial">
               <Link to="/" className="flex items-center gap-1.5 sm:gap-2 group min-w-0">
@@ -231,7 +204,7 @@ const Navbar = () => {
                     className="font-extrabold text-base sm:text-xl md:text-2xl text-school-blue dark:text-slate-100 leading-none tracking-tight uppercase truncate block"
                   />
                   <span className="text-[8px] sm:text-[10px] text-school-green font-bold tracking-[0.15em] sm:tracking-[0.2em] uppercase mt-0.5 truncate hidden min-[400px]:block">
-                    {branding.motto}
+                    {effectiveMotto}
                   </span>
                 </div>
               </Link>
@@ -239,8 +212,8 @@ const Navbar = () => {
 
             {/* Desktop nav */}
             <div className="hidden lg:flex items-center gap-4 xl:gap-6 shrink-0">
-              {!user &&
-                navLinks.map((link) => (
+              <div className="flex items-center gap-4 xl:gap-6">
+                {navLinks.map((link) => (
                   <Link
                     key={link.name}
                     to={link.path}
@@ -256,6 +229,7 @@ const Navbar = () => {
                     />
                   </Link>
                 ))}
+              </div>
 
               <div className="flex items-center gap-2 xl:gap-3 pl-3 xl:pl-4 border-l border-slate-200 dark:border-slate-700">
                 <HeaderUtilities variant="main" />

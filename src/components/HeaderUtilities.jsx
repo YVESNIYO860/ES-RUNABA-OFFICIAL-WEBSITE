@@ -13,8 +13,6 @@ const HeaderUtilities = ({ variant = 'main' }) => {
   if (variant === 'top') {
     return (
       <div className="flex items-center gap-1.5 shrink-0">
-        <LanguageSelector compact iconOnly={false} dropdownAlign="right" />
-        <div className="w-px h-5 bg-white/20" />
         <ThemeToggle compact />
       </div>
     );

@@ -7,14 +7,18 @@ function getInitialTheme() {
   if (typeof window === 'undefined') return 'light';
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === 'dark' || stored === 'light') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'light';
 }
 
 function applyTheme(theme) {
   const root = document.documentElement;
-  if (theme === 'dark') root.classList.add('dark');
-  else root.classList.remove('dark');
-  root.style.colorScheme = theme;
+  if (theme === 'dark') {
+    root.classList.add('dark');
+    root.style.colorScheme = 'dark';
+  } else {
+    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
+  }
 }
 
 export const ThemeProvider = ({ children }) => {

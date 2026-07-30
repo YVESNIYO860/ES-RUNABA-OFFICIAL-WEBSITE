@@ -7,7 +7,14 @@ const Gallery = () => {
   const { siteContent } = useAuth();
   const branding = siteContent?.general || { schoolName: "ES RUNABA" };
 
-  const images = [
+  const photoModules = import.meta.glob('../assets/school-photos/*.{jpg,jpeg,png,webp}', { eager: true, as: 'url' });
+  const images = Object.entries(photoModules).map(([path, url]) => {
+    const name = path.split('/').pop()?.replace(/\.(jpe?g|png|webp)$/i, '') || 'School Photo';
+    const caption = name.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+    return { url: String(url), caption };
+  });
+
+  const defaultImages = [
     { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=2070', caption: 'Main Building' },
     { url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=2070', caption: 'Students in Class' },
     { url: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=2070', caption: 'Science Lab Session' },
@@ -17,6 +24,8 @@ const Gallery = () => {
     { url: 'https://images.unsplash.com/photo-1524178232363-1fb28f74b671?q=80&w=2070', caption: 'School Library' },
     { url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073', caption: 'Reading Garden' },
   ];
+
+  const displayedImages = images.length > 0 ? images : defaultImages;
 
   const [selectedImg, setSelectedImg] = useState(null);
 
@@ -61,7 +70,7 @@ const Gallery = () => {
 
       <section className="py-16 md:py-24 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {images.map((img, idx) => (
+          {displayedImages.map((img, idx) => (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -71,7 +80,7 @@ const Gallery = () => {
               onClick={() => setSelectedImg(img)}
             >
               <img 
-                src={img.url + '&auto=format&fit=crop&w=800'} 
+                src={img.url} 
                 alt={img.caption} 
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
               />
