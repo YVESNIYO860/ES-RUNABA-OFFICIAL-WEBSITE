@@ -1,5 +1,12 @@
 const photoModules = import.meta.glob('../assets/school-photos/*.{jpg,jpeg,png,webp}', { eager: true, as: 'url' });
-export const schoolPhotoUrls = Object.values(photoModules).map(String);
+const normalizeAssetUrl = (value) => {
+  if (typeof value === 'string' && value !== '[object Module]') return value;
+  if (value && typeof value.default === 'string') return value.default;
+  return '';
+};
+export const schoolPhotoUrls = Object.values(photoModules)
+  .map(normalizeAssetUrl)
+  .filter(Boolean);
 
 const defaultTitles = [
   'Welcome to ES RUNABA',
