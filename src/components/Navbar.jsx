@@ -246,12 +246,14 @@ const Navbar = () => {
                 </button>
 
                 {!user ? (
-                  <Link
-                    to="/elearning"
+                  <a
+                    href="/elearning-portal"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="bg-school-blue text-white px-4 xl:px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-school-blue/20 whitespace-nowrap"
                   >
                     E-Learning
-                  </Link>
+                  </a>
                 ) : (
                   <div className="flex items-center gap-3">
                     <Link
@@ -349,13 +351,15 @@ const Navbar = () => {
                 <div className="space-y-2 pt-1">
                   {!user ? (
                     <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
-                      <Link 
-                        to="/elearning" 
+                      <a
+                        href="/elearning-portal"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         onClick={() => setIsOpen(false)}
                         className="w-full flex items-center justify-center gap-2 bg-school-blue text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-school-blue/20"
                       >
                         E-Learning
-                      </Link>
+                      </a>
                     </div>
                   ) : (
                     <>

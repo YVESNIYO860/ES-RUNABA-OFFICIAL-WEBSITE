@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { saveFirestoreDocument } from '../firebase';
 
 const TeacherDashboard = () => {
   const { user, siteContent, updateSiteContent } = useAuth();
@@ -130,18 +131,20 @@ const OverviewTab = ({ students, assignments, quizzes }) => (
 
 const StudentsTab = ({ students, setStudents }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', class: 'Senior 1', module: 'BIO', password: 'password123' });
+  const [formData, setFormData] = useState({ fullName: '', class: 'Senior 1', module: 'BIO' });
 
   const handleAdd = (e) => {
     e.preventDefault();
     const count = students.length + 1;
-    const regNumber = `2026/ESR/${formData.module.toUpperCase()}/${String(count).padStart(3, '0')}`;
-    const newStudent = { ...formData, regNumber, id: Date.now().toString() };
+    const regNumber = `S${String(count).padStart(3, '0')}`;
+    const password = `ESR/${regNumber}`;
+    const newStudent = { ...formData, regNumber, password, id: Date.now().toString() };
     const updated = [...students, newStudent];
     setStudents(updated);
     localStorage.setItem('students_db', JSON.stringify(updated));
+    saveFirestoreDocument('students', newStudent).catch((error) => console.error('Failed to sync student to Firebase', error));
     setShowAdd(false);
-    setFormData({ fullName: '', class: 'Senior 1', module: 'BIO', password: 'password123' });
+    setFormData({ fullName: '', class: 'Senior 1', module: 'BIO' });
   };
 
   const handleDelete = (id) => {
@@ -180,9 +183,8 @@ const StudentsTab = ({ students, setStudents }) => {
               <label className="block text-sm font-medium text-slate-700 mb-1">Module / Subject Code</label>
               <input required type="text" value={formData.module} onChange={e => setFormData({...formData, module: e.target.value.toUpperCase()})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. BIO, MATH, ENG" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Initial Password</label>
-              <input required type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" />
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              The student password will be generated automatically from the registration number.
             </div>
           </div>
           <button type="submit" className="btn-primary mt-4 flex items-center gap-2"><Save size={18} /> Save Student</button>

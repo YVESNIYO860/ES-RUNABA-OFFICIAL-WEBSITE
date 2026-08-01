@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, collection, query, getDocs, setDoc, doc, serverTimestamp, where } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,4 +28,31 @@ try {
   console.error("Firebase initialization error", error);
 }
 
-export { auth, db, googleProvider, signInWithPopup };
+const saveFirestoreDocument = async (collectionName, data, docIdOverride) => {
+  if (!db) return null;
+
+  const id = docIdOverride || data?.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const payload = {
+    ...data,
+    id,
+    createdAt: data?.createdAt || serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+
+  await setDoc(doc(db, collectionName, id), payload);
+  return payload;
+};
+
+const loadFirestoreCollection = async (collectionName, filters = []) => {
+  if (!db) return [];
+
+  const baseQuery = collection(db, collectionName);
+  const resolvedQuery = filters.length ? query(baseQuery, ...filters) : baseQuery;
+  const snapshot = await getDocs(resolvedQuery);
+
+  return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+};
+
+const whereEqual = (field, value) => where(field, "==", value);
+
+export { auth, db, googleProvider, signInWithPopup, saveFirestoreDocument, loadFirestoreCollection, whereEqual };

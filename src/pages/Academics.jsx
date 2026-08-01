@@ -151,57 +151,56 @@ const Academics = () => {
       </section>
  
       {/* Laboratories & Resources */}
-      <section className="py-32 px-4 md:px-8 max-w-7xl mx-auto">
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="bg-slate-900 text-white rounded-[4rem] p-10 md:p-24 overflow-hidden relative shadow-[0_50px_100px_rgba(0,0,0,0.3)] border border-white/5"
-        >
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-school-green/10 rounded-full blur-[120px] -mr-64 -mt-64 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-school-blue/20 rounded-full blur-[100px] -ml-48 -mb-48 pointer-events-none"></div>
- 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-10">
-              <div className="space-y-4">
-                <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block mb-4">World-Class Facilities</span>
-                <h2 className="text-4xl md:text-6xl font-black mb-6 text-white leading-[1.1] tracking-tighter italic">Modern Learning Environment</h2>
-                <div className="w-24 h-1.5 bg-school-green shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
-              </div>
-              <p className="text-slate-300 text-xl leading-relaxed font-light">
-                Our school is equipped with specialized Science and ICT laboratories, providing students with the hands-on experience necessary to excel in the digital age.
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {[
-                    { icon: <Binary className="text-school-green" size={28} />, name: 'Advanced ICT Lab' },
-                    { icon: <FlaskConical className="text-school-green" size={28} />, name: 'Modern Science Labs' },
-                    { icon: <Globe className="text-school-green" size={28} />, name: 'Digital Library' }
-                ].map((f, i) => (
-                    <motion.div 
-                        key={i}
-                        whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                        className="flex items-center gap-4 bg-white/5 backdrop-blur-md border border-white/10 px-6 py-5 rounded-2xl font-black tracking-tight"
-                    >
-                        {f.icon}
-                        <span className="uppercase text-[10px] tracking-widest">{f.name}</span>
-                    </motion.div>
-                ))}
-              </div>
+      <section className="py-24 px-4 md:px-8 bg-slate-50">
+        <div className="max-w-7xl mx-auto grid gap-14 lg:grid-cols-[1.1fr_0.9fr] items-center">
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <span className="text-school-green font-black tracking-[0.4em] uppercase text-[10px] block">World-Class Facilities</span>
+              <h2 className="text-4xl md:text-5xl font-black text-slate-900 leading-tight tracking-tighter italic">Modern Learning Environment</h2>
+              <div className="w-24 h-1.5 bg-school-green rounded-full"></div>
             </div>
-            
-            <div className="relative group">
-                <div className="absolute -inset-4 bg-school-green/20 rounded-[3rem] blur-3xl group-hover:bg-school-green/30 transition-all"></div>
-                <div className="relative rounded-[3rem] overflow-hidden aspect-[4/5] shadow-2xl border-4 border-white/20">
-                  <img 
-                    src="/slide_lab.png" 
-                    alt="Science Lab" 
-                    className="w-full h-full object-cover scale-105 group-hover:scale-100 transition-transform duration-1000"
-                  />
-                </div>
+
+            <p className="text-slate-600 text-xl leading-relaxed max-w-2xl">
+              Our school is equipped with specialized Science and ICT laboratories, providing students with the hands-on experience necessary to excel in the digital age.
+            </p>
+
+            <div className="grid gap-5 sm:grid-cols-3">
+              {[
+                { icon: <Binary className="text-school-green" size={28} />, name: 'Advanced ICT Lab', description: 'High-performance computers and collaborative learning stations.' },
+                { icon: <FlaskConical className="text-school-green" size={28} />, name: 'Modern Science Labs', description: 'Fully equipped labs for Chemistry, Biology, and Physics research.' },
+                { icon: <Globe className="text-school-green" size={28} />, name: 'Digital Library', description: 'A growing collection of digital resources and research tools.' }
+              ].map((facility, index) => (
+                <motion.div
+                  key={index}
+                  whileHover={{ y: -4 }}
+                  className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm transition-all"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-school-blue/5 mb-5">
+                    {facility.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">{facility.name}</h3>
+                  <p className="text-slate-500 text-sm leading-relaxed">{facility.description}</p>
+                </motion.div>
+              ))}
             </div>
           </div>
-        </motion.div>
+
+          <div className="relative">
+            <div className="absolute inset-0 rounded-[3rem] bg-school-green/10 blur-3xl" />
+            <div className="relative rounded-[3rem] overflow-hidden border border-slate-200 shadow-2xl">
+              <img
+                src="/slide_lab.png"
+                alt="Science Lab"
+                className="w-full h-full object-cover min-h-[420px]"
+              />
+            </div>
+            <div className="absolute bottom-8 left-8 rounded-[2rem] bg-white/90 border border-slate-200 p-6 shadow-xl backdrop-blur-md max-w-xs">
+              <p className="text-school-green uppercase tracking-[0.4em] text-[10px] font-black mb-2">Learning at RUNABA</p>
+              <h3 className="text-xl font-black text-slate-900">Ready for the Future</h3>
+              <p className="text-slate-500 mt-3 text-sm leading-relaxed">Real-world labs and digital tools combine to build skills, confidence, and creativity.</p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );

@@ -9,6 +9,8 @@ import Academics from './pages/Academics';
 import StudentLife from './pages/StudentLife';
 import Gallery from './pages/Gallery';
 import Contact from './pages/Contact';
+import Elearning from './pages/Elearning';
+import ElearningPortal from './pages/ElearningPortal';
 import TeacherLogin from './pages/TeacherLogin';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -47,13 +49,16 @@ function AppContent() {
           <Route path="student-life" element={<StudentLife />} />
           <Route path="gallery" element={<Gallery />} />
           <Route path="contact" element={<Contact />} />
-          <Route path="elearning" element={<TeacherLogin />} />
-          <Route path="teacher-dashboard" element={<TeacherDashboard />} />
-          <Route path="student-dashboard" element={<StudentDashboard />} />
           <Route path="search" element={<SearchResults />} />
           <Route path="super-admin" element={<SuperAdminDashboard />} />
           <Route path="news" element={<NewsAndNotices />} />
         </Route>
+
+        <Route path="elearning" element={<Elearning />} />
+        <Route path="elearning-portal" element={<ElearningPortal />} />
+        <Route path="teacher-login" element={<TeacherLogin />} />
+        <Route path="teacher-dashboard" element={<TeacherDashboard />} />
+        <Route path="student-dashboard" element={<StudentDashboard />} />
       </Routes>
 
     </Router>

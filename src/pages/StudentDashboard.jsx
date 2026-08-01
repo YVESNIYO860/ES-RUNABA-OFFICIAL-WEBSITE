@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { saveFirestoreDocument } from '../firebase';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
@@ -33,7 +34,7 @@ const StudentDashboard = () => {
     }, [user]);
 
     if (!user || user.role !== 'student') {
-        return <Navigate to="/e-learning" />;
+        return <Navigate to="/elearning" />;
     }
 
     return (
@@ -96,10 +97,11 @@ const AssignmentsTab = ({ assignments, submissions, setSubmissions, user }) => {
     };
 
     const handleSubmit = (assignmentId) => {
-        const newSubmission = { id: Date.now().toString(), assignmentId, studentId: user.regNumber, submittedAt: new Date().toISOString() };
+        const newSubmission = { id: Date.now().toString(), assignmentId, studentId: user.regNumber, class: user.class, submittedAt: new Date().toISOString() };
         const updated = [...submissions, newSubmission];
         setSubmissions(updated);
         localStorage.setItem('submissions_db', JSON.stringify(updated));
+        saveFirestoreDocument('submissions', newSubmission).catch((error) => console.error('Failed to sync submission to Firebase', error));
         alert("Assignment marked as submitted (Demo)");
     };
 
@@ -177,10 +179,11 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
             }
         });
         
-        const result = { id: Date.now().toString(), quizId: activeQuiz.id, studentId: user.regNumber, score, total, hasEssay };
+        const result = { id: Date.now().toString(), quizId: activeQuiz.id, studentId: user.regNumber, class: user.class, score, total, hasEssay };
         const updated = [...quizResults, result];
         setQuizResults(updated);
         localStorage.setItem('quiz_results_db', JSON.stringify(updated));
+        saveFirestoreDocument('quiz_results', result).catch((error) => console.error('Failed to sync quiz result to Firebase', error));
         setActiveQuiz(null);
         setAnswers({});
         setTimeLeft(null);

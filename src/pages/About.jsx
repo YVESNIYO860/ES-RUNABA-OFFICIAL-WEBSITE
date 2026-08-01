@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
+import labImage from '../assets/school-photos/school photos (6).jpeg'; 
 
 const teachersData = [
   {
@@ -129,8 +130,8 @@ const About = () => {
           >
             <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-slate-100 p-2">
               <img 
-                src="/about_action_lab_1776438169375.png" 
-                alt="Students in Science Lab" 
+                src={labImage} 
+                alt="RUNABA Laboratory Exterior" 
                 className="w-full h-auto rounded-[2.5rem] object-cover"
               />
               <div className="absolute inset-0 bg-school-blue/5 pointer-events-none"></div>

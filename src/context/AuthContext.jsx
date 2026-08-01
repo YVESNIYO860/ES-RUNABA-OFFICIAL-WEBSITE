@@ -141,6 +141,20 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const normalizeClassName = (value) => {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/senior/g, 's')
+      .replace(/\s+/g, '')
+      .replace(/-/g, '');
+  };
+
+  const buildStudentPassword = (selectedClass, regNumber) => {
+    const safeReg = String(regNumber || '').trim();
+    return safeReg ? `ESR/${safeReg}` : 'ESR/student';
+  };
+
   const loginTeacher = (username, password) => {
     // 1. Root / Builder Login (Absolute Override)
     if (
@@ -169,10 +183,28 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
   };
 
-  const loginStudent = (regNumber, password) => {
+  const loginStudent = (regNumber, password, selectedClass = null) => {
+    const normalizedReg = String(regNumber || '').trim();
+    const normalizedPassword = String(password || '').trim();
+    const expectedPassword = buildStudentPassword(selectedClass, normalizedReg);
+    const normalizedSelectedClass = normalizeClassName(selectedClass);
+
     const students = JSON.parse(localStorage.getItem('students_db') || '[]');
-    const student = students.find(s => s.regNumber === regNumber && s.password === password);
-    
+    const matchingStudent = students.find((s) => s.regNumber === normalizedReg);
+
+    if (matchingStudent && normalizedSelectedClass && normalizeClassName(matchingStudent.class) !== normalizedSelectedClass) {
+      return { success: false, error: 'This student account is not assigned to the selected class.' };
+    }
+
+    const student = students.find((s) => {
+      const storedPassword = String(s.password || '').trim();
+      return s.regNumber === normalizedReg && (
+        storedPassword === normalizedPassword ||
+        storedPassword === expectedPassword ||
+        normalizedPassword === expectedPassword
+      );
+    });
+
     if (student) {
       const studentUser = { role: 'student', ...student };
       setUser(studentUser);
@@ -188,7 +220,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginStudent, logout, isInitialized, siteContent, updateSiteContent }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginStudent, buildStudentPassword, logout, isInitialized, siteContent, updateSiteContent }}>
       {children}
     </AuthContext.Provider>
   );

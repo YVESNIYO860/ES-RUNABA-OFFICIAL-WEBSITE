@@ -27,7 +27,19 @@ const Gallery = () => {
 
   const displayedImages = images.length > 0 ? images : defaultImages;
 
-  const [selectedImg, setSelectedImg] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(null);
+
+  const currentImage = selectedIndex !== null ? displayedImages[selectedIndex] : null;
+
+  const showPrevious = () => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((selectedIndex + displayedImages.length - 1) % displayedImages.length);
+  };
+
+  const showNext = () => {
+    if (selectedIndex === null) return;
+    setSelectedIndex((selectedIndex + 1) % displayedImages.length);
+  };
 
   return (
     <div className="pb-20 bg-slate-50 min-h-screen">
@@ -77,7 +89,7 @@ const Gallery = () => {
               transition={{ delay: idx * 0.1 }}
               key={idx} 
               className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-200 aspect-square shadow-sm hover:shadow-xl transition-all"
-              onClick={() => setSelectedImg(img)}
+              onClick={() => setSelectedIndex(idx)}
             >
               <img 
                 src={img.url} 
@@ -98,23 +110,39 @@ const Gallery = () => {
       </section>
 
       {/* Lightbox */}
-      {selectedImg && (
+      {currentImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 md:p-12 transition-all backdrop-blur-md">
           <button 
             className="absolute top-8 right-8 text-white/50 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all"
-            onClick={() => setSelectedImg(null)}
+            onClick={() => setSelectedIndex(null)}
           >
             <X size={32} />
+          </button>
+
+          <button
+            className="absolute left-6 top-1/2 -translate-y-1/2 rounded-full bg-white/10 text-white p-3 hover:bg-white/20 transition-all"
+            onClick={showPrevious}
+            aria-label="Previous photo"
+          >
+            ‹
+          </button>
+
+          <button
+            className="absolute right-6 top-1/2 -translate-y-1/2 rounded-full bg-white/10 text-white p-3 hover:bg-white/20 transition-all"
+            onClick={showNext}
+            aria-label="Next photo"
+          >
+            ›
           </button>
           
           <div className="max-w-6xl w-full flex flex-col items-center">
             <img 
-              src={selectedImg.url} 
-              alt={selectedImg.caption} 
+              src={currentImage.url} 
+              alt={currentImage.caption} 
               className="max-h-[85vh] w-auto rounded-xl shadow-2xl border border-white/10"
             />
             <div className="mt-6 flex flex-col items-center">
-                <p className="text-white text-2xl font-bold tracking-wide">{selectedImg.caption}</p>
+                <p className="text-white text-2xl font-bold tracking-wide">{currentImage.caption}</p>
                 <div className="mt-4 h-1 w-12 bg-school-green rounded-full"></div>
             </div>
           </div>
