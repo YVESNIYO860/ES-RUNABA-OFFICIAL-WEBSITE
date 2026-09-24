@@ -120,12 +120,13 @@ export const AuthProvider = ({ children }) => {
         };
 
         merged.general.motto = normalizeMotto(merged.general.motto);
+        merged.general.logo = defaultContent.general.logo;
         if (merged.about?.hero) {
           merged.about.hero.motto = normalizeMotto(merged.about.hero.motto);
         }
 
         merged.general.schoolName = normalizeSchoolName(merged.general.schoolName);
-        if (merged.general.schoolName !== parsed.general?.schoolName || merged.general.motto !== parsed.general?.motto || (merged.about?.hero?.motto !== parsed.about?.hero?.motto)) {
+        if (merged.general.logo !== parsed.general?.logo || merged.general.schoolName !== parsed.general?.schoolName || merged.general.motto !== parsed.general?.motto || (merged.about?.hero?.motto !== parsed.about?.hero?.motto)) {
           localStorage.setItem('es_runaba_content', JSON.stringify(merged));
         }
         setSiteContent(merged);
