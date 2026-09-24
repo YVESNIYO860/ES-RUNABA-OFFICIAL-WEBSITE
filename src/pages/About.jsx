@@ -396,12 +396,11 @@ const About = () => {
           
           <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
             <div className="w-full md:w-1/3">
-              <div className="aspect-square bg-slate-200 rounded-3xl overflow-hidden border-8 border-white/10 shadow-2xl">
-                <img 
-                  src={about.headTeacher.image} 
-                  alt={about.headTeacher.name} 
-                  className="w-full h-full object-cover"
-                />
+              <div className="aspect-square bg-school-green/15 rounded-3xl border-8 border-white/10 shadow-2xl flex flex-col items-center justify-center text-center">
+                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-school-green text-school-blue flex items-center justify-center shadow-xl border-4 border-white/30">
+                  <span className="text-6xl md:text-7xl font-black tracking-tight">FB</span>
+                </div>
+                <span className="mt-6 text-xs font-black uppercase tracking-[0.25em] text-white/70">Head Teacher</span>
               </div>
             </div>
             <div className="w-full md:w-2/3 space-y-6">
