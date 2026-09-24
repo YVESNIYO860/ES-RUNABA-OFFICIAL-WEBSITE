@@ -9,8 +9,8 @@ const classGroups = [
   { label: 'Senior 1', options: ['Senior 1'] },
   { label: 'Senior 2', options: ['Senior 2'] },
   { label: 'Senior 3', options: ['Senior 3'] },
-  { label: 'Senior 4 Science Streams', options: ['Senior 4 MEG', 'Senior 4 MCE', 'Senior 4 PCB'] },
-  { label: 'Senior 5 Science Streams', options: ['Senior 5 MEG', 'Senior 5 MCE', 'Senior 5 PCB'] },
+  { label: 'Senior 4 Science Streams', options: ['Senior 4 Science Stream One', 'Senior 4 Science Stream Two'] },
+  { label: 'Senior 5 Science Streams', options: ['Senior 5 Science Stream One', 'Senior 5 Science Stream Two'] },
   { label: 'Senior 6 Science Streams', options: ['Senior 6 MEG', 'Senior 6 MCE', 'Senior 6 PCB'] },
 ];
 

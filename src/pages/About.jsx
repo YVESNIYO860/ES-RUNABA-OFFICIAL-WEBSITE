@@ -115,7 +115,7 @@ const About = () => {
           {general.schoolName} stands as a beacon of academic excellence in the region. Founded in 2003 with a vision to transform lives through quality education, our institution has evolved into a prestigious center for holistic development, guided by a total of three visionary leaders throughout its history.
         </p>
         <p className="text-slate-600 leading-relaxed text-lg">
-          At {general.schoolName}, we pride ourselves on our strong integration with the community. We work closely with parents and local leaders to create a conducive environment for learning, where every student is valued, respected, and supported in their unique educational journey.
+          At {general.schoolName}, we pride ourselves on our strong integration with the community and the history of our academic combinations. We work closely with parents and local leaders to create a conducive environment for learning, where every student is valued, respected, and supported in their unique educational journey.
         </p>
       </section>
 

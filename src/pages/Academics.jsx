@@ -27,6 +27,11 @@ const Academics = () => {
     }
   ];
 
+  const scienceStreams = [
+    { level: 'Senior 4', streams: ['Science Stream One', 'Science Stream Two'] },
+    { level: 'Senior 5', streams: ['Science Stream One', 'Science Stream Two'] },
+  ];
+
   return (
     <div className="pb-20 bg-white">
       {/* Hero Section */}
@@ -108,7 +113,26 @@ const Academics = () => {
             <span className="text-school-green font-black tracking-[0.3em] uppercase text-[10px] mb-4 block">Specializations</span>
             <h2 className="text-4xl md:text-5xl lg:text-7xl font-black text-slate-900 tracking-tighter italic shadow-sm">Academic Combinations</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
+            <p className="max-w-3xl mx-auto mt-8 text-slate-500 text-lg leading-relaxed">
+              These combinations are part of ES RUNABA's academic history and continue to support our learners' progress from foundation to advanced study.
+            </p>
           </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            {scienceStreams.map((stream) => (
+              <div key={stream.level} className="bg-school-blue text-white rounded-3xl p-7 shadow-lg">
+                <p className="text-school-green font-black uppercase tracking-[0.2em] text-xs">A-Level Science</p>
+                <h3 className="text-2xl font-black mt-2">{stream.level}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+                  {stream.streams.map((name) => (
+                    <div key={name} className="rounded-xl bg-white/10 border border-white/15 px-4 py-3 font-bold text-sm">
+                      {name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
  
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             {combinations.map((comb, i) => (
