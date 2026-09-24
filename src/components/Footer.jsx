@@ -45,7 +45,7 @@ const Footer = () => {
               <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-school-green transition-colors">
                 <Facebook size={20} />
               </a>
-              <a href="https://wa.me/250783883046" target="_blank" rel="noopener noreferrer" className="hover:text-school-green transition-colors">
+              <a href="https://wa.me/250788859152" target="_blank" rel="noopener noreferrer" className="hover:text-school-green transition-colors">
                 <MessageCircle size={20} />
               </a>
               <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="hover:text-school-green transition-colors">

@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
           motto: "HUMILITY, UNITY, GOD'S LOVE",
           logo: "/runaba-logo.png",
           contact: {
-            phone: "+250 783 883 046",
+            phone: "0788 859 152",
             email: "info@esrunaba.edu",
             location: "Burera, Butaro, Rwanda",
             mapCoords: "Runaba Sector, Burera District"
@@ -121,12 +121,13 @@ export const AuthProvider = ({ children }) => {
 
         merged.general.motto = normalizeMotto(merged.general.motto);
         merged.general.logo = defaultContent.general.logo;
+        merged.general.contact.phone = defaultContent.general.contact.phone;
         if (merged.about?.hero) {
           merged.about.hero.motto = normalizeMotto(merged.about.hero.motto);
         }
 
         merged.general.schoolName = normalizeSchoolName(merged.general.schoolName);
-        if (merged.general.logo !== parsed.general?.logo || merged.general.schoolName !== parsed.general?.schoolName || merged.general.motto !== parsed.general?.motto || (merged.about?.hero?.motto !== parsed.about?.hero?.motto)) {
+        if (merged.general.logo !== parsed.general?.logo || merged.general.contact.phone !== parsed.general?.contact?.phone || merged.general.schoolName !== parsed.general?.schoolName || merged.general.motto !== parsed.general?.motto || (merged.about?.hero?.motto !== parsed.about?.hero?.motto)) {
           localStorage.setItem('es_runaba_content', JSON.stringify(merged));
         }
         setSiteContent(merged);

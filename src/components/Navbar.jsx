@@ -87,7 +87,7 @@ const Navbar = () => {
     schoolName: 'ES RUNABA',
     motto: "HUMILITY, UNITY, GOD'S LOVE",
     logo: '/runaba-logo.png',
-    contact: { email: 'info@esrunaba.edu', phone: '+250 783 883 046' },
+    contact: { email: 'info@esrunaba.edu', phone: '0788 859 152' },
     announcement: { text: '', isActive: false },
   };
 
@@ -99,7 +99,7 @@ const Navbar = () => {
     ? "HUMILITY, UNITY, GOD'S LOVE"
     : branding.motto;
 
-  const phone = branding.contact?.phone || '+250 783 883 046';
+  const phone = branding.contact?.phone || '0788 859 152';
   const email = branding.contact?.email || 'info@esrunaba.edu';
 
   return (
@@ -139,7 +139,7 @@ const Navbar = () => {
                 <Facebook size={11} />
               </a>
               <a
-                href="https://wa.me/250783883046"
+                href="https://wa.me/250788859152"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-school-green transition-all hover:scale-110"
@@ -405,7 +405,7 @@ const Navbar = () => {
                     <Facebook size={16} />
                   </a>
                   <a
-                    href="https://wa.me/250783883046"
+                    href="https://wa.me/250788859152"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-school-green"
