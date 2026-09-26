@@ -1,16 +1,58 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { normalizeSchoolName } from '../utils/translate';
+import { isSupabaseConfigured, supabase } from '../supabase';
+import { studentAuthEmail } from '../utils/studentAuth';
 
 const AuthContext = createContext(null);
+
+const mapProfileToUser = (profile) => ({
+  id: profile.id,
+  role: profile.role,
+  name: profile.full_name,
+  fullName: profile.full_name,
+  email: profile.email,
+  username: profile.username,
+  isAdmin: profile.is_admin,
+  regNumber: profile.reg_number,
+  class: profile.class,
+  startYear: profile.start_year,
+  subject: profile.subject
+});
+
+const deepMergeContent = (defaults, overrides) => {
+  const result = { ...defaults };
+  if (!overrides || typeof overrides !== 'object') return result;
+
+  Object.keys(overrides).forEach((key) => {
+    if (overrides[key] && typeof overrides[key] === 'object' && !Array.isArray(overrides[key]) && defaults[key]) {
+      result[key] = deepMergeContent(defaults[key], overrides[key]);
+    } else {
+      result[key] = overrides[key];
+    }
+  });
+  return result;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [siteContent, setSiteContent] = useState(null);
 
-  const updateSiteContent = (newContent) => {
+  const updateSiteContent = async (newContent) => {
     setSiteContent(newContent);
     localStorage.setItem('es_runaba_content', JSON.stringify(newContent));
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('site_content').upsert({
+        id: 'main',
+        content: newContent,
+        updated_by: user?.id || null,
+        updated_at: new Date().toISOString()
+      });
+      if (error) {
+        console.error('Failed to save site content to Supabase', error);
+        throw error;
+      }
+    }
   };
 
   // Initialize from localStorage
@@ -64,7 +106,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const storedUser = localStorage.getItem('es_runaba_user');
-      if (storedUser) {
+      if (!isSupabaseConfigured && storedUser) {
         setUser(JSON.parse(storedUser));
       }
 
@@ -95,23 +137,7 @@ export const AuthProvider = ({ children }) => {
         setSiteContent(defaultContent);
       } else {
         const parsed = JSON.parse(storedContent);
-        
-        // Deep merge helper to ensure all keys exist
-        const deepMerge = (def, par) => {
-          const result = { ...def };
-          if (!par || typeof par !== 'object') return result;
-          
-          Object.keys(par).forEach(key => {
-            if (par[key] && typeof par[key] === 'object' && !Array.isArray(par[key]) && def[key]) {
-              result[key] = deepMerge(def[key], par[key]);
-            } else {
-              result[key] = par[key];
-            }
-          });
-          return result;
-        };
-
-        const merged = deepMerge(defaultContent, parsed);
+        const merged = deepMergeContent(defaultContent, parsed);
         const normalizeMotto = (value) => {
           const motto = String(value || '').trim();
           return ['ORA PRO NOBIS', 'Ora Pro Nobis', 'Ora Pro nobis'].includes(motto)
@@ -132,6 +158,18 @@ export const AuthProvider = ({ children }) => {
         }
         setSiteContent(merged);
       }
+
+      if (isSupabaseConfigured) {
+        supabase.from('site_content').select('content').eq('id', 'main').maybeSingle()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Failed to load site content from Supabase', error);
+              return;
+            }
+            if (data?.content) setSiteContent(deepMergeContent(defaultContent, data.content));
+          })
+          .catch((error) => console.error('Failed to load site content from Supabase', error));
+      }
     } catch (err) {
       console.error("Initialization error:", err);
       localStorage.removeItem('es_runaba_content');
@@ -143,21 +181,67 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const normalizeClassName = (value) => {
-    return String(value || '')
-      .trim()
-      .toLowerCase()
-      .replace(/senior/g, 's')
-      .replace(/\s+/g, '')
-      .replace(/-/g, '');
-  };
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+
+    let isMounted = true;
+    const syncUser = async (session) => {
+      if (!session?.user) {
+        if (isMounted) setUser(null);
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        console.error('Failed to load Supabase profile', error);
+        return;
+      }
+      if (isMounted) setUser(mapProfileToUser(profile));
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => syncUser(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      Promise.resolve().then(() => syncUser(session));
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const buildStudentPassword = (selectedClass, regNumber) => {
     const safeReg = String(regNumber || '').trim();
     return safeReg ? `ESR/${safeReg}` : 'ESR/student';
   };
 
-  const loginTeacher = (username, password) => {
+  const loginTeacher = async (username, password) => {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: username,
+        password
+      });
+      if (error) return { success: false, error: 'Invalid email or password.' };
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      if (profileError || profile.role !== 'teacher') {
+        await supabase.auth.signOut();
+        return { success: false, error: 'This account is not registered for teacher access.' };
+      }
+
+      setUser(mapProfileToUser(profile));
+      return { success: true };
+    }
+
     // 1. Root / Builder Login (Absolute Override)
     if (
       (username === 'yvesniyonkuru2022@gmail.com' || username === 'yvesniyonkuru') &&
@@ -185,18 +269,63 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
   };
 
-  const loginStudent = (regNumber, password, selectedClass = null) => {
+  const loginDos = async (username, password) => {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: username, password });
+      if (error) return { success: false, error: 'Invalid email or password.' };
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      if (profileError || profile.role !== 'dos') {
+        await supabase.auth.signOut();
+        return { success: false, error: 'This account is not registered for Director of Studies access.' };
+      }
+
+      setUser(mapProfileToUser(profile));
+      return { success: true };
+    }
+
+    const staffDB = JSON.parse(localStorage.getItem('staff_db') || '[]');
+    const matchingStaff = staffDB.find((staff) =>
+      staff.role === 'dos' && (staff.username === username || staff.email === username) && staff.password === password
+    );
+    if (!matchingStaff) return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
+
+    const dosUser = { role: 'dos', name: matchingStaff.name, email: matchingStaff.email, isAdmin: matchingStaff.isAdmin };
+    setUser(dosUser);
+    localStorage.setItem('es_runaba_user', JSON.stringify(dosUser));
+    return { success: true };
+  };
+
+  const loginStudent = async (regNumber, password, selectedClass = null) => {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: studentAuthEmail(regNumber),
+        password
+      });
+      if (error) return { success: false, error: 'Invalid registration number or password.' };
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+      if (profileError || profile.role !== 'student') {
+        await supabase.auth.signOut();
+        return { success: false, error: 'This account is not registered for student access.' };
+      }
+      setUser(mapProfileToUser(profile));
+      return { success: true };
+    }
+
     const normalizedReg = String(regNumber || '').trim();
     const normalizedPassword = String(password || '').trim();
     const expectedPassword = buildStudentPassword(selectedClass, normalizedReg);
-    const normalizedSelectedClass = normalizeClassName(selectedClass);
-
     const students = JSON.parse(localStorage.getItem('students_db') || '[]');
     const matchingStudent = students.find((s) => s.regNumber === normalizedReg);
-
-    if (matchingStudent && normalizedSelectedClass && normalizeClassName(matchingStudent.class) !== normalizedSelectedClass) {
-      return { success: false, error: 'This student account is not assigned to the selected class.' };
-    }
 
     const student = students.find((s) => {
       const storedPassword = String(s.password || '').trim();
@@ -216,13 +345,14 @@ export const AuthProvider = ({ children }) => {
     return { success: false, error: 'Invalid registration number or password' };
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem('es_runaba_user');
+    if (isSupabaseConfigured) await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginStudent, buildStudentPassword, logout, isInitialized, siteContent, updateSiteContent }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, buildStudentPassword, logout, isInitialized, siteContent, updateSiteContent }}>
       {children}
     </AuthContext.Provider>
   );

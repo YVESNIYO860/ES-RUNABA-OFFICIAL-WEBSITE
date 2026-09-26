@@ -3,6 +3,7 @@ import { Trophy, Trees, Mic2, Users2, BookHeart, X, ChevronLeft, ChevronRight } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
+import { isSupabaseConfigured, loadSchoolEvents } from '../utils/elearningStore';
 
 const activities = [
   {
@@ -100,11 +101,21 @@ const StudentLife = () => {
   const [gallery, setGallery] = useState(null);
   const [events, setEvents] = useState([]);
 
-  // Load events from localStorage (set by admin dashboard)
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem('events_db') || '[]');
-    setEvents(stored);
-  }, []); // { activity, photoIndex }
+    let isActive = true;
+    const fetchEvents = async () => {
+      try {
+        const stored = isSupabaseConfigured
+          ? await loadSchoolEvents()
+          : JSON.parse(localStorage.getItem('events_db') || '[]');
+        if (isActive) setEvents(stored);
+      } catch (error) {
+        console.error('Failed to load school events', error);
+      }
+    };
+    fetchEvents();
+    return () => { isActive = false; };
+  }, []);
 
   // Close on Escape key
   useEffect(() => {

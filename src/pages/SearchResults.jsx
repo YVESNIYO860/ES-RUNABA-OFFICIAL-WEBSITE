@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ArrowRight, FileText, Calendar, Users, GraduationCap, FlaskConical, Globe, BookOpen, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { isSupabaseConfigured, loadSchoolEvents } from '../utils/elearningStore';
 
 // --- FUZZY MATCHING UTILITIES ---
 
@@ -28,7 +29,7 @@ const getLevenshteinDistance = (a, b) => {
 
 const KEYWORDS = [
   'Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer', 'Economics', 'Geography', 'History',
-  'MEG', 'MCE', 'PCB', 'MPC', 'Ordinary Level', 'O-Level', 'A-Level',
+  'MEG', 'MCE', 'PCB', 'Pure Sciences', 'Applied Sciences', 'Ordinary Level', 'O-Level', 'A-Level',
   'Laboratory', 'Library', 'ICT', 'Sports', 'Basketball', 'Football',
   'Headteacher', 'Leader', 'Vision', 'Mission', 'Events', 'National Exam'
 ];
@@ -87,7 +88,7 @@ const analyzeIntent = (q, siteContent) => {
     return {
       type: 'Admissions',
       title: 'Join Our Community',
-      content: 'We offer O-Level and Advanced Level (MPC, MEG, PCB). Application is open in Term 1.',
+      content: 'Senior 4 and Senior 5 offer Pure Sciences and Applied Sciences streams. Senior 6 offers MEG, MCE, and PCB. Application is open in Term 1.',
       intent: 'admission',
       link: '/academics'
     };
@@ -141,7 +142,7 @@ const SearchResults = () => {
     setIsSearching(true);
     
     // Artificial delay to simulate "analysis" and make it feel more intentional/premium
-    setTimeout(() => {
+    setTimeout(async () => {
       const qLower = q.toLowerCase().trim();
       const newsResults = [];
       
@@ -237,7 +238,14 @@ const SearchResults = () => {
       });
 
       // 4. Events
-      const events = JSON.parse(localStorage.getItem('events_db') || '[]');
+      let events = [];
+      try {
+        events = isSupabaseConfigured
+          ? await loadSchoolEvents()
+          : JSON.parse(localStorage.getItem('events_db') || '[]');
+      } catch (error) {
+        console.error('Failed to search school events', error);
+      }
       events.forEach(event => {
         if (event.title.toLowerCase().includes(qLower) || event.desc.toLowerCase().includes(qLower)) {
           newsResults.push({
@@ -297,7 +305,7 @@ const SearchResults = () => {
           {/* Autocomplete / Suggested keywords bar */}
           <div className="mt-4 flex flex-wrap gap-2 px-4">
              <span className="text-[10px] text-slate-400 uppercase font-black self-center mr-2">Quick results:</span>
-             {['PCB', 'MCB', 'MCE', 'Laboratories', 'Father BAZAMANZA'].map(tag => (
+             {['MEG', 'MCE', 'PCB', 'Laboratories', 'Father BAZAMANZA'].map(tag => (
                <button 
                 key={tag}
                 onClick={() => {setLocalQuery(tag); navigate(`/search?q=${encodeURIComponent(tag)}`);}}
@@ -462,7 +470,7 @@ const SearchResults = () => {
                 <div className="bg-school-blue text-white rounded-[3rem] p-10 flex flex-col justify-between h-80 relative overflow-hidden shadow-2xl">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                    <h3 className="text-3xl font-black italic tracking-tighter leading-none uppercase">Discover Our Academics</h3>
-                   <p className="text-white/60 font-light text-lg">Detailed information on MEG, MCB, MCE combinations and O-Level.</p>
+                   <p className="text-white/60 font-light text-lg">Explore S4 and S5 science streams, S6 combinations, and our O-Level program.</p>
                    <Link to="/academics" className="flex items-center gap-2 font-black uppercase tracking-widest text-xs hover:gap-4 transition-all">
                       View Programs <ArrowRight size={16} />
                    </Link>

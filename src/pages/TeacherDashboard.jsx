@@ -4,6 +4,26 @@ import { Navigate } from 'react-router-dom';
 import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
+import { schoolClassGroups } from '../utils/schoolClasses';
+import { eLearningClassGroups } from '../utils/schoolClasses';
+import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
+import {
+  deleteLearningRecord,
+  deleteProvisionedAccount,
+  deleteSchoolEvent,
+  isSupabaseConfigured,
+  loadSchoolEvents,
+  loadLearningRecords,
+  loadAttendanceRecords,
+  loadProfiles,
+  mapSupabaseProfile,
+  provisionAccount,
+  removeLearningNoteFile,
+  saveLearningRecord,
+  saveAttendanceRecords,
+  saveSchoolEvent,
+  uploadLearningNote
+} from '../utils/elearningStore';
 
 const TeacherDashboard = () => {
   const { user, siteContent, updateSiteContent } = useAuth();
@@ -17,18 +37,47 @@ const TeacherDashboard = () => {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
-    try {
-      setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
-      setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]'));
-      setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]'));
-      setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]'));
-      setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
-    } catch (e) {
-      console.error("Failed to load dashboard data", e);
-    }
+    let isActive = true;
+    const loadDashboardData = async () => {
+      try {
+        if (isSupabaseConfigured) {
+          const [studentRecords, eventRecords] = await Promise.all([
+            loadProfiles('student'),
+            loadSchoolEvents()
+          ]);
+          if (!isActive) return;
+          setStudents(studentRecords);
+          setEvents(eventRecords);
+          if (user.role === 'dos') return;
+
+          const [assignmentRecords, quizRecords, noteRecords] = await Promise.all([
+            loadLearningRecords('assignments'),
+            loadLearningRecords('quizzes'),
+            loadLearningRecords('notes')
+          ]);
+          if (!isActive) return;
+          setAssignments(assignmentRecords);
+          setQuizzes(quizRecords);
+          setNotes(noteRecords);
+          return;
+        }
+
+        if (!isActive) return;
+        setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
+        setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]'));
+        setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]'));
+        setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]'));
+        setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      }
+    };
+
+    loadDashboardData();
+    return () => { isActive = false; };
   }, []);
 
-  if (!user || user.role !== 'teacher') {
+  if (!user || !['teacher', 'dos'].includes(user.role)) {
     return <Navigate to="/elearning" />;
   }
 
@@ -37,16 +86,19 @@ const TeacherDashboard = () => {
       {/* Sidebar sidebar */}
       <aside className="w-full md:w-64 bg-school-blue text-white flex flex-col pt-20 shadow-xl z-10 md:min-h-screen">
         <div className="p-6 border-b border-white/10">
-          <h2 className="text-2xl font-bold tracking-tight uppercase">Management</h2>
+          <h2 className="text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
           <p className="text-slate-300 text-sm mt-1">Portal | Welcome, {user.name}</p>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-            { id: 'students', label: 'Students', icon: Users },
-            { id: 'assignments', label: 'Assignments', icon: FileText },
-            { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
-            { id: 'notes', label: 'Notes & Resources', icon: FileUp },
+            { id: 'attendance', label: 'Attendance', icon: CheckSquare },
+            ...(user.role === 'teacher' ? [
+              { id: 'students', label: 'Students', icon: Users },
+              { id: 'assignments', label: 'Assignments', icon: FileText },
+              { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
+              { id: 'notes', label: 'Notes & Resources', icon: FileUp }
+            ] : []),
             ...(user.isAdmin ? [
               { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
               { id: 'site-editor', label: 'Site Designer', icon: Globe },
@@ -68,31 +120,186 @@ const TeacherDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 pt-24 overflow-y-auto w-full max-w-6xl mx-auto">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
+            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} />}
             {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} />}
-            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} /> }
-            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} /> }
-            { activeTab === 'events' && <EventsTab events={events} setEvents={setEvents} /> }
+            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} /> }
+            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} /> }
+            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} /> }
+            { activeTab === 'events' && <EventsTab events={events} setEvents={setEvents} user={user} /> }
             { activeTab === 'site-editor' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
             { activeTab === 'staff' && <StaffTab /> }
-            { activeTab === 'analytics' && <AnalyticsTab /> }
-          </motion.div>
-        </AnimatePresence>
+            { activeTab === 'analytics' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
+        </motion.div>
       </main>
     </div>
   );
 };
 
 // --- TABS ---
+
+const AttendanceTab = ({ students, user }) => {
+  const [selectedClass, setSelectedClass] = useState('');
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [statusByStudent, setStatusByStudent] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const classStudents = students.filter((student) => student.class === selectedClass);
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setStatusByStudent({});
+      return undefined;
+    }
+
+    let isActive = true;
+    setIsLoading(true);
+    setMessage('');
+    const loadRegister = async () => {
+      try {
+        const records = isSupabaseConfigured
+          ? await loadAttendanceRecords(attendanceDate, selectedClass)
+          : JSON.parse(localStorage.getItem('attendance_db') || '[]').filter((record) =>
+              record.attendanceDate === attendanceDate && record.class === selectedClass
+            );
+        if (isActive) setStatusByStudent(Object.fromEntries(records.map((record) => [record.studentId || record.student_id, record.status])));
+      } catch (error) {
+        if (isActive) setMessage(error.message || 'Could not load this attendance register.');
+      } finally {
+        if (isActive) setIsLoading(false);
+      }
+    };
+
+    loadRegister();
+    return () => { isActive = false; };
+  }, [attendanceDate, selectedClass]);
+
+  const handleSave = async () => {
+    const records = classStudents
+      .filter((student) => statusByStudent[student.id])
+      .map((student) => ({
+        id: `${attendanceDate}-${encodeURIComponent(selectedClass)}-${student.id}`,
+        attendanceDate,
+        session: 'Daily',
+        class: selectedClass,
+        studentId: student.id,
+        studentRegNumber: student.regNumber,
+        studentName: student.fullName || student.name,
+        status: statusByStudent[student.id],
+        note: ''
+      }));
+
+    if (records.length === 0) {
+      setMessage('Mark at least one student before saving.');
+      return;
+    }
+
+    setIsSaving(true);
+    setMessage('');
+    try {
+      if (isSupabaseConfigured) {
+        await saveAttendanceRecords(records, user);
+      } else {
+        const existing = JSON.parse(localStorage.getItem('attendance_db') || '[]');
+        const recordIds = new Set(records.map((record) => record.id));
+        localStorage.setItem('attendance_db', JSON.stringify([...existing.filter((record) => !recordIds.has(record.id)), ...records]));
+      }
+      setMessage(`Saved attendance for ${records.length} students.`);
+    } catch (error) {
+      setMessage(error.message || 'Could not save attendance.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const markAllPresent = () => {
+    setStatusByStudent(Object.fromEntries(classStudents.map((student) => [student.id, 'present'])));
+  };
+
+  const statusCounts = ['present', 'absent', 'late', 'excused'].map((status) => ({
+    status,
+    count: Object.values(statusByStudent).filter((value) => value === status).length
+  }));
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-school-green">Daily register</p>
+          <h2 className="mt-1 text-2xl font-bold text-slate-900">Attendance</h2>
+          <p className="mt-1 text-sm text-slate-600">Mark attendance for any class.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-semibold">
+          {statusCounts.map(({ status, count }) => (
+            <span key={status} className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 capitalize text-slate-700">{status}: {count}</span>
+          ))}
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_200px_auto] sm:items-end">
+        <div className="min-w-0">
+          <label htmlFor="attendance-class" className="mb-1.5 block text-sm font-semibold text-slate-700">Class</label>
+          <select id="attendance-class" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm">
+            <option value="">Choose a class</option>
+            {schoolClassGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="attendance-date" className="mb-1.5 block text-sm font-semibold text-slate-700">Date</label>
+          <input id="attendance-date" type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm" />
+        </div>
+        <button type="button" onClick={markAllPresent} disabled={!classStudents.length} className="rounded-md border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">Mark all present</button>
+      </div>
+
+      {message && <p role="status" className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
+      {!selectedClass ? (
+        <p className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">Choose a class to open its register.</p>
+      ) : isLoading ? (
+        <p className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">Loading register...</p>
+      ) : classStudents.length === 0 ? (
+        <p className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">No students are registered in this class.</p>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <div className="hidden grid-cols-[minmax(0,1fr)_140px_180px] gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 sm:grid">
+            <span>Student</span><span>Reg. number</span><span>Status</span>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {classStudents.map((student) => (
+              <li key={student.id} className="grid grid-cols-1 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_180px] sm:items-center sm:gap-4">
+                <span className="font-semibold text-slate-900">{student.fullName || student.name}</span>
+                <span className="font-mono text-sm text-slate-500">{student.regNumber}</span>
+                <select aria-label={`Attendance status for ${student.fullName || student.name}`} value={statusByStudent[student.id] || ''} onChange={(event) => setStatusByStudent((current) => ({ ...current, [student.id]: event.target.value }))} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
+                  <option value="">Not marked</option>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                  <option value="excused">Excused</option>
+                </select>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        <button type="button" onClick={handleSave} disabled={!selectedClass || isSaving || isLoading || !classStudents.length} className="w-full rounded-md bg-school-blue px-5 py-3 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          {isSaving ? 'Saving...' : 'Save attendance'}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const OverviewTab = ({ students, assignments, quizzes }) => (
   <div className="space-y-6">
@@ -131,12 +338,35 @@ const OverviewTab = ({ students, assignments, quizzes }) => (
 
 const StudentsTab = ({ students, setStudents }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', class: 'Senior 1', module: 'BIO' });
+  const [formData, setFormData] = useState(() => ({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() }));
+  const registrationPreview = generateStudentRegistrationNumber(formData.fullName, formData.startYear, students);
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
-    const count = students.length + 1;
-    const regNumber = `S${String(count).padStart(3, '0')}`;
+    if (isSupabaseConfigured) {
+      try {
+        const result = await provisionAccount({
+          type: 'student',
+          fullName: formData.fullName,
+          startYear: formData.startYear,
+          class: formData.class,
+          module: formData.module
+        });
+        const newStudent = { ...mapSupabaseProfile(result.student), password: result.password };
+        setStudents(current => [...current, newStudent]);
+        setShowAdd(false);
+        setFormData({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() });
+      } catch (error) {
+        alert(error.message || 'Could not register the student.');
+      }
+      return;
+    }
+
+    const regNumber = generateStudentRegistrationNumber(formData.fullName, formData.startYear, students);
+    if (!regNumber) {
+      alert('No two-digit registration sequence is available for this name and enrollment year.');
+      return;
+    }
     const password = `ESR/${regNumber}`;
     const newStudent = { ...formData, regNumber, password, id: Date.now().toString() };
     const updated = [...students, newStudent];
@@ -144,10 +374,20 @@ const StudentsTab = ({ students, setStudents }) => {
     localStorage.setItem('students_db', JSON.stringify(updated));
     saveFirestoreDocument('students', newStudent).catch((error) => console.error('Failed to sync student to Firebase', error));
     setShowAdd(false);
-    setFormData({ fullName: '', class: 'Senior 1', module: 'BIO' });
+    setFormData({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    if (isSupabaseConfigured) {
+      try {
+        await deleteProvisionedAccount(id);
+        setStudents(current => current.filter(student => student.id !== id));
+      } catch (error) {
+        alert(error.message || 'Could not remove the student.');
+      }
+      return;
+    }
+
     const updated = students.filter(s => s.id !== id);
     setStudents(updated);
     localStorage.setItem('students_db', JSON.stringify(updated));
@@ -171,17 +411,27 @@ const StudentsTab = ({ students, setStudents }) => {
               <input required type="text" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. Jean Nsengiyumva" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Year Started at ES RUNABA</label>
+              <input required type="number" min="1900" max={new Date().getFullYear()} value={formData.startYear} onChange={e => setFormData({...formData, startYear: Number(e.target.value)})} className="w-full border border-slate-300 rounded-md p-2" />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Class</label>
               <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                <option>Senior 1</option><option>Senior 2</option><option>Senior 3</option>
-                <option>Senior 4 MEG</option><option>Senior 4 MCE</option><option>Senior 4 PCB</option>
-                <option>Senior 5 MEG</option><option>Senior 5 MCE</option><option>Senior 5 PCB</option>
-                <option>Senior 6 MEG</option><option>Senior 6 MCE</option><option>Senior 6 PCB</option>
+                {schoolClassGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((classOption) => (
+                      <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Module / Subject Code</label>
               <input required type="text" value={formData.module} onChange={e => setFormData({...formData, module: e.target.value.toUpperCase()})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. BIO, MATH, ENG" />
+            </div>
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+              Registration number: <span className="font-mono font-bold text-school-blue">{registrationPreview || 'Enter a name to preview'}</span>
             </div>
             <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
               The student password will be generated automatically from the registration number.
@@ -209,7 +459,7 @@ const StudentsTab = ({ students, setStudents }) => {
                 <td className="p-4 font-mono text-sm font-bold text-school-blue">{s.regNumber}</td>
                 <td className="p-4 font-medium text-slate-800">{s.fullName}</td>
                 <td className="p-4 text-slate-600">{s.class}</td>
-                <td className="p-4 text-sm text-slate-500 font-mono">{s.password}</td>
+                <td className="p-4 text-sm text-slate-500 font-mono">{s.password || (isSupabaseConfigured ? 'Supabase Auth' : '')}</td>
                 <td className="p-4 text-right">
                   <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 p-2"><Trash2 size={18} /></button>
                 </td>
@@ -222,21 +472,43 @@ const StudentsTab = ({ students, setStudents }) => {
   );
 };
 
-const AssignmentsTab = ({ assignments, setAssignments }) => {
+const AssignmentsTab = ({ assignments, setAssignments, user }) => {
    const [showAdd, setShowAdd] = useState(false);
-   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 MCE', subject: '', description: '', dueDate: '' });
+  const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
 
-   const handleAdd = (e) => {
+   const handleAdd = async (e) => {
     e.preventDefault();
     const newAssignment = { ...formData, id: Date.now().toString() };
+    if (isSupabaseConfigured) {
+      try {
+        const savedAssignment = await saveLearningRecord('assignments', newAssignment, user);
+        setAssignments(current => [...current, savedAssignment]);
+        setShowAdd(false);
+        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
+      } catch (error) {
+        alert(error.message || 'Could not save the assignment.');
+      }
+      return;
+    }
+
     const updated = [...assignments, newAssignment];
     setAssignments(updated);
     localStorage.setItem('assignments_db', JSON.stringify(updated));
     setShowAdd(false);
-    setFormData({ title: '', class: 'Senior 4 MCE', subject: '', description: '', dueDate: '' });
+    setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
    };
 
-   const handleDelete = (id) => {
+   const handleDelete = async (id) => {
+    if (isSupabaseConfigured) {
+      try {
+        await deleteLearningRecord('assignments', id);
+        setAssignments(current => current.filter(assignment => assignment.id !== id));
+      } catch (error) {
+        alert(error.message || 'Could not remove the assignment.');
+      }
+      return;
+    }
+
     const updated = assignments.filter(a => a.id !== id);
     setAssignments(updated);
     localStorage.setItem('assignments_db', JSON.stringify(updated));
@@ -266,10 +538,13 @@ const AssignmentsTab = ({ assignments, setAssignments }) => {
              <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Target Class</label>
               <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                <option>Senior 1</option><option>Senior 2</option><option>Senior 3</option>
-                <option>Senior 4 MEG</option><option>Senior 4 MCE</option><option>Senior 4 PCB</option>
-                <option>Senior 5 MEG</option><option>Senior 5 MCE</option><option>Senior 5 PCB</option>
-                <option>Senior 6 MEG</option><option>Senior 6 MCE</option><option>Senior 6 PCB</option>
+                {schoolClassGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((classOption) => (
+                      <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
+                    ))}
+                  </optgroup>
+                ))}
               </select>
             </div>
              <div>
@@ -304,9 +579,9 @@ const AssignmentsTab = ({ assignments, setAssignments }) => {
   );
 };
 
-const QuizzesTab = ({ quizzes, setQuizzes }) => {
+const QuizzesTab = ({ quizzes, setQuizzes, user }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ title: '', class: 'Senior 4 MCE', subject: '' });
+  const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '' });
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
   const [questions, setQuestions] = useState([]);
 
@@ -320,18 +595,38 @@ const QuizzesTab = ({ quizzes, setQuizzes }) => {
       setQuestion({ ...question, type: 'radio', q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
   };
 
-  const handleCreateQuiz = () => {
+  const handleCreateQuiz = async () => {
       if(questions.length === 0) return alert("Add at least one question.");
       const newQuiz = { ...formData, questions, id: Date.now().toString() };
+      if (isSupabaseConfigured) {
+        try {
+          const savedQuiz = await saveLearningRecord('quizzes', newQuiz, user);
+          setQuizzes(current => [...current, savedQuiz]);
+        } catch (error) {
+          alert(error.message || 'Could not save the quiz.');
+          return;
+        }
+      } else {
       const updated = [...quizzes, newQuiz];
       setQuizzes(updated);
       localStorage.setItem('quizzes_db', JSON.stringify(updated));
+      }
       setShowAdd(false);
-      setFormData({ title: '', class: 'Senior 4 MCE', subject: '' });
+      setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '' });
       setQuestions([]);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    if (isSupabaseConfigured) {
+      try {
+        await deleteLearningRecord('quizzes', id);
+        setQuizzes(current => current.filter(quiz => quiz.id !== id));
+      } catch (error) {
+        alert(error.message || 'Could not remove the quiz.');
+      }
+      return;
+    }
+
     const updated = quizzes.filter(q => q.id !== id);
     setQuizzes(updated);
     localStorage.setItem('quizzes_db', JSON.stringify(updated));
@@ -354,10 +649,13 @@ const QuizzesTab = ({ quizzes, setQuizzes }) => {
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
                     <input type="text" placeholder="Subject" value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded" />
                     <select value={formData.class} onChange={e=>setFormData({...formData, class: e.target.value})} className="border p-2 rounded">
-                        <option>Senior 1</option><option>Senior 2</option><option>Senior 3</option>
-                        <option>Senior 4 MEG</option><option>Senior 4 MCE</option><option>Senior 4 PCB</option>
-                        <option>Senior 5 MEG</option><option>Senior 5 MCE</option><option>Senior 5 PCB</option>
-                        <option>Senior 6 MEG</option><option>Senior 6 MCE</option><option>Senior 6 PCB</option>
+                        {schoolClassGroups.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.options.map((classOption) => (
+                              <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
+                            ))}
+                          </optgroup>
+                        ))}
                     </select>
                 </div>
 
@@ -434,9 +732,9 @@ const QuizzesTab = ({ quizzes, setQuizzes }) => {
   );
 }
 
-const NotesTab = ({ notes, setNotes }) => {
+const NotesTab = ({ notes, setNotes, user }) => {
     const [showAdd, setShowAdd] = useState(false);
-    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 MCE', subject: '', description: '' });
+    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
     const [fileData, setFileData] = useState(null);
     const [fileName, setFileName] = useState('');
     const [error, setError] = useState('');
@@ -455,6 +753,11 @@ const NotesTab = ({ notes, setNotes }) => {
         setError('');
         setFileName(file.name);
 
+        if (isSupabaseConfigured) {
+          setFileData(file);
+          return;
+        }
+
         const reader = new FileReader();
         reader.onloadend = () => {
             setFileData(reader.result);
@@ -462,9 +765,33 @@ const NotesTab = ({ notes, setNotes }) => {
         reader.readAsDataURL(file);
     };
 
-    const handleAdd = (e) => {
+    const handleAdd = async (e) => {
         e.preventDefault();
         if (!fileData) return alert("Please select a valid file under 1.5MB");
+
+      if (isSupabaseConfigured) {
+        const noteId = Date.now().toString();
+        let uploadedFilePath = '';
+        try {
+          uploadedFilePath = await uploadLearningNote(fileData, formData.class, noteId);
+          const savedNote = await saveLearningRecord('notes', {
+            ...formData,
+            id: noteId,
+            fileName,
+            filePath: uploadedFilePath,
+            datePosted: new Date().toLocaleDateString()
+          }, user);
+          setNotes(current => [...current, savedNote]);
+          setShowAdd(false);
+          setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
+          setFileData(null);
+          setFileName('');
+        } catch (uploadError) {
+          if (uploadedFilePath) await removeLearningNoteFile(uploadedFilePath).catch(() => {});
+          alert(uploadError.message || 'Could not save the note.');
+        }
+        return;
+      }
 
         const newNote = {
             id: Date.now().toString(),
@@ -482,7 +809,7 @@ const NotesTab = ({ notes, setNotes }) => {
             localStorage.setItem('notes_db', JSON.stringify(updated));
             setNotes(updated);
             setShowAdd(false);
-            setFormData({ title: '', class: 'Senior 4 MCE', subject: '', description: '' });
+            setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
             setFileData(null);
             setFileName('');
         } catch (err) {
@@ -490,7 +817,19 @@ const NotesTab = ({ notes, setNotes }) => {
         }
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
+      if (isSupabaseConfigured) {
+        const note = notes.find(item => item.id === id);
+        try {
+          await removeLearningNoteFile(note?.filePath);
+          await deleteLearningRecord('notes', id);
+          setNotes(current => current.filter(item => item.id !== id));
+        } catch (error) {
+          alert(error.message || 'Could not remove the note.');
+        }
+        return;
+      }
+
         const updated = notes.filter(n => n.id !== id);
         setNotes(updated);
         localStorage.setItem('notes_db', JSON.stringify(updated));
@@ -520,10 +859,13 @@ const NotesTab = ({ notes, setNotes }) => {
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Target Class</label>
                             <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                                <option>Senior 1</option><option>Senior 2</option><option>Senior 3</option>
-                                <option>Senior 4 MEG</option><option>Senior 4 MCE</option><option>Senior 4 PCB</option>
-                                <option>Senior 5 MEG</option><option>Senior 5 MCE</option><option>Senior 5 PCB</option>
-                                <option>Senior 6 MEG</option><option>Senior 6 MCE</option><option>Senior 6 PCB</option>
+                                {schoolClassGroups.map((group) => (
+                                  <optgroup key={group.label} label={group.label}>
+                                    {group.options.map((classOption) => (
+                                      <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
+                                    ))}
+                                  </optgroup>
+                                ))}
                             </select>
                         </div>
                         <div>
@@ -565,13 +907,25 @@ const NotesTab = ({ notes, setNotes }) => {
     );
 };
 
-const EventsTab = ({ events, setEvents }) => {
+const EventsTab = ({ events, setEvents, user }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ date: '', title: '', loc: '', desc: '' });
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     const newEvent = { ...formData, id: Date.now().toString() };
+    if (isSupabaseConfigured) {
+      try {
+        await saveSchoolEvent(newEvent, user);
+        setEvents(current => [...current, newEvent]);
+        setShowAdd(false);
+        setFormData({ date: '', title: '', loc: '', desc: '' });
+      } catch (error) {
+        alert(error.message || 'Could not save the event.');
+      }
+      return;
+    }
+
     const updated = [...events, newEvent];
     setEvents(updated);
     localStorage.setItem('events_db', JSON.stringify(updated));
@@ -579,7 +933,17 @@ const EventsTab = ({ events, setEvents }) => {
     setFormData({ date: '', title: '', loc: '', desc: '' });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    if (isSupabaseConfigured) {
+      try {
+        await deleteSchoolEvent(id);
+        setEvents(current => current.filter(event => event.id !== id));
+      } catch (error) {
+        alert(error.message || 'Could not remove the event.');
+      }
+      return;
+    }
+
     const updated = events.filter(ev => ev.id !== id);
     setEvents(updated);
     localStorage.setItem('events_db', JSON.stringify(updated));
@@ -648,12 +1012,20 @@ const EventsTab = ({ events, setEvents }) => {
 const SiteEditorTab = ({ siteContent, updateSiteContent }) => {
   const [localContent, setLocalContent] = useState(siteContent);
   const [activeSection, setActiveSection] = useState('general');
+  const [saveStatus, setSaveStatus] = useState('');
+
+  useEffect(() => setLocalContent(siteContent), [siteContent]);
 
   if (!localContent) return <div className="p-8 text-center text-slate-500">Loading Site Settings...</div>;
 
-  const handleSave = () => {
-    updateSiteContent(localContent);
-    alert('Site content updated successfully! Refresh the website to see changes.');
+  const handleSave = async () => {
+    setSaveStatus('Saving changes...');
+    try {
+      await updateSiteContent(localContent);
+      setSaveStatus('Changes saved for site visitors.');
+    } catch (error) {
+      setSaveStatus(error.message || 'Could not save site content.');
+    }
   };
 
   const updateNested = (category, field, value) => {
@@ -700,9 +1072,12 @@ const SiteEditorTab = ({ siteContent, updateSiteContent }) => {
           <h2 className="text-3xl font-bold text-school-blue">Site Designer</h2>
           <p className="text-slate-500 text-sm mt-1">Manage all visual and text content of the website.</p>
         </div>
-        <button onClick={handleSave} className="btn-primary flex items-center gap-2 shadow-lg hover:scale-105 transition-transform">
-          <Save size={20} /> Save All Changes
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {saveStatus && <p role="status" className="text-sm text-slate-600">{saveStatus}</p>}
+          <button onClick={handleSave} disabled={saveStatus === 'Saving changes...'} className="btn-primary flex items-center gap-2 shadow-lg disabled:opacity-60">
+            <Save size={20} /> Save All Changes
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2">
@@ -998,11 +1373,43 @@ const StaffTab = () => {
   const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
 
   useEffect(() => {
-    setStaffList(JSON.parse(localStorage.getItem('staff_db') || '[]'));
+    let isActive = true;
+    const loadStaff = async () => {
+      try {
+        const staff = isSupabaseConfigured
+          ? (await Promise.all([loadProfiles('teacher'), loadProfiles('dos')])).flat()
+          : JSON.parse(localStorage.getItem('staff_db') || '[]');
+        if (isActive) setStaffList(staff);
+      } catch (error) {
+        console.error('Failed to load staff records', error);
+      }
+    };
+    loadStaff();
+    return () => { isActive = false; };
   }, []);
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
+    if (isSupabaseConfigured) {
+      try {
+        const result = await provisionAccount({
+          type: formData.role,
+          fullName: formData.name,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          subject: formData.subject,
+          isAdmin: formData.isAdmin
+        });
+        setStaffList(current => [...current, mapSupabaseProfile(result.profile)]);
+        setShowAdd(false);
+        setFormData({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
+      } catch (error) {
+        alert(error.message || 'Could not register staff.');
+      }
+      return;
+    }
+
     const newStaff = { ...formData, id: 'staff_' + Date.now().toString() };
     const updated = [...staffList, newStaff];
     setStaffList(updated);
@@ -1011,8 +1418,18 @@ const StaffTab = () => {
     setFormData({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (confirm('Are you sure you want to remove this staff member?')) {
+      if (isSupabaseConfigured) {
+        try {
+          await deleteProvisionedAccount(id);
+          setStaffList(current => current.filter(staff => staff.id !== id));
+        } catch (error) {
+          alert(error.message || 'Could not remove staff.');
+        }
+        return;
+      }
+
       const updated = staffList.filter(s => s.id !== id);
       setStaffList(updated);
       localStorage.setItem('staff_db', JSON.stringify(updated));
@@ -1048,14 +1465,21 @@ const StaffTab = () => {
               <input required type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value.toUpperCase()})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. BIO, MATH, ADMIN" />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Access role</label>
+              <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value, isAdmin: e.target.value === 'teacher' ? formData.isAdmin : false})} className="w-full border border-slate-300 rounded-md p-2">
+                <option value="teacher">Teacher</option>
+                <option value="dos">Director of Studies</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Username (for login)</label>
               <input required type="text" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value.toLowerCase()})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. johndoe" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Initial Password</label>
-              <input required type="text" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="Strong password" />
+              <input required type="password" autoComplete="new-password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="Strong password" />
             </div>
-            <div className="md:col-span-2 pt-2">
+            {formData.role === 'teacher' && <div className="md:col-span-2 pt-2">
               <label className="flex items-center gap-2 cursor-pointer p-3 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                 <input 
                   type="checkbox" 
@@ -1066,7 +1490,7 @@ const StaffTab = () => {
                 <span className="font-bold text-sm text-slate-700">Grant Administrator Access (Sub-Admin)</span>
               </label>
               <p className="text-xs text-slate-400 mt-1 ml-8">Admins can edit the website, manage events, and view the staff database.</p>
-            </div>
+            </div>}
           </div>
           <button type="submit" className="btn-primary mt-6 flex items-center gap-2"><Save size={18} /> Register Staff Account</button>
         </form>
@@ -1099,6 +1523,10 @@ const StaffTab = () => {
                      <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest flex items-center gap-1 w-max">
                        <Shield size={12} /> Admin
                      </span>
+                   ) : s.role === 'dos' ? (
+                     <span className="bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">
+                       Director of Studies
+                     </span>
                    ) : (
                      <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-1 rounded uppercase tracking-widest">
                        Teacher
@@ -1124,42 +1552,47 @@ const StaffTab = () => {
   );
 };
 
-const AnalyticsTab = () => {
+const AnalyticsTab = ({ students, assignments, quizzes, notes }) => {
   const [metrics, setMetrics] = useState({ teachers: 0, students: 0, materials: 0 });
   const [teacherRoster, setTeacherRoster] = useState([]);
 
   useEffect(() => {
-    // Collect all databases
-    const studentsDB = JSON.parse(localStorage.getItem('students_db') || '[]');
-    const staffDB = JSON.parse(localStorage.getItem('staff_db') || '[]');
-    const notesDB = JSON.parse(localStorage.getItem('notes_db') || '[]');
-    const quizzesDB = JSON.parse(localStorage.getItem('quizzes_db') || '[]');
-    const assignmentsDB = JSON.parse(localStorage.getItem('assignments_db') || '[]');
+    let isActive = true;
+    const loadAnalytics = async () => {
+      try {
+        const staffDB = isSupabaseConfigured
+          ? await loadProfiles('teacher')
+          : JSON.parse(localStorage.getItem('staff_db') || '[]');
+        if (!isActive) return;
 
-    // Metric Calculations
-    setMetrics({
-      teachers: staffDB.length,
-      students: studentsDB.length,
-      materials: notesDB.length + quizzesDB.length + assignmentsDB.length
-    });
+        setMetrics({
+          teachers: staffDB.length,
+          students: students.length,
+          materials: notes.length + quizzes.length + assignments.length
+        });
 
-    // Correlation Engine: Cross reference staff subject with student module
-    const mappedRoster = staffDB.map(teacher => {
-      // Find students whose module loosely matches the teacher's subject module (e.g., both contain 'MATH' or 'BIO')
-      const targetSubj = (teacher.subject || '').toUpperCase().trim();
-      const assignedStudents = targetSubj === 'ADMIN' || targetSubj === 'GENERAL' || targetSubj === ''
-         ? [] 
-         : studentsDB.filter(s => (s.module || '').toUpperCase().includes(targetSubj));
+        const mappedRoster = staffDB.map(teacher => {
+          const targetSubj = (teacher.subject || '').toUpperCase().trim();
+          const assignedStudents = targetSubj === 'ADMIN' || targetSubj === 'GENERAL' || targetSubj === ''
+            ? []
+            : students.filter(student => (student.module || '').toUpperCase().includes(targetSubj));
 
-      return {
-        ...teacher,
-        assignedCount: assignedStudents.length,
-        studentSample: assignedStudents.slice(0, 3) // Sample of students to display
-      };
-    });
+          return {
+            ...teacher,
+            assignedCount: assignedStudents.length,
+            studentSample: assignedStudents.slice(0, 3)
+          };
+        });
 
-    setTeacherRoster(mappedRoster);
-  }, []);
+        setTeacherRoster(mappedRoster);
+      } catch (error) {
+        console.error('Failed to load analytics', error);
+      }
+    };
+
+    loadAnalytics();
+    return () => { isActive = false; };
+  }, [students, assignments, quizzes, notes]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">

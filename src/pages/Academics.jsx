@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, FlaskConical, Globe, Code, Binary, Pi, CheckCircle } from 'lucide-react';
+import { BookOpen, FlaskConical, Globe, Code, Binary, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Academics = () => {
@@ -27,9 +27,24 @@ const Academics = () => {
     }
   ];
 
+  const s4S5Streams = [
+    {
+      code: 'Stream 1',
+      name: 'Mathematics and Sciences (Pure Sciences)',
+      icon: <FlaskConical size={24} className="text-school-blue" />,
+      subjects: ['Mathematics', 'Physics', 'Chemistry', 'Biology']
+    },
+    {
+      code: 'Stream 2',
+      name: 'Mathematics and Sciences (Applied Sciences)',
+      icon: <Globe size={24} className="text-school-green" />,
+      subjects: ['Mathematics', 'Economics', 'Physics', 'Geography', 'Chemistry']
+    }
+  ];
+
   const scienceStreams = [
-    { level: 'Senior 4', streams: ['Science Stream One', 'Science Stream Two'] },
-    { level: 'Senior 5', streams: ['Science Stream One', 'Science Stream Two'] },
+    { level: 'Senior 4', streams: s4S5Streams },
+    { level: 'Senior 5', streams: s4S5Streams },
   ];
 
   return (
@@ -114,27 +129,56 @@ const Academics = () => {
             <h2 className="text-4xl md:text-5xl lg:text-7xl font-black text-slate-900 tracking-tighter italic shadow-sm">Academic Combinations</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
             <p className="max-w-3xl mx-auto mt-8 text-slate-500 text-lg leading-relaxed">
-              These combinations are part of ES RUNABA's academic history and continue to support our learners' progress from foundation to advanced study.
+              Senior 4 and Senior 5 students follow one of two science streams. Senior 6 offers the MEG, MCE, and PCB combinations.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className="mb-10 space-y-8">
             {scienceStreams.map((stream) => (
-              <div key={stream.level} className="bg-school-blue text-white rounded-3xl p-7 shadow-lg">
-                <p className="text-school-green font-black uppercase tracking-[0.2em] text-xs">A-Level Science</p>
-                <h3 className="text-2xl font-black mt-2">{stream.level}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-                  {stream.streams.map((name) => (
-                    <div key={name} className="rounded-xl bg-white/10 border border-white/15 px-4 py-3 font-bold text-sm">
-                      {name}
-                    </div>
+              <section key={stream.level}>
+                <div className="mb-4 flex items-baseline justify-between">
+                  <h3 className="text-xl font-bold text-slate-900">{stream.level}</h3>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Science streams</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {stream.streams.map((scienceStream) => (
+                    <article key={scienceStream.code} className="flex flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-slate-50">
+                          {scienceStream.icon}
+                        </div>
+                        <span className="rounded-md bg-slate-100 px-3 py-1 text-xs font-bold tracking-wide text-slate-700">{scienceStream.code}</span>
+                      </div>
+                      <h4 className="mt-5 text-xl font-semibold text-slate-900">{scienceStream.name}</h4>
+                      <div className="mt-5 border-t border-slate-100 pt-4">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Core subjects</p>
+                        <ul className="space-y-2">
+                          {scienceStream.subjects.map((subject) => (
+                            <li key={subject} className="flex items-center gap-2 text-sm text-slate-700">
+                              <CheckCircle size={14} className="text-school-green" aria-hidden="true" />
+                              {subject}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </article>
                   ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
  
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-school-green text-xs font-bold uppercase tracking-widest">Senior 6</p>
+              <h3 className="mt-1 text-2xl font-bold text-slate-900">Current combinations</h3>
+            </div>
+            <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
+              MEG, MCE, and PCB are part of ES RUNABA's academic history and remain available to current Senior 6 students.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {combinations.map((comb, i) => (
               <motion.div 
                 key={i} 
@@ -142,26 +186,26 @@ const Academics = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-[2.5rem] p-10 shadow-[0_10px_40px_rgba(0,0,0,0.04)] hover:shadow-[0_40px_80px_rgba(0,0,0,0.12)] transition-all flex flex-col group hover:-translate-y-4 border border-slate-100"
+                className="flex flex-col rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
               >
-                <div className="mb-8 flex justify-between items-center">
-                  <div className="p-5 rounded-3xl bg-slate-50 group-hover:bg-school-blue/5 transition-all rotate-3 group-hover:rotate-0">
-                      {comb.icon}
+                <div className="flex items-center justify-between">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-slate-50">
+                      {React.cloneElement(comb.icon, { size: 24 })}
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="bg-slate-900 text-white px-5 py-1.5 rounded-full text-[10px] font-black tracking-widest shadow-lg">{comb.code}</span>
+                    <span className="rounded-md bg-slate-100 px-3 py-1 text-xs font-bold tracking-wide text-slate-700">{comb.code}</span>
                   </div>
                 </div>
-                <h3 className="text-3xl font-black mb-6 tracking-tight text-slate-800 italic uppercase underline decoration-school-green decoration-4 underline-offset-8">{comb.name}</h3>
-                <p className="text-slate-500 mb-10 flex-grow leading-relaxed font-light text-lg">{comb.description}</p>
+                <h4 className="mt-5 text-xl font-semibold text-slate-900">{comb.name}</h4>
+                <p className="mt-2 flex-grow text-sm leading-relaxed text-slate-600">{comb.description}</p>
                 
-                <div className="bg-slate-50 rounded-[2rem] p-8 mt-auto border border-slate-100 group-hover:bg-white transition-colors">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 block">Core Subjects</p>
-                  <ul className="space-y-4">
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Core subjects</p>
+                  <ul className="space-y-2">
                     {comb.subjects.map((s, idx) => (
-                      <li key={idx} className="flex items-center gap-4 text-base font-bold text-slate-700">
-                        <div className="bg-school-green/20 p-1.5 rounded-full text-school-green">
-                            <CheckCircle size={14} />
+                      <li key={idx} className="flex items-center gap-2 text-sm text-slate-700">
+                        <div className="text-school-green">
+                            <CheckCircle size={14} aria-hidden="true" />
                         </div>
                         {s}
                       </li>

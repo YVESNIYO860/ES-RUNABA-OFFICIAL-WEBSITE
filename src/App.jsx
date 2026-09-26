@@ -56,7 +56,9 @@ function AppContent() {
 
         <Route path="elearning" element={<Elearning />} />
         <Route path="elearning-portal" element={<ElearningPortal />} />
-        <Route path="teacher-login" element={<TeacherLogin />} />
+        <Route path="student-login" element={<TeacherLogin initialRole="student" />} />
+        <Route path="teacher-login" element={<TeacherLogin initialRole="teacher" />} />
+        <Route path="dos-login" element={<TeacherLogin initialRole="dos" />} />
         <Route path="teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="student-dashboard" element={<StudentDashboard />} />
       </Routes>

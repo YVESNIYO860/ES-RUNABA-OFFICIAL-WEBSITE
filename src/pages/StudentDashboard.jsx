@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
+import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, saveLearningRecord } from '../utils/elearningStore';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
@@ -17,20 +18,44 @@ const StudentDashboard = () => {
     const [quizResults, setQuizResults] = useState([]);
 
     useEffect(() => {
-        if (user && user.role === 'student') {
-            const allAssignments = JSON.parse(localStorage.getItem('assignments_db') || '[]');
-            const allQuizzes = JSON.parse(localStorage.getItem('quizzes_db') || '[]');
-            
-            // Filter by student's class
-            setAssignments(allAssignments.filter(a => a.class === user.class));
-            setQuizzes(allQuizzes.filter(q => q.class === user.class));
-            
-            const allNotes = JSON.parse(localStorage.getItem('notes_db') || '[]');
-            setNotes(allNotes.filter(n => n.class === user.class));
-            
-            setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
-            setQuizResults(JSON.parse(localStorage.getItem('quiz_results_db') || '[]'));
-        }
+        if (!user || user.role !== 'student') return undefined;
+        let isActive = true;
+
+        const loadDashboardData = async () => {
+            try {
+                if (isSupabaseConfigured) {
+                    const [classAssignments, classQuizzes, classNotes, studentSubmissions, studentQuizResults] = await Promise.all([
+                        loadLearningRecords('assignments'),
+                        loadLearningRecords('quizzes'),
+                        loadLearningRecords('notes'),
+                        loadLearningRecords('submissions'),
+                        loadLearningRecords('quizResults')
+                    ]);
+                    if (!isActive) return;
+                    setAssignments(classAssignments);
+                    setQuizzes(classQuizzes);
+                    setNotes(classNotes);
+                    setSubmissions(studentSubmissions);
+                    setQuizResults(studentQuizResults);
+                    return;
+                }
+
+                const allAssignments = JSON.parse(localStorage.getItem('assignments_db') || '[]');
+                const allQuizzes = JSON.parse(localStorage.getItem('quizzes_db') || '[]');
+                const allNotes = JSON.parse(localStorage.getItem('notes_db') || '[]');
+                if (!isActive) return;
+                setAssignments(allAssignments.filter(a => a.class === user.class));
+                setQuizzes(allQuizzes.filter(q => q.class === user.class));
+                setNotes(allNotes.filter(n => n.class === user.class));
+                setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
+                setQuizResults(JSON.parse(localStorage.getItem('quiz_results_db') || '[]'));
+            } catch (error) {
+                console.error('Failed to load student learning data', error);
+            }
+        };
+
+        loadDashboardData();
+        return () => { isActive = false; };
     }, [user]);
 
     if (!user || user.role !== 'student') {
@@ -96,8 +121,18 @@ const AssignmentsTab = ({ assignments, submissions, setSubmissions, user }) => {
         return submissions.some(s => s.assignmentId === assignmentId && s.studentId === user.regNumber);
     };
 
-    const handleSubmit = (assignmentId) => {
+    const handleSubmit = async (assignmentId) => {
         const newSubmission = { id: Date.now().toString(), assignmentId, studentId: user.regNumber, class: user.class, submittedAt: new Date().toISOString() };
+        if (isSupabaseConfigured) {
+            try {
+                const savedSubmission = await saveLearningRecord('submissions', newSubmission, user);
+                setSubmissions(current => [...current, savedSubmission]);
+                alert('Assignment marked as submitted.');
+            } catch (error) {
+                alert(error.message || 'Could not submit this assignment.');
+            }
+            return;
+        }
         const updated = [...submissions, newSubmission];
         setSubmissions(updated);
         localStorage.setItem('submissions_db', JSON.stringify(updated));
@@ -159,7 +194,7 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
         setTimeLeft(quiz.questions[0]?.duration || 60);
     };
 
-    const handleSubmitQuiz = () => {
+    const handleSubmitQuiz = async () => {
         let score = 0;
         let total = 0;
         let hasEssay = false;
@@ -180,6 +215,19 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
         });
         
         const result = { id: Date.now().toString(), quizId: activeQuiz.id, studentId: user.regNumber, class: user.class, score, total, hasEssay };
+        if (isSupabaseConfigured) {
+            try {
+                const savedResult = await saveLearningRecord('quizResults', result, user);
+                setQuizResults(current => [...current, savedResult]);
+            } catch (error) {
+                alert(error.message || 'Could not save your quiz result.');
+                return;
+            }
+            setActiveQuiz(null);
+            setAnswers({});
+            setTimeLeft(null);
+            return;
+        }
         const updated = [...quizResults, result];
         setQuizResults(updated);
         localStorage.setItem('quiz_results_db', JSON.stringify(updated));
@@ -345,6 +393,19 @@ const ProfileTab = ({ user }) => (
 );
 
 const NotesTab = ({ notes }) => {
+    const [signedUrls, setSignedUrls] = useState({});
+
+    useEffect(() => {
+        if (!isSupabaseConfigured) return undefined;
+        let isActive = true;
+        Promise.all(notes.filter(note => note.filePath).map(async note => [note.id, await getLearningNoteUrl(note.filePath)]))
+            .then(entries => {
+                if (isActive) setSignedUrls(Object.fromEntries(entries));
+            })
+            .catch(error => console.error('Failed to create note download links', error));
+        return () => { isActive = false; };
+    }, [notes]);
+
     return (
         <div className="space-y-6">
             <h2 className="text-3xl font-bold text-school-blue mb-8">My Notes & Resources</h2>
@@ -362,7 +423,7 @@ const NotesTab = ({ notes }) => {
                         
                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                             <span className="text-xs text-slate-400">Posted: {n.datePosted}</span>
-                            <a href={n.fileData} download={n.fileName} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors" title="Download">
+                            <a href={signedUrls[n.id] || n.fileData || '#'} target={n.filePath ? '_blank' : undefined} rel={n.filePath ? 'noreferrer' : undefined} download={n.filePath ? undefined : n.fileName} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors" title="Download">
                                 Download <Download size={18} />
                             </a>
                         </div>

@@ -67,11 +67,11 @@ const Footer = () => {
 
           {/* Academics */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold mb-4 text-school-green">Combinations</h3>
+            <h3 className="text-lg font-semibold mb-4 text-school-green">Streams & Combinations</h3>
             <ul className="space-y-2 text-sm text-slate-300">
-              <li>Mathematics, Economics & Geography (MEG)</li>
-              <li>Mathematics, Computer Science & Economics (MCE)</li>
-              <li>Physics, Chemistry & Biology (PCB)</li>
+              <li>Senior 4 & 5 Stream 1: Mathematics and Sciences (Pure Sciences)</li>
+              <li>Senior 4 & 5 Stream 2: Mathematics and Sciences (Applied Sciences)</li>
+              <li>Senior 6: MEG, MCE, and PCB</li>
               <li>Ordinary Level (O Level)</li>
             </ul>
           </div>

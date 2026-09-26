@@ -4,34 +4,23 @@ import { AlertCircle, BookOpen, Lock, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
+import { eLearningClassGroups } from '../utils/schoolClasses';
+import { isSupabaseConfigured } from '../supabase';
 
-const classGroups = [
-  { label: 'Senior 1', options: ['Senior 1'] },
-  { label: 'Senior 2', options: ['Senior 2'] },
-  { label: 'Senior 3', options: ['Senior 3'] },
-  { label: 'Senior 4 Science Streams', options: ['Senior 4 Science Stream One', 'Senior 4 Science Stream Two'] },
-  { label: 'Senior 5 Science Streams', options: ['Senior 5 Science Stream One', 'Senior 5 Science Stream Two'] },
-  { label: 'Senior 6 Science Streams', options: ['Senior 6 MEG', 'Senior 6 MCE', 'Senior 6 PCB'] },
-];
-
-const TeacherLogin = () => {
+const TeacherLogin = ({ initialRole = 'student' }) => {
   const location = useLocation();
   const initialClass = location.state?.selectedClass || '';
-  const [role, setRole] = useState('teacher');
+  const [role, setRole] = useState(initialRole);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedClass, setSelectedClass] = useState(initialClass);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { loginTeacher, loginStudent, buildStudentPassword, siteContent } = useAuth();
+  const { loginTeacher, loginDos, loginStudent, siteContent } = useAuth();
   const navigate = useNavigate();
   const branding = siteContent?.general || { schoolName: 'ES RUNABA', motto: "HUMILITY, UNITY, GOD'S LOVE" };
-  const generatedPassword = role === 'student' && username.trim() && selectedClass
-    ? buildStudentPassword(selectedClass, username.trim())
-    : '';
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -41,18 +30,23 @@ const TeacherLogin = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
+    try {
       const result = role === 'teacher'
-        ? loginTeacher(username.trim(), password)
-        : loginStudent(username.trim(), generatedPassword, selectedClass);
+        ? await loginTeacher(username.trim(), password)
+        : role === 'dos'
+          ? await loginDos(username.trim(), password)
+          : await loginStudent(username.trim(), password, selectedClass);
 
       if (result.success) {
-        navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
+        navigate(role === 'student' ? '/student-dashboard' : '/teacher-dashboard');
       } else {
         setError(result.error);
       }
+    } catch (loginError) {
+      setError(loginError.message || 'Unable to sign in. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 400);
+    }
   };
 
   return (
@@ -76,7 +70,7 @@ const TeacherLogin = () => {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-200">{branding.schoolName}</p>
-                  <h2 className="mt-2 text-3xl font-black">E-Learning</h2>
+                  <h2 className="mt-2 text-3xl font-black">{role === 'dos' ? 'DOS Access' : 'E-Learning'}</h2>
                 </div>
               </div>
 
@@ -91,7 +85,11 @@ const TeacherLogin = () => {
                 </div>
                 <div className="rounded-2xl bg-white/10 p-4">
                   <p className="text-xs uppercase tracking-[0.35em] text-slate-200">Student access</p>
-                  <p className="mt-2 text-sm text-slate-100/90">Choose your science stream and sign in with your registration number.</p>
+                  <p className="mt-2 text-sm text-slate-100/90">Choose your class, then sign in with your registration number and password.</p>
+                </div>
+                <div className="rounded-2xl bg-white/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-200">Director of Studies</p>
+                  <p className="mt-2 text-sm text-slate-100/90">Sign in directly to manage school-wide attendance.</p>
                 </div>
               </div>
             </div>
@@ -116,6 +114,13 @@ const TeacherLogin = () => {
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    onClick={() => setRole('student')}
+                    className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${role === 'student' ? 'bg-school-blue text-white' : 'bg-white text-slate-700 hover:border-school-blue hover:text-school-blue border border-slate-200'}`}
+                  >
+                    Student
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setRole('teacher')}
                     className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${role === 'teacher' ? 'bg-school-blue text-white' : 'bg-white text-slate-700 hover:border-school-blue hover:text-school-blue border border-slate-200'}`}
                   >
@@ -123,26 +128,27 @@ const TeacherLogin = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRole('student')}
-                    className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${role === 'student' ? 'bg-school-blue text-white' : 'bg-white text-slate-700 hover:border-school-blue hover:text-school-blue border border-slate-200'}`}
+                    onClick={() => setRole('dos')}
+                    className={`flex-1 rounded-2xl px-4 py-3 text-sm font-semibold transition ${role === 'dos' ? 'bg-school-blue text-white' : 'bg-white text-slate-700 hover:border-school-blue hover:text-school-blue border border-slate-200'}`}
                   >
-                    Student
+                    DOS
                   </button>
                 </div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{role === 'teacher' ? 'Username' : 'Registration number'}</label>
+                  <label htmlFor="login-identifier" className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{role === 'student' ? 'Registration number' : (isSupabaseConfigured ? 'Email address' : 'Username')}</label>
                   <div className="relative mt-2">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
+                      id="login-identifier"
                       type="text"
                       required
-                      autoComplete={role === 'teacher' ? 'username' : 'off'}
+                      autoComplete={role === 'student' ? 'off' : 'username'}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder={role === 'teacher' ? 'Username' : 'Registration number'}
+                      placeholder={role === 'student' ? 'Registration number' : (isSupabaseConfigured ? 'Email address' : 'Username')}
                       className="w-full rounded-3xl border border-slate-300 bg-white px-12 py-3 text-sm text-slate-900 outline-none transition focus:border-school-blue focus:ring-2 focus:ring-school-blue/20"
                     />
                   </div>
@@ -150,30 +156,33 @@ const TeacherLogin = () => {
 
                 {role === 'student' ? (
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Class</label>
+                    <label htmlFor="student-class" className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Class</label>
                     <div className="mt-2">
                       <select
+                        id="student-class"
                         value={selectedClass}
                         onChange={(e) => setSelectedClass(e.target.value)}
                         className="w-full rounded-3xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-school-blue focus:ring-2 focus:ring-school-blue/20"
                       >
                         <option value="">Select your class</option>
-                        {classGroups.map((group) => (
+                        {eLearningClassGroups.map((group) => (
                           <optgroup key={group.label} label={group.label}>
                             {group.options.map((item) => (
-                              <option key={item} value={item}>{item}</option>
+                              <option key={item.value} value={item.value}>{item.label}</option>
                             ))}
                           </optgroup>
                         ))}
                       </select>
                     </div>
                   </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Password</label>
+                ) : null}
+
+                <div>
+                  <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Password</label>
                     <div className="relative mt-2">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                       <input
+                    id="login-password"
                         type="password"
                         required
                         autoComplete="current-password"
@@ -183,8 +192,7 @@ const TeacherLogin = () => {
                         className="w-full rounded-3xl border border-slate-300 bg-white px-12 py-3 text-sm text-slate-900 outline-none transition focus:border-school-blue focus:ring-2 focus:ring-school-blue/20"
                       />
                     </div>
-                  </div>
-                )}
+                </div>
 
                 <button
                   type="submit"
@@ -200,11 +208,13 @@ const TeacherLogin = () => {
                 </div>
               )}
 
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Demo credentials</p>
-                <p className="mt-2">Teacher: <span className="font-semibold">teacher</span> / <span className="font-semibold">runaba2024</span></p>
-                <p className="mt-1">Student: <span className="font-semibold">S1@001</span> / <span className="font-semibold">ESR/S1@001</span></p>
-              </div>
+              {!isSupabaseConfigured && role === 'teacher' && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                  <p className="font-semibold text-slate-900">Demo teacher</p>
+                  <p className="mt-2">Username: <span className="font-semibold">teacher</span></p>
+                  <p>Password: <span className="font-semibold">runaba2024</span></p>
+                </div>
+              )}
 
               <div className="mt-5 flex flex-col gap-3 text-center text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                 <Link to="/elearning-portal" className="font-semibold text-school-blue hover:text-blue-700">
