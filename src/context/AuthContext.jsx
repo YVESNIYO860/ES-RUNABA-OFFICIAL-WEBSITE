@@ -105,9 +105,18 @@ export const AuthProvider = ({ children }) => {
       };
 
     try {
-      const storedUser = localStorage.getItem('es_runaba_user');
-      if (!isSupabaseConfigured && storedUser) {
-        setUser(JSON.parse(storedUser));
+      if (!isSupabaseConfigured) localStorage.removeItem('es_runaba_user');
+      const storedStaff = localStorage.getItem('staff_db');
+      if (storedStaff) {
+        const staffRecords = JSON.parse(storedStaff);
+        const nonDemoStaff = staffRecords.filter((staff) => !(
+          staff.id === 'teacher_1' &&
+          staff.username === 'teacher' &&
+          staff.email === 'teacher@runaba.edu'
+        ));
+        if (nonDemoStaff.length !== staffRecords.length) {
+          localStorage.setItem('staff_db', JSON.stringify(nonDemoStaff));
+        }
       }
 
       // Initialize DB if not exists
@@ -121,12 +130,6 @@ export const AuthProvider = ({ children }) => {
           { id: '1', date: '15 May', title: 'National Science Fair', loc: 'Kigali Arena', desc: 'Our senior students will present their innovative projects at the national level.' },
           { id: '2', date: '22 Jun', title: 'ES RUNABA Cultural Day', loc: 'School Assembly', desc: 'A celebration of Rwandan culture through music, dance, and poetry.' },
           { id: '3', date: '10 Jul', title: 'Inter-House Sports Finals', loc: 'Main Field', desc: 'The climax of the school sports season. Which house will take the cup?' }
-        ]));
-      }
-
-      if (!localStorage.getItem('staff_db')) {
-        localStorage.setItem('staff_db', JSON.stringify([
-          { id: 'teacher_1', name: 'Admin Teacher', username: 'teacher', email: 'teacher@runaba.edu', password: 'runaba2024', role: 'teacher', isAdmin: false }
         ]));
       }
 
@@ -215,134 +218,67 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const buildStudentPassword = (selectedClass, regNumber) => {
-    const safeReg = String(regNumber || '').trim();
-    return safeReg ? `ESR/${safeReg}` : 'ESR/student';
-  };
-
   const loginTeacher = async (username, password) => {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: username,
-        password
-      });
-      if (error) return { success: false, error: 'Invalid email or password.' };
+    if (!isSupabaseConfigured) return { success: false, error: 'Supabase sign-in is not configured for this deployment.' };
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      if (profileError || profile.role !== 'teacher') {
-        await supabase.auth.signOut();
-        return { success: false, error: 'This account is not registered for teacher access.' };
-      }
+    const { data, error } = await supabase.auth.signInWithPassword({ email: username, password });
+    if (error) return { success: false, error: 'Invalid email or password.' };
 
-      setUser(mapProfileToUser(profile));
-      return { success: true };
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (profileError || profile.role !== 'teacher') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'This account is not registered for teacher access.' };
     }
 
-    // 1. Root / Builder Login (Absolute Override)
-    if (
-      (username === 'yvesniyonkuru2022@gmail.com' || username === 'yvesniyonkuru') &&
-      password === 'yvesniyonkuru'
-    ) {
-      const adminUser = { role: 'teacher', name: 'NIYONKURU Yves', email: 'yvesniyonkuru2022@gmail.com', isAdmin: true };
-      setUser(adminUser);
-      localStorage.setItem('es_runaba_user', JSON.stringify(adminUser));
-      return { success: true };
-    }
-
-    // 2. Database Login for regular Staff/Admins
-    const staffDB = JSON.parse(localStorage.getItem('staff_db') || '[]');
-    const matchingStaff = staffDB.find(s => 
-      (s.username === username || s.email === username) && s.password === password
-    );
-
-    if (matchingStaff) {
-      const staffUser = { role: 'teacher', name: matchingStaff.name, email: matchingStaff.email, isAdmin: matchingStaff.isAdmin };
-      setUser(staffUser);
-      localStorage.setItem('es_runaba_user', JSON.stringify(staffUser));
-      return { success: true };
-    }
-
-    return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
+    setUser(mapProfileToUser(profile));
+    return { success: true };
   };
 
   const loginDos = async (username, password) => {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: username, password });
-      if (error) return { success: false, error: 'Invalid email or password.' };
+    if (!isSupabaseConfigured) return { success: false, error: 'Supabase sign-in is not configured for this deployment.' };
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      if (profileError || profile.role !== 'dos') {
-        await supabase.auth.signOut();
-        return { success: false, error: 'This account is not registered for Director of Studies access.' };
-      }
+    const { data, error } = await supabase.auth.signInWithPassword({ email: username, password });
+    if (error) return { success: false, error: 'Invalid email or password.' };
 
-      setUser(mapProfileToUser(profile));
-      return { success: true };
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (profileError || profile.role !== 'dos') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'This account is not registered for Director of Studies access.' };
     }
 
-    const staffDB = JSON.parse(localStorage.getItem('staff_db') || '[]');
-    const matchingStaff = staffDB.find((staff) =>
-      staff.role === 'dos' && (staff.username === username || staff.email === username) && staff.password === password
-    );
-    if (!matchingStaff) return { success: false, error: 'Invalid credentials. Please check your username/email and password.' };
-
-    const dosUser = { role: 'dos', name: matchingStaff.name, email: matchingStaff.email, isAdmin: matchingStaff.isAdmin };
-    setUser(dosUser);
-    localStorage.setItem('es_runaba_user', JSON.stringify(dosUser));
+    setUser(mapProfileToUser(profile));
     return { success: true };
   };
 
   const loginStudent = async (regNumber, password, selectedClass = null) => {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: studentAuthEmail(regNumber),
-        password
-      });
-      if (error) return { success: false, error: 'Invalid registration number or password.' };
+    if (!isSupabaseConfigured) return { success: false, error: 'Supabase sign-in is not configured for this deployment.' };
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-      if (profileError || profile.role !== 'student') {
-        await supabase.auth.signOut();
-        return { success: false, error: 'This account is not registered for student access.' };
-      }
-      setUser(mapProfileToUser(profile));
-      return { success: true };
-    }
-
-    const normalizedReg = String(regNumber || '').trim();
-    const normalizedPassword = String(password || '').trim();
-    const expectedPassword = buildStudentPassword(selectedClass, normalizedReg);
-    const students = JSON.parse(localStorage.getItem('students_db') || '[]');
-    const matchingStudent = students.find((s) => s.regNumber === normalizedReg);
-
-    const student = students.find((s) => {
-      const storedPassword = String(s.password || '').trim();
-      return s.regNumber === normalizedReg && (
-        storedPassword === normalizedPassword ||
-        storedPassword === expectedPassword ||
-        normalizedPassword === expectedPassword
-      );
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: studentAuthEmail(regNumber),
+      password
     });
+    if (error) return { success: false, error: 'Invalid registration number or password.' };
 
-    if (student) {
-      const studentUser = { role: 'student', ...student };
-      setUser(studentUser);
-      localStorage.setItem('es_runaba_user', JSON.stringify(studentUser));
-      return { success: true };
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+    if (profileError || profile.role !== 'student') {
+      await supabase.auth.signOut();
+      return { success: false, error: 'This account is not registered for student access.' };
     }
-    return { success: false, error: 'Invalid registration number or password' };
+
+    setUser(mapProfileToUser(profile));
+    return { success: true };
   };
 
   const logout = async () => {
@@ -352,7 +288,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, buildStudentPassword, logout, isInitialized, siteContent, updateSiteContent }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized, siteContent, updateSiteContent }}>
       {children}
     </AuthContext.Provider>
   );

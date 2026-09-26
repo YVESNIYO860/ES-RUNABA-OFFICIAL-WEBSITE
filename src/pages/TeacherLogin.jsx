@@ -39,8 +39,8 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
 
       if (result.success) {
         navigate(role === 'student' ? '/student-dashboard' : '/teacher-dashboard');
-      } else if (!isSupabaseConfigured && result.error?.toLowerCase().includes('invalid')) {
-        setError('This deployment is using demo login. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel to use Supabase accounts.');
+      } else if (!isSupabaseConfigured) {
+        setError('Supabase sign-in is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to this deployment and redeploy.');
       } else if (isSupabaseConfigured && result.error === 'Invalid email or password.') {
         setError('Those details did not match a Supabase Auth account. Check the email and password under Authentication > Users.');
       } else {
@@ -209,14 +209,6 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
               {selectedClass && role === 'student' && (
                 <div className="mt-6 rounded-2xl border border-school-blue/20 bg-school-blue/5 px-4 py-3 text-sm text-slate-900">
                   Selected Class: <span className="font-semibold">{selectedClass}</span>
-                </div>
-              )}
-
-              {!isSupabaseConfigured && role === 'teacher' && (
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                  <p className="font-semibold text-slate-900">Demo teacher</p>
-                  <p className="mt-2">Username: <span className="font-semibold">teacher</span></p>
-                  <p>Password: <span className="font-semibold">runaba2024</span></p>
                 </div>
               )}
 
