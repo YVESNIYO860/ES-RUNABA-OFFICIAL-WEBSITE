@@ -430,7 +430,7 @@ const Home = () => {
                   </div>
                 </button>
                 <p className="font-black text-slate-900 text-lg leading-tight uppercase tracking-tight">NIYONKURU Yves</p>
-                <p className="text-school-green text-sm font-semibold mt-1.5">Alumni · Creative Dev</p>
+                <p className="text-school-green text-sm font-semibold mt-1.5">Alumni · Developer of this platform</p>
               </div>
               <div className="flex-1 text-center md:text-left">
                 <div className="flex justify-center md:justify-start gap-1 mb-4">
