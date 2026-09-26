@@ -84,12 +84,12 @@ const TeacherDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar sidebar */}
-      <aside className="w-full md:w-64 bg-school-blue text-white flex flex-col pt-20 shadow-xl z-10 md:min-h-screen">
-        <div className="p-6 border-b border-white/10">
+      <aside className="w-full shrink-0 bg-school-blue text-white flex flex-col pt-4 shadow-xl z-10 md:sticky md:top-0 md:w-64 md:pt-20 md:min-h-screen">
+        <div className="p-4 sm:p-6 border-b border-white/10">
           <h2 className="text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
           <p className="text-slate-300 text-sm mt-1">Portal | Welcome, {user.name}</p>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex-1 md:flex-col md:overflow-visible md:pb-4">
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'attendance', label: 'Attendance', icon: CheckSquare },
@@ -109,7 +109,7 @@ const TeacherDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
+              className={`flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm text-left transition-all md:w-full md:gap-3 md:px-4 md:py-3 ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
             >
               <tab.icon size={20} />
               {tab.label}
@@ -119,7 +119,7 @@ const TeacherDashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 pt-24 overflow-y-auto w-full max-w-6xl mx-auto">
+      <main className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 10 }}
@@ -441,8 +441,8 @@ const StudentsTab = ({ students, setStudents }) => {
         </form>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 text-slate-500 font-medium text-sm border-b border-slate-200">
               <th className="p-4">Reg Number</th>
@@ -1496,8 +1496,8 @@ const StaffTab = () => {
         </form>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+        <table className="w-full min-w-[720px] text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 text-slate-500 font-medium text-sm border-b border-slate-200">
               <th className="p-4">Name</th>

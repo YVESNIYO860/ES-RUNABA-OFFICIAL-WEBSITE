@@ -65,16 +65,16 @@ const StudentDashboard = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             {/* Sidebar */}
-            <aside className="w-full md:w-64 bg-slate-900 text-white flex flex-col pt-20 shadow-xl z-10 md:min-h-screen">
-                <div className="p-6 border-b border-white/10 text-center">
-                    <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-school-green">
+            <aside className="w-full shrink-0 bg-slate-900 text-white flex flex-col pt-4 shadow-xl z-10 md:sticky md:top-0 md:w-64 md:pt-20 md:min-h-screen">
+                <div className="p-4 sm:p-6 border-b border-white/10 text-center">
+                    <div className="hidden h-20 w-20 bg-slate-800 rounded-full items-center justify-center mx-auto mb-4 border-2 border-school-green md:flex">
                         <UserCircle size={48} className="text-slate-400" />
                     </div>
                     <h2 className="text-xl font-bold">{user.fullName}</h2>
                     <p className="text-school-green text-sm mt-1 font-mono">{user.regNumber}</p>
                     <p className="text-slate-400 text-xs mt-1">{user.class}</p>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
+                <nav className="flex gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex-1 md:flex-col md:overflow-visible md:pb-4">
                     {[
                         { id: 'assignments', label: 'My Assignments', icon: BookOpen },
                         { id: 'quizzes', label: 'My Quizzes', icon: CheckSquare },
@@ -84,7 +84,7 @@ const StudentDashboard = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
+                            className={`flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm text-left transition-all md:w-full md:gap-3 md:px-4 md:py-3 ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
                         >
                             <tab.icon size={20} />
                             {tab.label}
@@ -94,13 +94,11 @@ const StudentDashboard = () => {
             </aside>
 
              {/* Main Content */}
-            <main className="flex-1 p-4 md:p-8 pt-24 overflow-y-auto w-full max-w-4xl mx-auto">
-                 <AnimatePresence mode="wait">
+            <main className="flex-1 w-full max-w-4xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
                     <motion.div
                         key={activeTab}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
                     >
                          {activeTab === 'assignments' && <AssignmentsTab assignments={assignments} submissions={submissions} setSubmissions={setSubmissions} user={user} />}
@@ -108,7 +106,6 @@ const StudentDashboard = () => {
                          {activeTab === 'notes' && <NotesTab notes={notes} />}
                          {activeTab === 'profile' && <ProfileTab user={user} />}
                     </motion.div>
-                </AnimatePresence>
             </main>
         </div>
     );

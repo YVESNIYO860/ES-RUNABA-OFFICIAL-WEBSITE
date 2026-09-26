@@ -89,14 +89,14 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8 pt-24">
+    <div className="min-h-screen bg-slate-50 p-4 pt-5 sm:p-6 md:p-8 md:pt-24">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200">
           <div>
-            <h1 className="text-3xl font-black text-school-blue">Super Admin Portal</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-school-blue">Super Admin Portal</h1>
             <p className="text-slate-500">Manage News, Notices, and Announcements</p>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold transition-colors">
+          <button onClick={handleLogout} className="flex w-full sm:w-auto justify-center items-center gap-2 text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold transition-colors">
             <LogOut size={20} /> Logout
           </button>
         </div>
