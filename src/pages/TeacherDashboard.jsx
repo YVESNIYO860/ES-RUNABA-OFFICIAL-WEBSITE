@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { schoolClassGroups } from '../utils/schoolClasses';
@@ -28,6 +28,7 @@ import {
 const TeacherDashboard = () => {
   const { user, siteContent, updateSiteContent } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isNavOpen, setIsNavOpen] = useState(false);
   
   // Data State
   const [students, setStudents] = useState([]);
@@ -85,11 +86,23 @@ const TeacherDashboard = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar sidebar */}
       <aside className="w-full shrink-0 bg-school-blue text-white flex flex-col pt-4 shadow-xl z-10 md:sticky md:top-0 md:w-64 md:pt-20 md:min-h-screen">
-        <div className="p-4 sm:p-6 border-b border-white/10">
-          <h2 className="text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
-          <p className="text-slate-300 text-sm mt-1">Portal | Welcome, {user.name}</p>
+        <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10">
+          <div className="min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
+            <p className="mt-1 truncate text-sm text-slate-300">Portal | Welcome, {user.name}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsNavOpen(open => !open)}
+            aria-label={isNavOpen ? 'Close dashboard menu' : 'Open dashboard menu'}
+            aria-expanded={isNavOpen}
+            aria-controls="teacher-dashboard-nav"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/20 text-white hover:bg-white/10 md:hidden"
+          >
+            {isNavOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
-        <nav className="flex gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex-1 md:flex-col md:overflow-visible md:pb-4">
+        <nav id="teacher-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex md:flex-1 md:flex-col md:overflow-visible md:pb-4`}>
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'attendance', label: 'Attendance', icon: CheckSquare },
@@ -108,7 +121,10 @@ const TeacherDashboard = () => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setIsNavOpen(false);
+              }}
               className={`flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm text-left transition-all md:w-full md:gap-3 md:px-4 md:py-3 ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
             >
               <tab.icon size={20} />
