@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, saveLearningRecord } from '../utils/elearningStore';
+import LearningDashboardFooter from '../components/LearningDashboardFooter';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
@@ -110,6 +111,7 @@ const StudentDashboard = () => {
             </aside>
 
              {/* Main Content */}
+            <div className="flex min-w-0 flex-1 flex-col">
             <main className="flex-1 w-full max-w-4xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
                     <motion.div
                         key={activeTab}
@@ -123,6 +125,8 @@ const StudentDashboard = () => {
                          {activeTab === 'profile' && <ProfileTab user={user} />}
                     </motion.div>
             </main>
+            <LearningDashboardFooter user={user} onLogout={logout} />
+            </div>
         </div>
     );
 };

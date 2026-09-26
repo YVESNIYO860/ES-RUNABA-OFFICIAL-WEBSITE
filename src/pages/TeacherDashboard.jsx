@@ -7,6 +7,7 @@ import { saveFirestoreDocument } from '../firebase';
 import { schoolClassGroups } from '../utils/schoolClasses';
 import { eLearningClassGroups } from '../utils/schoolClasses';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
+import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import {
   deleteLearningRecord,
   deleteProvisionedAccount,
@@ -26,7 +27,7 @@ import {
 } from '../utils/elearningStore';
 
 const TeacherDashboard = () => {
-  const { user, siteContent, updateSiteContent } = useAuth();
+  const { user, logout, siteContent, updateSiteContent } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [isNavOpen, setIsNavOpen] = useState(false);
   
@@ -135,6 +136,7 @@ const TeacherDashboard = () => {
       </aside>
 
       {/* Main Content */}
+      <div className="flex min-w-0 flex-1 flex-col">
       <main className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
         <motion.div
           key={activeTab}
@@ -154,6 +156,8 @@ const TeacherDashboard = () => {
             { activeTab === 'analytics' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
         </motion.div>
       </main>
+      <LearningDashboardFooter user={user} onLogout={logout} />
+      </div>
     </div>
   );
 };
