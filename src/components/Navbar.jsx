@@ -247,7 +247,7 @@ const Navbar = () => {
 
                 {!user ? (
                   <a
-                    href="/elearning-portal"
+                    href="/student-login"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-school-blue text-white px-4 xl:px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-school-blue/20 whitespace-nowrap"
@@ -352,7 +352,7 @@ const Navbar = () => {
                   {!user ? (
                     <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
                       <a
-                        href="/elearning-portal"
+                        href="/student-login"
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => setIsOpen(false)}

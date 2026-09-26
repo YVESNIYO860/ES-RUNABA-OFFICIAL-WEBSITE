@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 
 // Lazy loading or direct imports for pages
@@ -9,8 +9,6 @@ import Academics from './pages/Academics';
 import StudentLife from './pages/StudentLife';
 import Gallery from './pages/Gallery';
 import Contact from './pages/Contact';
-import Elearning from './pages/Elearning';
-import ElearningPortal from './pages/ElearningPortal';
 import TeacherLogin from './pages/TeacherLogin';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -54,8 +52,8 @@ function AppContent() {
           <Route path="news" element={<NewsAndNotices />} />
         </Route>
 
-        <Route path="elearning" element={<Elearning />} />
-        <Route path="elearning-portal" element={<ElearningPortal />} />
+        <Route path="elearning" element={<Navigate to="/student-login" replace />} />
+        <Route path="elearning-portal" element={<Navigate to="/student-login" replace />} />
         <Route path="student-login" element={<TeacherLogin initialRole="student" />} />
         <Route path="teacher-login" element={<TeacherLogin initialRole="teacher" />} />
         <Route path="dos-login" element={<TeacherLogin initialRole="dos" />} />

@@ -213,8 +213,8 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
               )}
 
               <div className="mt-5 flex flex-col gap-3 text-center text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                <Link to="/elearning-portal" className="font-semibold text-school-blue hover:text-blue-700">
-                  Back to class selection
+                <Link to="/" className="font-semibold text-school-blue hover:text-blue-700">
+                  Back to school website
                 </Link>
                 <span className="hidden sm:inline">Secure access for students and teachers.</span>
               </div>
