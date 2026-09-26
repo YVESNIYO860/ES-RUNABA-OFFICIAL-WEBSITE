@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, BookOpen, Lock, User } from 'lucide-react';
+import { BookOpen, Info, Lock, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
@@ -39,6 +39,10 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
 
       if (result.success) {
         navigate(role === 'student' ? '/student-dashboard' : '/teacher-dashboard');
+      } else if (!isSupabaseConfigured && result.error?.toLowerCase().includes('invalid')) {
+        setError('This deployment is using demo login. Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel to use Supabase accounts.');
+      } else if (isSupabaseConfigured && result.error === 'Invalid email or password.') {
+        setError('Those details did not match a Supabase Auth account. Check the email and password under Authentication > Users.');
       } else {
         setError(result.error);
       }
@@ -104,8 +108,8 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
               </div>
 
               {error && (
-                <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
-                  <AlertCircle size={18} />
+                <div role="alert" className="mb-5 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-5 text-sky-900">
+                  <Info size={18} className="mt-0.5 shrink-0 text-sky-700" />
                   {error}
                 </div>
               )}
