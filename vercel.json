@@ -1,5 +1,6 @@
 {
   "routes": [
+    { "src": "/api/elearning/users(?:\\.js)?", "dest": "/api/elearning/users.js" },
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
   ]

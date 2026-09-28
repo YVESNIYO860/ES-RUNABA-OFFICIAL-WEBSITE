@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X } from 'lucide-react';
+import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, saveLearningRecord } from '../utils/elearningStore';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
+import LearningContact from '../components/LearningContact';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
@@ -48,7 +49,14 @@ const StudentDashboard = () => {
                 if (!isActive) return;
                 setAssignments(allAssignments.filter(a => a.class === user.class));
                 setQuizzes(allQuizzes.filter(q => q.class === user.class));
-                setNotes(allNotes.filter(n => n.class === user.class));
+                setNotes(allNotes.filter(note => {
+                    const targetClasses = note.targetClasses || [];
+                    const targetStudentIds = note.targetStudentIds || [];
+                    if (targetClasses.length || targetStudentIds.length) {
+                        return targetClasses.includes(user.class) || targetStudentIds.includes(user.id);
+                    }
+                    return note.class === user.class;
+                }));
                 setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
                 setQuizResults(JSON.parse(localStorage.getItem('quiz_results_db') || '[]'));
             } catch (error) {
@@ -67,7 +75,7 @@ const StudentDashboard = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             {/* Sidebar */}
-            <aside className="w-full shrink-0 bg-slate-900 text-white flex flex-col pt-4 shadow-xl z-10 md:sticky md:top-0 md:w-64 md:pt-20 md:min-h-screen">
+            <aside className="z-10 flex w-full shrink-0 flex-col bg-slate-900 pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 text-left sm:p-6 md:flex-col md:text-center">
                     <div className="hidden h-20 w-20 bg-slate-800 rounded-full items-center justify-center mx-auto mb-4 border-2 border-school-green md:flex">
                         <UserCircle size={48} className="text-slate-400" />
@@ -88,12 +96,13 @@ const StudentDashboard = () => {
                         {isNavOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
                 </div>
-                <nav id="student-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex md:flex-1 md:flex-col md:overflow-visible md:pb-4`}>
+                <nav id="student-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} flex-col gap-1 border-t border-white/10 px-3 pb-4 pt-3 sm:px-4 md:flex md:flex-1 md:gap-2 md:overflow-visible md:border-0 md:pb-4 md:pt-2`}>
                     {[
                         { id: 'assignments', label: 'My Assignments', icon: BookOpen },
                         { id: 'quizzes', label: 'My Quizzes', icon: CheckSquare },
-                        { id: 'notes', label: 'My Notes', icon: FileText },
+                        { id: 'notes', label: 'My Lessons', icon: BookOpen },
                         { id: 'profile', label: 'Profile', icon: UserCircle },
+                        { id: 'contact', label: 'Contact', icon: MessageSquare },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -101,7 +110,7 @@ const StudentDashboard = () => {
                                 setActiveTab(tab.id);
                                 setIsNavOpen(false);
                             }}
-                            className={`flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm text-left transition-all md:w-full md:gap-3 md:px-4 md:py-3 ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors md:px-4 ${activeTab === tab.id ? 'bg-school-green font-medium text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
                         >
                             <tab.icon size={20} />
                             {tab.label}
@@ -112,7 +121,7 @@ const StudentDashboard = () => {
 
              {/* Main Content */}
             <div className="flex min-w-0 flex-1 flex-col">
-            <main className="flex-1 w-full max-w-4xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
+            <main className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8">
                     <motion.div
                         key={activeTab}
                         initial={{ opacity: 0, y: 10 }}
@@ -123,9 +132,10 @@ const StudentDashboard = () => {
                          {activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} quizResults={quizResults} setQuizResults={setQuizResults} user={user} />}
                          {activeTab === 'notes' && <NotesTab notes={notes} />}
                          {activeTab === 'profile' && <ProfileTab user={user} />}
+                         {activeTab === 'contact' && <LearningContact />}
                     </motion.div>
             </main>
-            <LearningDashboardFooter user={user} onLogout={logout} />
+            <LearningDashboardFooter user={user} onLogout={logout} onContact={() => setActiveTab('contact')} />
             </div>
         </div>
     );
@@ -425,8 +435,8 @@ const NotesTab = ({ notes }) => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-school-blue mb-8">My Notes & Resources</h2>
-            {notes.length === 0 && <p className="text-slate-500 bg-white p-8 rounded-xl text-center shadow-sm">No notes available for your class.</p>}
+            <h2 className="text-3xl font-bold text-school-blue mb-8">My Lessons & Resources</h2>
+            {notes.length === 0 && <p className="text-slate-500 bg-white p-8 rounded-xl text-center shadow-sm">No lessons available for your class.</p>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {notes.map(n => (

@@ -45,10 +45,16 @@ create table if not exists public.elearning_notes (
   description text not null default '',
   file_name text not null,
   file_path text not null unique,
+  target_classes text[] not null default '{}'::text[],
+  target_student_ids uuid[] not null default '{}'::uuid[],
   date_posted text not null default '',
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+alter table public.elearning_notes
+  add column if not exists target_classes text[] not null default '{}'::text[],
+  add column if not exists target_student_ids uuid[] not null default '{}'::uuid[];
 
 create table if not exists public.elearning_submissions (
   id text primary key,
@@ -140,6 +146,39 @@ as $$
   select coalesce((select is_admin from public.profiles where id = (select auth.uid())), false)
 $$;
 
+create or replace function public.rename_school_class(old_name text, new_name text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.current_user_role() not in ('teacher', 'dos') or not public.is_school_admin() then
+    raise exception 'Administrator access is required to rename classes.' using errcode = '42501';
+  end if;
+  if nullif(btrim(old_name), '') is null or nullif(btrim(new_name), '') is null then
+    raise exception 'Both class names are required.' using errcode = '22023';
+  end if;
+  if old_name = new_name then
+    return;
+  end if;
+
+  update public.profiles set class = new_name where role = 'student' and class = old_name;
+  update public.elearning_assignments set class = new_name where class = old_name;
+  update public.elearning_quizzes set class = new_name where class = old_name;
+  update public.elearning_notes
+    set class = case when class = old_name then new_name else class end,
+        target_classes = array_replace(target_classes, old_name, new_name)
+    where class = old_name or old_name = any(target_classes);
+  update public.attendance_records set class = new_name where class = old_name;
+  update public.elearning_submissions set class = new_name where class = old_name;
+  update public.elearning_quiz_results set class = new_name where class = old_name;
+end;
+$$;
+
+revoke all on function public.rename_school_class(text, text) from public;
+grant execute on function public.rename_school_class(text, text) to authenticated;
+
 create or replace function public.create_student_profile()
 returns trigger
 language plpgsql
@@ -150,7 +189,7 @@ begin
   insert into public.profiles (id, role, full_name, email, reg_number, class, start_year, is_admin)
   values (
     new.id,
-    case when lower(new.email) = 'yvesniyonkuru2022@gmail.com' then 'teacher' else 'student' end,
+    case when lower(new.email) = 'yvesniyonkuru2022@gmail.com' then 'dos' else 'student' end,
     coalesce(new.raw_user_meta_data ->> 'full_name', ''),
     new.email,
     new.raw_user_meta_data ->> 'reg_number',
@@ -169,7 +208,7 @@ create trigger on_auth_user_created_student_profile
   for each row execute procedure public.create_student_profile();
 
 update public.profiles
-set role = 'teacher', is_admin = true
+set role = 'dos', is_admin = true
 where lower(email) = 'yvesniyonkuru2022@gmail.com';
 
 alter table public.profiles enable row level security;
@@ -208,40 +247,49 @@ create policy "profiles_admin_manage" on public.profiles
 drop policy if exists "assignments_select_by_role" on public.elearning_assignments;
 create policy "assignments_select_by_role" on public.elearning_assignments
   for select to authenticated
-  using (public.current_user_role() = 'teacher' or class = public.current_student_class());
+  using (public.current_user_role() in ('teacher', 'dos') or class = public.current_student_class());
 
 drop policy if exists "assignments_teacher_manage" on public.elearning_assignments;
 create policy "assignments_teacher_manage" on public.elearning_assignments
   for all to authenticated
-  using (public.current_user_role() = 'teacher')
-  with check (public.current_user_role() = 'teacher');
+  using (public.current_user_role() in ('teacher', 'dos'))
+  with check (public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "quizzes_select_by_role" on public.elearning_quizzes;
 create policy "quizzes_select_by_role" on public.elearning_quizzes
   for select to authenticated
-  using (public.current_user_role() = 'teacher' or class = public.current_student_class());
+  using (public.current_user_role() in ('teacher', 'dos') or class = public.current_student_class());
 
 drop policy if exists "quizzes_teacher_manage" on public.elearning_quizzes;
 create policy "quizzes_teacher_manage" on public.elearning_quizzes
   for all to authenticated
-  using (public.current_user_role() = 'teacher')
-  with check (public.current_user_role() = 'teacher');
+  using (public.current_user_role() in ('teacher', 'dos'))
+  with check (public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "notes_select_by_role" on public.elearning_notes;
 create policy "notes_select_by_role" on public.elearning_notes
   for select to authenticated
-  using (public.current_user_role() = 'teacher' or class = public.current_student_class());
+  using (
+    public.current_user_role() in ('teacher', 'dos')
+    or (
+      cardinality(target_classes) = 0
+      and cardinality(target_student_ids) = 0
+      and class = public.current_student_class()
+    )
+    or public.current_student_class() = any(target_classes)
+    or (select auth.uid()) = any(target_student_ids)
+  );
 
 drop policy if exists "notes_teacher_manage" on public.elearning_notes;
 create policy "notes_teacher_manage" on public.elearning_notes
   for all to authenticated
-  using (public.current_user_role() = 'teacher')
-  with check (public.current_user_role() = 'teacher');
+  using (public.current_user_role() in ('teacher', 'dos'))
+  with check (public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "submissions_select_by_role" on public.elearning_submissions;
 create policy "submissions_select_by_role" on public.elearning_submissions
   for select to authenticated
-  using (public.current_user_role() = 'teacher' or student_id = (select auth.uid()));
+  using (public.current_user_role() in ('teacher', 'dos') or student_id = (select auth.uid()));
 
 drop policy if exists "submissions_students_insert_own" on public.elearning_submissions;
 create policy "submissions_students_insert_own" on public.elearning_submissions
@@ -251,13 +299,13 @@ create policy "submissions_students_insert_own" on public.elearning_submissions
 drop policy if exists "submissions_teacher_manage" on public.elearning_submissions;
 create policy "submissions_teacher_manage" on public.elearning_submissions
   for all to authenticated
-  using (public.current_user_role() = 'teacher')
-  with check (public.current_user_role() = 'teacher');
+  using (public.current_user_role() in ('teacher', 'dos'))
+  with check (public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "quiz_results_select_by_role" on public.elearning_quiz_results;
 create policy "quiz_results_select_by_role" on public.elearning_quiz_results
   for select to authenticated
-  using (public.current_user_role() = 'teacher' or student_id = (select auth.uid()));
+  using (public.current_user_role() in ('teacher', 'dos') or student_id = (select auth.uid()));
 
 drop policy if exists "quiz_results_students_insert_own" on public.elearning_quiz_results;
 create policy "quiz_results_students_insert_own" on public.elearning_quiz_results
@@ -267,8 +315,8 @@ create policy "quiz_results_students_insert_own" on public.elearning_quiz_result
 drop policy if exists "quiz_results_teacher_manage" on public.elearning_quiz_results;
 create policy "quiz_results_teacher_manage" on public.elearning_quiz_results
   for all to authenticated
-  using (public.current_user_role() = 'teacher')
-  with check (public.current_user_role() = 'teacher');
+  using (public.current_user_role() in ('teacher', 'dos'))
+  with check (public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "attendance_staff_manage_all_classes" on public.attendance_records;
 create policy "attendance_staff_manage_all_classes" on public.attendance_records
@@ -310,8 +358,8 @@ on conflict (id) do update set public = false;
 drop policy if exists "notes_storage_teacher_manage" on storage.objects;
 create policy "notes_storage_teacher_manage" on storage.objects
   for all to authenticated
-  using (bucket_id = 'elearning-notes' and public.current_user_role() = 'teacher')
-  with check (bucket_id = 'elearning-notes' and public.current_user_role() = 'teacher');
+  using (bucket_id = 'elearning-notes' and public.current_user_role() in ('teacher', 'dos'))
+  with check (bucket_id = 'elearning-notes' and public.current_user_role() in ('teacher', 'dos'));
 
 drop policy if exists "notes_storage_students_read_class_files" on storage.objects;
 create policy "notes_storage_students_read_class_files" on storage.objects
@@ -320,6 +368,15 @@ create policy "notes_storage_students_read_class_files" on storage.objects
     bucket_id = 'elearning-notes'
     and exists (
       select 1 from public.elearning_notes n
-      where n.file_path = name and n.class = public.current_student_class()
+      where n.file_path = name
+        and (
+          (
+            cardinality(n.target_classes) = 0
+            and cardinality(n.target_student_ids) = 0
+            and n.class = public.current_student_class()
+          )
+          or public.current_student_class() = any(n.target_classes)
+          or (select auth.uid()) = any(n.target_student_ids)
+        )
     )
   );

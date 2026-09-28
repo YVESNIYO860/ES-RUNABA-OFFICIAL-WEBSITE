@@ -7,7 +7,7 @@ const roleLabels = {
   dos: 'Director of Studies'
 };
 
-const LearningDashboardFooter = ({ user, onLogout }) => {
+const LearningDashboardFooter = ({ user, onLogout, onContact }) => {
   const displayName = user.fullName || user.name || user.email || 'User';
   const roleLabel = roleLabels[user.role] || 'Portal user';
   const classLabel = user.role === 'student' && user.class ? ` · ${user.class}` : '';
@@ -21,7 +21,7 @@ const LearningDashboardFooter = ({ user, onLogout }) => {
         </div>
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
           <a href="/" className="font-medium text-school-blue hover:text-school-green">School website</a>
-          <a href="/contact" className="font-medium text-school-blue hover:text-school-green">Contact</a>
+          <button type="button" onClick={onContact} className="font-medium text-school-blue hover:text-school-green">Contact</button>
           <button type="button" onClick={onLogout} className="inline-flex items-center gap-2 font-semibold text-slate-600 hover:text-red-600">
             <LogOut size={16} aria-hidden="true" />
             Sign out

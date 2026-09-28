@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
-import { schoolClassGroups } from '../utils/schoolClasses';
-import { eLearningClassGroups } from '../utils/schoolClasses';
+import { getSchoolClassGroups } from '../utils/schoolClasses';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
+import LearningContact from '../components/LearningContact';
 import {
   deleteLearningRecord,
   deleteProvisionedAccount,
@@ -19,6 +19,7 @@ import {
   loadProfiles,
   mapSupabaseProfile,
   provisionAccount,
+  renameSchoolClass,
   removeLearningNoteFile,
   saveLearningRecord,
   saveAttendanceRecords,
@@ -28,6 +29,9 @@ import {
 
 const TeacherDashboard = () => {
   const { user, logout, siteContent, updateSiteContent } = useAuth();
+  const customClasses = siteContent?.general?.customClasses || [];
+  const classRenames = siteContent?.general?.classRenames || {};
+  const classGroups = getSchoolClassGroups(customClasses, classRenames);
   const [activeTab, setActiveTab] = useState('overview');
   const [isNavOpen, setIsNavOpen] = useState(false);
   
@@ -50,8 +54,6 @@ const TeacherDashboard = () => {
           if (!isActive) return;
           setStudents(studentRecords);
           setEvents(eventRecords);
-          if (user.role === 'dos') return;
-
           const [assignmentRecords, quizRecords, noteRecords] = await Promise.all([
             loadLearningRecords('assignments'),
             loadLearningRecords('quizzes'),
@@ -86,7 +88,7 @@ const TeacherDashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar sidebar */}
-      <aside className="w-full shrink-0 bg-school-blue text-white flex flex-col pt-4 shadow-xl z-10 md:sticky md:top-0 md:w-64 md:pt-20 md:min-h-screen">
+      <aside className="z-10 flex w-full shrink-0 flex-col bg-school-blue pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
         <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10">
           <div className="min-w-0">
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
@@ -103,22 +105,24 @@ const TeacherDashboard = () => {
             {isNavOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-        <nav id="teacher-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} gap-2 overflow-x-auto px-3 pb-3 sm:px-4 md:flex md:flex-1 md:flex-col md:overflow-visible md:pb-4`}>
+        <nav id="teacher-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} flex-col gap-1 border-t border-white/10 px-3 pb-4 pt-3 sm:px-4 md:flex md:flex-1 md:gap-2 md:overflow-visible md:border-0 md:pb-4 md:pt-2`}>
           {[
             { id: 'overview', label: 'Overview', icon: LayoutDashboard },
             { id: 'attendance', label: 'Attendance', icon: CheckSquare },
-            ...(user.role === 'teacher' ? [
+            ...(['teacher', 'dos'].includes(user.role) ? [
               { id: 'students', label: 'Students', icon: Users },
               { id: 'assignments', label: 'Assignments', icon: FileText },
               { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
-              { id: 'notes', label: 'Notes & Resources', icon: FileUp }
+              { id: 'notes', label: user.role === 'dos' ? 'Lessons' : 'Lessons & Resources', icon: FileUp }
             ] : []),
             ...(user.isAdmin ? [
               { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
+              { id: 'classes', label: 'Classes', icon: Users },
               { id: 'site-editor', label: 'Site Designer', icon: Globe },
               { id: 'staff', label: 'Staff Management', icon: Shield },
               { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
             ] : []),
+            { id: 'contact', label: 'Contact', icon: MessageSquare },
           ].map(tab => (
             <button
               key={tab.id}
@@ -126,7 +130,7 @@ const TeacherDashboard = () => {
                 setActiveTab(tab.id);
                 setIsNavOpen(false);
               }}
-              className={`flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm text-left transition-all md:w-full md:gap-3 md:px-4 md:py-3 ${activeTab === tab.id ? 'bg-school-green text-white font-medium' : 'hover:bg-white/10 text-slate-300'}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors md:px-4 ${activeTab === tab.id ? 'bg-school-green font-medium text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
             >
               <tab.icon size={20} />
               {tab.label}
@@ -137,7 +141,7 @@ const TeacherDashboard = () => {
 
       {/* Main Content */}
       <div className="flex min-w-0 flex-1 flex-col">
-      <main className="flex-1 w-full max-w-6xl mx-auto overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8 md:pt-24">
+      <main className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 10 }}
@@ -145,18 +149,29 @@ const TeacherDashboard = () => {
           transition={{ duration: 0.2 }}
         >
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
-            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} />}
-            {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} />}
-            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} /> }
-            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} /> }
+            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={classGroups} />}
+            {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} />}
+            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} classGroups={classGroups} /> }
+            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} /> }
+            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} students={students} classGroups={classGroups} /> }
+            { activeTab === 'classes' && <ClassesTab classGroups={classGroups} customClasses={customClasses} classRenames={classRenames} siteContent={siteContent} updateSiteContent={updateSiteContent} onClassRenamed={(oldName, newName) => {
+              setStudents(current => current.map(student => student.class === oldName ? { ...student, class: newName } : student));
+              setAssignments(current => current.map(assignment => assignment.class === oldName ? { ...assignment, class: newName } : assignment));
+              setQuizzes(current => current.map(quiz => quiz.class === oldName ? { ...quiz, class: newName } : quiz));
+              setNotes(current => current.map(note => ({
+                ...note,
+                class: note.class === oldName ? newName : note.class,
+                targetClasses: note.targetClasses?.map(className => className === oldName ? newName : className) || []
+              })));
+            }} /> }
             { activeTab === 'events' && <EventsTab events={events} setEvents={setEvents} user={user} /> }
             { activeTab === 'site-editor' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
             { activeTab === 'staff' && <StaffTab /> }
             { activeTab === 'analytics' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
+            { activeTab === 'contact' && <LearningContact /> }
         </motion.div>
       </main>
-      <LearningDashboardFooter user={user} onLogout={logout} />
+      <LearningDashboardFooter user={user} onLogout={logout} onContact={() => setActiveTab('contact')} />
       </div>
     </div>
   );
@@ -164,7 +179,106 @@ const TeacherDashboard = () => {
 
 // --- TABS ---
 
-const AttendanceTab = ({ students, user }) => {
+const ClassesTab = ({ classGroups, customClasses, classRenames, siteContent, updateSiteContent, onClassRenamed }) => {
+  const [newClassName, setNewClassName] = useState('');
+  const [editingClass, setEditingClass] = useState('');
+  const [editingName, setEditingName] = useState('');
+  const [error, setError] = useState('');
+  const classNames = classGroups.flatMap(group => group.options.map(option => option.value));
+
+  const saveCustomClasses = async (nextClasses) => {
+    await updateSiteContent({
+      ...siteContent,
+      general: { ...siteContent.general, customClasses: nextClasses }
+    });
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    const name = newClassName.trim();
+    if (!name) return;
+    if (classNames.some(className => className.toLowerCase() === name.toLowerCase())) {
+      setError('That class already exists.');
+      return;
+    }
+
+    try {
+      await saveCustomClasses([...customClasses, name]);
+      setNewClassName('');
+      setError('');
+    } catch (saveError) {
+      setError(saveError.message || 'Could not create the class.');
+    }
+  };
+
+  const handleRename = async (event) => {
+    event.preventDefault();
+    const name = editingName.trim();
+    if (!name || !editingClass) return;
+    if (classNames.some(className => className !== editingClass && className.toLowerCase() === name.toLowerCase())) {
+      setError('That class already exists.');
+      return;
+    }
+
+    try {
+      await renameSchoolClass(editingClass, name);
+      const nextCustomClasses = customClasses.map(className => className === editingClass ? name : className);
+      const nextClassRenames = { ...classRenames };
+      const originalName = Object.entries(classRenames).find(([, currentName]) => currentName === editingClass)?.[0] || editingClass;
+      Object.keys(nextClassRenames).forEach(sourceName => {
+        if (nextClassRenames[sourceName] === editingClass) nextClassRenames[sourceName] = name;
+      });
+      if (!customClasses.includes(editingClass)) nextClassRenames[originalName] = name;
+      await updateSiteContent({
+        ...siteContent,
+        general: { ...siteContent.general, customClasses: nextCustomClasses, classRenames: nextClassRenames }
+      });
+      onClassRenamed(editingClass, name);
+      setEditingClass('');
+      setEditingName('');
+      setError('');
+    } catch (saveError) {
+      setError(saveError.message || 'Could not update the class.');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-school-blue">Classes</h2>
+        <p className="mt-1 text-sm text-slate-600">Add classes or rename custom classes. Renaming updates enrolled students and their learning records.</p>
+      </div>
+
+      <form onSubmit={handleCreate} className="flex flex-col gap-3 border-y border-slate-200 bg-white py-4 sm:flex-row">
+        <input value={newClassName} onChange={event => setNewClassName(event.target.value)} aria-label="New class name" placeholder="New class name" className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+        <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2"><Plus size={18} /> Add class</button>
+      </form>
+
+      {error && <p role="alert" className="text-sm font-medium text-red-600">{error}</p>}
+
+      <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+        {classGroups.flatMap(group => group.options.map(option => (
+          <div key={option.value} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            {editingClass === option.value ? (
+              <form onSubmit={handleRename} className="flex min-w-0 flex-1 flex-wrap gap-2">
+                <input autoFocus value={editingName} onChange={event => setEditingName(event.target.value)} aria-label={`Rename ${option.label}`} className="min-w-[12rem] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <button type="submit" className="font-semibold text-school-blue hover:text-school-green">Save</button>
+                <button type="button" onClick={() => setEditingClass('')} className="font-medium text-slate-500 hover:text-slate-800">Cancel</button>
+              </form>
+            ) : (
+              <>
+                <span className="min-w-0 truncate text-sm font-medium text-slate-800">{option.label}</span>
+                <button type="button" onClick={() => { setEditingClass(option.value); setEditingName(option.value); setError(''); }} className="font-semibold text-school-blue hover:text-school-green">Rename</button>
+              </>
+            )}
+          </div>
+        )))}
+      </div>
+    </div>
+  );
+};
+
+const AttendanceTab = ({ students, user, classGroups }) => {
   const [selectedClass, setSelectedClass] = useState('');
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [statusByStudent, setStatusByStudent] = useState({});
@@ -268,7 +382,7 @@ const AttendanceTab = ({ students, user }) => {
           <label htmlFor="attendance-class" className="mb-1.5 block text-sm font-semibold text-slate-700">Class</label>
           <select id="attendance-class" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm">
             <option value="">Choose a class</option>
-            {schoolClassGroups.map((group) => (
+            {classGroups.map((group) => (
               <optgroup key={group.label} label={group.label}>
                 {group.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </optgroup>
@@ -356,7 +470,7 @@ const OverviewTab = ({ students, assignments, quizzes }) => (
   </div>
 );
 
-const StudentsTab = ({ students, setStudents }) => {
+const StudentsTab = ({ students, setStudents, classGroups }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState(() => ({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() }));
   const registrationPreview = generateStudentRegistrationNumber(formData.fullName, formData.startYear, students);
@@ -437,7 +551,7 @@ const StudentsTab = ({ students, setStudents }) => {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Class</label>
               <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                {schoolClassGroups.map((group) => (
+                {classGroups.map((group) => (
                   <optgroup key={group.label} label={group.label}>
                     {group.options.map((classOption) => (
                       <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
@@ -492,7 +606,7 @@ const StudentsTab = ({ students, setStudents }) => {
   );
 };
 
-const AssignmentsTab = ({ assignments, setAssignments, user }) => {
+const AssignmentsTab = ({ assignments, setAssignments, user, classGroups }) => {
    const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
 
@@ -558,7 +672,7 @@ const AssignmentsTab = ({ assignments, setAssignments, user }) => {
              <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Target Class</label>
               <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                {schoolClassGroups.map((group) => (
+                {classGroups.map((group) => (
                   <optgroup key={group.label} label={group.label}>
                     {group.options.map((classOption) => (
                       <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
@@ -599,7 +713,7 @@ const AssignmentsTab = ({ assignments, setAssignments, user }) => {
   );
 };
 
-const QuizzesTab = ({ quizzes, setQuizzes, user }) => {
+const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '' });
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
@@ -669,7 +783,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, user }) => {
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
                     <input type="text" placeholder="Subject" value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded" />
                     <select value={formData.class} onChange={e=>setFormData({...formData, class: e.target.value})} className="border p-2 rounded">
-                        {schoolClassGroups.map((group) => (
+                        {classGroups.map((group) => (
                           <optgroup key={group.label} label={group.label}>
                             {group.options.map((classOption) => (
                               <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
@@ -752,12 +866,14 @@ const QuizzesTab = ({ quizzes, setQuizzes, user }) => {
   );
 }
 
-const NotesTab = ({ notes, setNotes, user }) => {
+const NotesTab = ({ notes, setNotes, user, students, classGroups }) => {
     const [showAdd, setShowAdd] = useState(false);
-    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
+  const [editingNote, setEditingNote] = useState(null);
+    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
     const [fileData, setFileData] = useState(null);
     const [fileName, setFileName] = useState('');
     const [error, setError] = useState('');
+    const [studentSearch, setStudentSearch] = useState('');
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -785,53 +901,101 @@ const NotesTab = ({ notes, setNotes, user }) => {
         reader.readAsDataURL(file);
     };
 
+    const resetEditor = () => {
+        setShowAdd(false);
+        setEditingNote(null);
+        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
+        setFileData(null);
+        setFileName('');
+        setStudentSearch('');
+        setError('');
+    };
+
+    const handleEdit = (note) => {
+        setEditingNote(note);
+        setShowAdd(true);
+        setFormData({
+            title: note.title || '',
+            class: note.class || 'Senior 4 Stream 1',
+            subject: note.subject || '',
+            description: note.description || '',
+            targetClasses: note.targetClasses?.length ? note.targetClasses : (note.targetStudentIds?.length ? [] : [note.class]),
+            targetStudentIds: note.targetStudentIds || []
+        });
+        setFileData(null);
+        setFileName(note.fileName || '');
+        setStudentSearch('');
+        setError('');
+    };
+
+      const openNewNote = () => {
+        setEditingNote(null);
+        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
+        setFileData(null);
+        setFileName('');
+        setStudentSearch('');
+        setError('');
+        setShowAdd(true);
+      };
+
     const handleAdd = async (e) => {
         e.preventDefault();
-        if (!fileData) return alert("Please select a valid file under 1.5MB");
+        if (!fileData && !editingNote) return alert("Please select a valid file under 1.5MB");
 
       if (isSupabaseConfigured) {
-        const noteId = Date.now().toString();
+        const noteId = editingNote?.id || Date.now().toString();
         let uploadedFilePath = '';
+        let newUploadPath = '';
         try {
-          uploadedFilePath = await uploadLearningNote(fileData, formData.class, noteId);
+          uploadedFilePath = editingNote?.filePath || '';
+          if (fileData) {
+            const uploadId = editingNote ? `${noteId}-${Date.now()}` : noteId;
+            newUploadPath = await uploadLearningNote(fileData, formData.targetClasses[0] || 'selected-students', uploadId);
+            uploadedFilePath = newUploadPath;
+          }
           const savedNote = await saveLearningRecord('notes', {
             ...formData,
+            class: formData.targetClasses[0] || 'Selected students',
             id: noteId,
-            fileName,
+            fileName: fileData ? fileName : editingNote.fileName,
             filePath: uploadedFilePath,
-            datePosted: new Date().toLocaleDateString()
+            datePosted: editingNote?.datePosted || new Date().toLocaleDateString()
           }, user);
-          setNotes(current => [...current, savedNote]);
-          setShowAdd(false);
-          setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
-          setFileData(null);
-          setFileName('');
+          setNotes(current => editingNote
+            ? current.map(note => note.id === editingNote.id ? savedNote : note)
+            : [...current, savedNote]);
+          if (newUploadPath && editingNote?.filePath && editingNote.filePath !== newUploadPath) {
+            await removeLearningNoteFile(editingNote.filePath).catch(() => {});
+          }
+          resetEditor();
         } catch (uploadError) {
-          if (uploadedFilePath) await removeLearningNoteFile(uploadedFilePath).catch(() => {});
+          if (newUploadPath) await removeLearningNoteFile(newUploadPath).catch(() => {});
           alert(uploadError.message || 'Could not save the note.');
         }
         return;
       }
 
         const newNote = {
-            id: Date.now().toString(),
+            ...editingNote,
+            id: editingNote?.id || Date.now().toString(),
             title: formData.title,
             subject: formData.subject,
-            class: formData.class,
+            class: formData.targetClasses[0] || 'Selected students',
             description: formData.description,
-            fileName: fileName,
-            fileData: fileData,
-            datePosted: new Date().toLocaleDateString()
+            targetClasses: formData.targetClasses,
+            targetStudentIds: formData.targetStudentIds,
+            fileName: fileData ? fileName : editingNote?.fileName || fileName,
+            fileData: fileData || editingNote?.fileData,
+            datePosted: editingNote?.datePosted || new Date().toLocaleDateString()
         };
 
-        const updated = [...notes, newNote];
+        const updated = editingNote
+            ? notes.map(note => note.id === editingNote.id ? newNote : note)
+            : [...notes, newNote];
         try {
             localStorage.setItem('notes_db', JSON.stringify(updated));
             setNotes(updated);
-            setShowAdd(false);
-            setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '' });
-            setFileData(null);
-            setFileName('');
+            resetEditor();
         } catch (err) {
             alert("Storage quota exceeded! The file might be too large for local storage.");
         }
@@ -858,15 +1022,15 @@ const NotesTab = ({ notes, setNotes, user }) => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-school-blue">Notes & Resources</h2>
-                <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
-                    {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Upload File'}
+                <h2 className="text-3xl font-bold text-school-blue">{user.role === 'dos' ? 'Lessons' : 'Lessons & Resources'}</h2>
+                <button type="button" onClick={showAdd ? resetEditor : openNewNote} className="btn-secondary flex items-center gap-2">
+                  {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : user.role === 'dos' ? 'Add Lesson' : 'Upload File'}
                 </button>
             </div>
 
             {showAdd && (
                 <form onSubmit={handleAdd} className="card bg-white p-6 mb-8 border-2 border-school-blue/20">
-                    <h3 className="text-xl font-bold mb-4">Upload New Material</h3>
+                    <h3 className="text-xl font-bold mb-4">{editingNote ? 'Update Lesson' : user.role === 'dos' ? 'Add Lesson' : 'Upload New Material'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -876,21 +1040,76 @@ const NotesTab = ({ notes, setNotes, user }) => {
                             <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
                             <input required type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. Physics" />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Target Class</label>
-                            <select value={formData.class} onChange={e => setFormData({...formData, class: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
-                                {schoolClassGroups.map((group) => (
-                                  <optgroup key={group.label} label={group.label}>
-                                    {group.options.map((classOption) => (
-                                      <option key={classOption.value} value={classOption.value}>{classOption.label}</option>
-                                    ))}
-                                  </optgroup>
+                        <div className="md:col-span-2">
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <label className="block text-sm font-medium text-slate-700">Target Classes</label>
+                              <p className="text-xs text-slate-500">Choose one or more classes for this lesson.</p>
+                            </div>
+                            <div className="flex gap-3 text-sm">
+                              <button type="button" onClick={() => setFormData(current => ({ ...current, targetClasses: classGroups.flatMap(group => group.options.map(classOption => classOption.value)) }))} className="font-medium text-school-blue hover:text-school-green">Select all</button>
+                              <button type="button" onClick={() => setFormData(current => ({ ...current, targetClasses: [] }))} className="font-medium text-slate-500 hover:text-slate-800">Clear</button>
+                            </div>
+                          </div>
+                          <div className="grid max-h-56 grid-cols-1 gap-3 overflow-y-auto rounded-md border border-slate-200 bg-white p-3 sm:grid-cols-2">
+                            {classGroups.map(group => (
+                              <fieldset key={group.label} className="space-y-1">
+                                <legend className="mb-1 text-xs font-bold uppercase text-slate-500">{group.label}</legend>
+                                {group.options.map(classOption => (
+                                  <label key={classOption.value} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 text-sm hover:bg-slate-50">
+                                    <input
+                                      type="checkbox"
+                                      checked={formData.targetClasses.includes(classOption.value)}
+                                      onChange={event => setFormData(current => ({
+                                        ...current,
+                                        targetClasses: event.target.checked
+                                          ? [...current.targetClasses, classOption.value]
+                                          : current.targetClasses.filter(className => className !== classOption.value)
+                                      }))}
+                                    />
+                                    {classOption.label}
+                                  </label>
                                 ))}
-                            </select>
+                              </fieldset>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Assign to specific students (optional)</label>
+                            <input
+                                type="search"
+                                value={studentSearch}
+                                onChange={e => setStudentSearch(e.target.value)}
+                                placeholder="Search by student, registration number, or class"
+                                className="mb-2 w-full border border-slate-300 rounded-md p-2"
+                            />
+                            <div className="max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white p-2">
+                                {students
+                                  .filter(student => `${student.fullName || student.name || ''} ${student.regNumber || ''} ${student.class || ''}`.toLowerCase().includes(studentSearch.trim().toLowerCase()))
+                                  .map(student => (
+                                    <label key={student.id} className="flex cursor-pointer items-center gap-3 rounded px-2 py-2 text-sm hover:bg-slate-50">
+                                      <input
+                                        type="checkbox"
+                                        checked={formData.targetStudentIds.includes(student.id)}
+                                        onChange={event => setFormData(current => ({
+                                          ...current,
+                                          targetStudentIds: event.target.checked
+                                            ? [...current.targetStudentIds, student.id]
+                                            : current.targetStudentIds.filter(id => id !== student.id)
+                                        }))}
+                                      />
+                                      <span className="min-w-0 flex-1 truncate">{student.fullName || student.name} <span className="text-slate-500">({student.class})</span></span>
+                                      <span className="shrink-0 font-mono text-xs text-slate-500">{student.regNumber}</span>
+                                    </label>
+                                  ))}
+                                {students.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Add students first to assign this lesson individually.</p>}
+                            </div>
+                            <p className="mt-1 text-xs text-slate-500">{formData.targetClasses.length || formData.targetStudentIds.length ? `Selected ${formData.targetClasses.length} class${formData.targetClasses.length === 1 ? '' : 'es'} and ${formData.targetStudentIds.length} individual student${formData.targetStudentIds.length === 1 ? '' : 's'}.` : 'Select at least one class or student.'}</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">File (PDF, DOCX) - Max 1.5MB</label>
-                            <input required type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} className="w-full border border-slate-300 rounded-md p-1.5 text-sm" />
+                            {editingNote && <p className="mb-1 text-xs text-slate-500">Current file: {editingNote.fileName}. Select a file only to replace it.</p>}
+                            <input required={!editingNote} type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} className="w-full border border-slate-300 rounded-md p-1.5 text-sm" />
                             {error && <p className="text-red-500 text-xs mt-1 font-bold">{error}</p>}
                         </div>
                         <div className="md:col-span-2">
@@ -898,7 +1117,7 @@ const NotesTab = ({ notes, setNotes, user }) => {
                              <textarea rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-slate-300 rounded-md p-2"></textarea>
                         </div>
                     </div>
-                    <button type="submit" disabled={!fileData || error} className="btn-primary mt-4 flex items-center gap-2 disabled:opacity-50"><FileUp size={18} /> Upload Resource</button>
+                    <button type="submit" disabled={(!fileData && !editingNote) || error || (!formData.targetClasses.length && !formData.targetStudentIds.length)} className="btn-primary mt-4 flex items-center gap-2 disabled:opacity-50"><FileUp size={18} /> {editingNote ? 'Save Changes' : user.role === 'dos' ? 'Add Lesson' : 'Upload Resource'}</button>
                 </form>
             )}
 
@@ -906,11 +1125,14 @@ const NotesTab = ({ notes, setNotes, user }) => {
                 {notes.length === 0 && <p className="text-slate-500">No notes uploaded yet.</p>}
                 {notes.map(n => (
                     <div key={n.id} className="card relative border-t-4 border-t-blue-500 flex flex-col">
-                        <button onClick={() => handleDelete(n.id)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+                        <div className="absolute right-4 top-4 flex gap-2">
+                          <button type="button" onClick={() => handleEdit(n)} className="inline-flex items-center gap-1 text-sm font-semibold text-school-blue hover:text-school-green" title="Edit lesson"><Edit3 size={16} /> Edit</button>
+                          <button type="button" onClick={() => handleDelete(n.id)} className="text-slate-400 hover:text-red-500" title="Delete lesson"><Trash2 size={18}/></button>
+                        </div>
                         <h3 className="font-bold text-lg mb-1">{n.title}</h3>
                         <div className="flex gap-2 text-xs font-semibold mb-3">
                             <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{n.subject}</span>
-                            <span className="bg-blue-500/10 text-blue-600 px-2 py-1 rounded">{n.class}</span>
+                            <span title={n.targetClasses?.join(', ')} className="max-w-full truncate bg-blue-500/10 px-2 py-1 text-blue-600 rounded">{n.targetClasses?.length ? `${n.targetClasses.join(', ')}${n.targetStudentIds?.length ? ` + ${n.targetStudentIds.length} students` : ''}` : n.targetStudentIds?.length ? `${n.targetStudentIds.length} selected students` : n.class}</span>
                         </div>
                         <p className="text-slate-600 text-sm mb-4 line-clamp-2">{n.description}</p>
                         

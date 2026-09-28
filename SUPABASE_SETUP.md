@@ -10,6 +10,8 @@ In the Supabase dashboard, open **SQL Editor**, create a query, paste the comple
 
 The SQL Editor path does not require a database password or CLI login.
 
+Re-run the complete `supabase/schema.sql` in SQL Editor after pulling schema updates. It updates existing profiles and policies as well as adding new columns.
+
 ### Optional CLI linking
 
 The local CLI was initialized with `supabase init`. To link it, run these commands from the repository root:
@@ -25,11 +27,11 @@ When `supabase login` prompts, enter a personal access token from your Supabase 
 
 In **Authentication → Providers**, enable Email/password sign-in. In **Authentication → Settings**, disable public sign-ups so accounts can only be provisioned by authorized staff.
 
-Create the first Auth user with the email `yvesniyonkuru2022@gmail.com` and a strong password. The schema trigger gives that exact email the `teacher` role and `is_admin = true`. If that Auth user already existed before running the schema, run this once in SQL Editor:
+Create the first Auth user with the email `yvesniyonkuru2022@gmail.com` and a strong password. The schema trigger gives that exact email the `dos` role and `is_admin = true`. If that Auth user already existed before running the schema, run this once in SQL Editor:
 
 ```sql
 update public.profiles
-set role = 'teacher', is_admin = true
+set role = 'dos', is_admin = true
 where lower(email) = 'yvesniyonkuru2022@gmail.com';
 ```
 

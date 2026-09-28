@@ -26,3 +26,24 @@ export const schoolClassGroups = [
 ];
 
 export const eLearningClassGroups = schoolClassGroups.filter((group) => !group.label.toLowerCase().includes('legacy'));
+
+export const getSchoolClassGroups = (additionalClasses = [], classRenames = {}) => {
+  const groups = schoolClassGroups.map(group => ({
+    ...group,
+    options: group.options.map(option => {
+      const value = classRenames[option.value] || option.value;
+      return { ...option, value, label: value === option.value ? option.label : value };
+    })
+  }));
+  const existingClasses = new Set(groups.flatMap(group => group.options.map(option => option.value)));
+  const additionalOptions = [...new Set(additionalClasses.map(value => String(value).trim()).filter(Boolean))]
+    .filter(value => !existingClasses.has(value))
+    .map(value => ({ value, label: value }));
+
+  return additionalOptions.length
+    ? [...groups, { label: 'Additional Classes', options: additionalOptions }]
+    : groups;
+};
+
+export const getELearningClassGroups = (additionalClasses = [], classRenames = {}) =>
+  getSchoolClassGroups(additionalClasses, classRenames).filter(group => !group.label.toLowerCase().includes('legacy'));

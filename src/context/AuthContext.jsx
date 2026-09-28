@@ -68,6 +68,8 @@ export const AuthProvider = ({ children }) => {
             location: "Burera, Butaro, Rwanda",
             mapCoords: "Runaba Sector, Burera District"
           },
+          customClasses: [],
+          classRenames: {},
           announcement: {
             text: "Welcome to the official ES RUNABA website! We are dedicated to excellence in education.",
             isActive: true
@@ -275,6 +277,10 @@ export const AuthProvider = ({ children }) => {
     if (profileError || profile.role !== 'student') {
       await supabase.auth.signOut();
       return { success: false, error: 'This account is not registered for student access.' };
+    }
+    if (selectedClass && profile.class !== selectedClass) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'The selected class does not match this student account.' };
     }
 
     setUser(mapProfileToUser(profile));

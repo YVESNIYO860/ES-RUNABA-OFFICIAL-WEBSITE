@@ -4,7 +4,7 @@ import { BookOpen, Info, Lock, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
-import { eLearningClassGroups } from '../utils/schoolClasses';
+import { getELearningClassGroups } from '../utils/schoolClasses';
 import { isSupabaseConfigured } from '../supabase';
 
 const TeacherLogin = ({ initialRole = 'student' }) => {
@@ -18,6 +18,7 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { loginTeacher, loginDos, loginStudent, siteContent } = useAuth();
+  const classGroups = getELearningClassGroups(siteContent?.general?.customClasses || [], siteContent?.general?.classRenames || {});
   const navigate = useNavigate();
   const branding = siteContent?.general || { schoolName: 'ES RUNABA', motto: "HUMILITY, UNITY, GOD'S LOVE" };
   const handleSubmit = async (e) => {
@@ -169,7 +170,7 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
                         className="w-full rounded-3xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-school-blue focus:ring-2 focus:ring-school-blue/20"
                       >
                         <option value="">Select your class</option>
-                        {eLearningClassGroups.map((group) => (
+                        {classGroups.map((group) => (
                           <optgroup key={group.label} label={group.label}>
                             {group.options.map((item) => (
                               <option key={item.value} value={item.value}>{item.label}</option>

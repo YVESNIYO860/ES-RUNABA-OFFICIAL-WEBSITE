@@ -18,7 +18,7 @@ export default async function handler(request, response) {
     const body = request.body || {};
     if (request.method === 'POST') {
       if (body.type === 'student') {
-        if (requester.role !== 'teacher') return sendError(response, 403, 'Teacher access is required.');
+        if (!['teacher', 'dos'].includes(requester.role)) return sendError(response, 403, 'Staff access is required.');
         const fullName = String(body.fullName || '').trim();
         const className = String(body.class || '').trim();
         const startYear = Number(body.startYear);
@@ -62,7 +62,7 @@ export default async function handler(request, response) {
       }
 
       if (body.type === 'teacher' || body.type === 'dos') {
-        if (requester.role !== 'teacher' || !requester.is_admin) {
+        if (!['teacher', 'dos'].includes(requester.role) || !requester.is_admin) {
           return sendError(response, 403, 'Administrator access is required to register staff.');
         }
         const { fullName, email, username, password, subject, isAdmin = false } = body;
@@ -103,7 +103,7 @@ export default async function handler(request, response) {
 
     const profileId = String(body.id || '');
     if (!profileId) return sendError(response, 400, 'A profile ID is required.');
-    if (requester.role !== 'teacher') return sendError(response, 403, 'Teacher access is required.');
+    if (!['teacher', 'dos'].includes(requester.role)) return sendError(response, 403, 'Staff access is required.');
 
     const { data: target, error: targetError } = await admin
       .from('profiles')
