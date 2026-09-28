@@ -13,7 +13,7 @@ const teachersData = [
     level: 'O-Level',
     phone: '+250 783 883 046',
     bio: 'Dedicated to simplifying complex mathematical concepts and driving digital literacy.',
-    image: '/slide_lab.png'
+    image: ''
   },
   {
     name: 'Mrs. UWIMANA Diane',
@@ -22,7 +22,7 @@ const teachersData = [
     level: 'A-Level',
     phone: '+250 783 883 112',
     bio: 'Fostering a deep appreciation for the biological sciences and laboratory research.',
-    image: '/slide_campus.png'
+    image: ''
   },
   {
     name: 'Mr. NSHIMIYIMANA Eric',
@@ -31,7 +31,7 @@ const teachersData = [
     level: 'A-Level',
     phone: '+250 783 883 055',
     bio: 'Expert in environmental science and physics methodology with over a decade of mentorship.',
-    image: '/slide_sports.png'
+    image: ''
   },
   {
     name: 'Ms. MUKAMANA Solange',
@@ -40,7 +40,7 @@ const teachersData = [
     level: 'O-Level',
     phone: '+250 783 883 099',
     bio: 'Passionate about communication skills and empowering students with business mindsets.',
-    image: '/slide_graduation.png'
+    image: ''
   }
 ];
 
@@ -352,23 +352,38 @@ const About = () => {
               >
                 {/* Image Container */}
                 <div className="relative aspect-[4/5] overflow-hidden">
-                  <img 
-                    src={teacher.image} 
-                    alt={teacher.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                    <p className="text-white text-xs font-light italic leading-relaxed">"{teacher.bio}"</p>
+                  {teacher.image ? (
+                    <img
+                      src={teacher.image}
+                      alt={teacher.name}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div role="img" aria-label={`${teacher.name} portrait placeholder`} className="flex h-full w-full flex-col items-center justify-center bg-[#eef4f1]">
+                      <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-school-blue text-3xl font-black text-white shadow-lg ring-4 ring-school-green/20">
+                        {teacher.name.split(/\s+/).filter(part => !['Mr.', 'Mrs.', 'Ms.'].includes(part)).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
+                      </div>
+                      <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Portrait placeholder</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 flex items-end bg-gradient-to-t from-slate-900/90 via-slate-900/10 to-transparent p-6">
+                    <div>
+                      <p className="text-lg font-bold leading-tight text-white">{teacher.name}</p>
+                      <p className="mt-1 text-xs font-semibold text-white/75">{teacher.level}</p>
+                    </div>
+                  </div>
+                  <div className="absolute inset-0 flex items-end bg-slate-900/85 p-6 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div>
+                      <p className="mb-2 font-bold text-white">{teacher.name}</p>
+                      <p className="text-xs font-light italic leading-relaxed text-white/90">"{teacher.bio}"</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-8 flex flex-col flex-grow">
                   <div className="mb-4">
-                    <div className="flex justify-between items-start mb-2">
-                       <h3 className="text-xl font-bold text-slate-800 leading-tight">{teacher.name}</h3>
-                       <p className="text-sm font-semibold text-slate-900">{teacher.level}</p>
-                    </div>
+                    <p className="mb-2 text-sm font-semibold text-school-blue">{teacher.level}</p>
                     <p className="text-slate-600 text-sm">{teacher.subjects}</p>
                   </div>
 

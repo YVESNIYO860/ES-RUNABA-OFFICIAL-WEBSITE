@@ -18,6 +18,7 @@ const legacyScienceOptions = (level) => makeOptions([
 
 export const schoolClassGroups = [
   { label: 'Senior 1-3', options: makeOptions(['Senior 1', 'Senior 2', 'Senior 3']) },
+  { label: 'Other', options: makeOptions(['None']) },
   { label: 'Senior 4 science streams', options: scienceStreamOptions('Senior 4') },
   { label: 'Senior 4 legacy classes', options: legacyScienceOptions('Senior 4') },
   { label: 'Senior 5 science streams', options: scienceStreamOptions('Senior 5') },

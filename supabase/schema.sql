@@ -144,6 +144,7 @@ from (
   union all select class from public.elearning_submissions
   union all select class from public.elearning_quiz_results
   union all select unnest(array[
+    'None',
     'Senior 1', 'Senior 2', 'Senior 3',
     'Senior 4 Stream 1', 'Senior 4 Stream 2', 'Senior 4 MEG', 'Senior 4 MCE', 'Senior 4 PCB',
     'Senior 4 Science Stream One', 'Senior 4 Science Stream Two',

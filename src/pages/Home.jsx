@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Quote, CheckCircle } from 'lucide-react';
+import { ArrowRight, BookOpen, Users, Trophy, ChevronLeft, ChevronRight, Star, Quote, CheckCircle, CalendarDays, Bell, Newspaper, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolBrand from '../components/SchoolBrand';
 import { heroSlides, schoolPhotoUrls } from '../utils/schoolPhotoUrls';
+import { isSupabaseConfigured, loadSchoolEvents, loadSchoolUpdates } from '../utils/elearningStore';
 
 /* ─── Slideshow Data ──────────────────────────────────────────────── */
 const slides = heroSlides.length > 0 ? heroSlides : [
@@ -196,7 +197,35 @@ const HeroSlideshow = ({ slides }) => {
 /* ─── Home Page ───────────────────────────────────────────────────── */
 const Home = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [newsItems, setNewsItems] = useState([]);
+  const [schoolEvents, setSchoolEvents] = useState([]);
   const { siteContent } = useAuth();
+
+  useEffect(() => {
+    let isActive = true;
+    const fetchHomeUpdates = async () => {
+      const newsRequest = isSupabaseConfigured ? loadSchoolUpdates() : Promise.resolve([]);
+      const eventsRequest = isSupabaseConfigured
+        ? loadSchoolEvents()
+        : Promise.resolve(JSON.parse(localStorage.getItem('events_db') || '[]'));
+      const [newsResult, eventsResult] = await Promise.allSettled([newsRequest, eventsRequest]);
+
+      if (!isActive) return;
+      if (newsResult.status === 'fulfilled') {
+        setNewsItems(newsResult.value.filter(item => item.type === 'news' || item.type === 'notice'));
+      } else {
+        console.error('Failed to load homepage news and notices', newsResult.reason);
+      }
+      if (eventsResult.status === 'fulfilled') {
+        setSchoolEvents(eventsResult.value);
+      } else {
+        console.error('Failed to load homepage events', eventsResult.reason);
+      }
+    };
+
+    fetchHomeUpdates();
+    return () => { isActive = false; };
+  }, []);
 
   if (!siteContent) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
 
@@ -264,6 +293,31 @@ const Home = () => {
         </motion.div>
       </section>
 
+      {/* Head Teacher Message */}
+      <section className="border-b border-slate-200 bg-[#f4f8f6] px-6 py-14 md:px-12 md:py-16">
+        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_280px] md:items-center md:gap-14">
+          <div className="border-l-4 border-school-green pl-6 md:pl-8">
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-school-blue">A word from our Head Teacher</p>
+            <Quote size={28} className="mb-3 text-school-green" />
+            <blockquote className="max-w-4xl text-xl leading-relaxed text-slate-800 md:text-2xl">
+              “{siteContent.about?.headTeacher?.message}”
+            </blockquote>
+            <Link to="/about#headteacher" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-school-blue hover:text-school-green">
+              Read more about our school <ArrowRight size={17} />
+            </Link>
+          </div>
+          <div className="flex items-center gap-4 border-t border-slate-300 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-school-blue text-xl font-black text-white ring-4 ring-school-green/20">
+              {(siteContent.about?.headTeacher?.name || 'Head Teacher').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-lg font-bold text-slate-900">{siteContent.about?.headTeacher?.name}</p>
+              <p className="mt-1 text-sm text-slate-600">{siteContent.about?.headTeacher?.role}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Highlights Section */}
       <section className="section-padding bg-white relative overflow-hidden">
         <div className="absolute left-0 top-0 w-64 h-64 bg-slate-50 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
@@ -318,6 +372,104 @@ const Home = () => {
               We take deep pride in our students' national exam performance and extra-curricular victories.
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* News and Events */}
+      <section className="border-y border-slate-200 bg-slate-50 px-6 py-20 md:px-12">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-school-green">Around Runaba</p>
+              <h2 className="mt-2 text-3xl font-black text-slate-900 md:text-4xl">Latest Updates</h2>
+            </div>
+            <Link to="/news" className="inline-flex items-center gap-2 text-sm font-bold text-school-blue hover:text-school-green">
+              All news and notices <ArrowRight size={17} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+            <div>
+              <div className="mb-5 flex items-center gap-3 border-b border-slate-300 pb-3">
+                <Newspaper size={20} className="text-school-blue" />
+                <h3 className="text-xl font-bold text-slate-900">News &amp; Notices</h3>
+              </div>
+              <div className="divide-y divide-slate-200">
+                {newsItems.slice(0, 3).map(item => (
+                  <article key={item.id} className="py-5">
+                    <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-school-green">
+                      <Bell size={13} /> {item.type}
+                      {item.createdAt && <time className="font-medium normal-case tracking-normal text-slate-500">{new Date(item.createdAt).toLocaleDateString()}</time>}
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-900">{item.title}</h4>
+                    <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">{item.content}</p>
+                  </article>
+                ))}
+                {newsItems.length === 0 && <p className="py-6 text-sm text-slate-500">No news or notices have been published yet.</p>}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-5 flex items-center gap-3 border-b border-slate-300 pb-3">
+                <CalendarDays size={20} className="text-school-green" />
+                <h3 className="text-xl font-bold text-slate-900">School Events</h3>
+              </div>
+              <div className="divide-y divide-slate-200">
+                {[...schoolEvents]
+                  .sort((first, second) => {
+                    const firstDate = Date.parse(first.date);
+                    const secondDate = Date.parse(second.date);
+                    return Number.isNaN(firstDate) || Number.isNaN(secondDate) ? 0 : firstDate - secondDate;
+                  })
+                  .slice(0, 3)
+                  .map(event => {
+                    const date = String(event.date || '');
+                    const formattedDate = /^\d{4}-\d{2}-\d{2}/.test(date)
+                      ? new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                      : date || 'Date to be announced';
+                    return (
+                      <article key={event.id} className="py-5">
+                        <time className="text-xs font-bold uppercase tracking-wider text-school-green">{formattedDate}</time>
+                        <h4 className="mt-1 text-lg font-bold text-slate-900">{event.title}</h4>
+                        {event.desc && <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-slate-600">{event.desc}</p>}
+                        {event.loc && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-school-blue"><MapPin size={13} />{event.loc}</p>}
+                      </article>
+                    );
+                  })}
+                {schoolEvents.length === 0 && <p className="py-6 text-sm text-slate-500">No school events have been scheduled yet.</p>}
+              </div>
+              <Link to="/student-life" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-school-blue hover:text-school-green">
+                Explore student life <ArrowRight size={17} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Student Life Preview */}
+      <section className="border-b border-slate-200 bg-white px-6 py-16 md:px-12">
+        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_1fr] md:items-center md:gap-14">
+          <div className="relative min-h-64 overflow-hidden sm:min-h-80">
+            <img src="/slide_sports.png" alt="Students taking part in school sports" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-school-blue/70 via-school-blue/20 to-transparent" />
+            <p className="absolute bottom-5 left-5 text-xs font-bold uppercase tracking-[0.2em] text-white">More than the classroom</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-school-green">Student Life</p>
+            <h2 className="mt-2 text-3xl font-black text-slate-900 md:text-4xl">Find your place. Build your strengths.</h2>
+            <p className="mt-4 max-w-2xl leading-relaxed text-slate-600">
+              Students grow through teamwork, creativity, and shared experiences, with activities across clubs, sport, and Rwandan culture.
+            </p>
+            <ul className="mt-5 grid grid-cols-1 gap-2 text-sm font-semibold text-slate-800 sm:grid-cols-2">
+              <li>Debate and Science Clubs</li>
+              <li>Football, Basketball and Volleyball</li>
+              <li>Environmental initiatives</li>
+              <li>Traditional dance and culture</li>
+            </ul>
+            <Link to="/student-life" className="mt-7 inline-flex items-center gap-2 font-bold text-school-blue hover:text-school-green">
+              Explore student life <ArrowRight size={17} />
+            </Link>
+          </div>
         </div>
       </section>
 
