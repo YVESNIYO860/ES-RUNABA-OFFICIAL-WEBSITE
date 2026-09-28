@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase';
+import { isSupabaseConfigured, loadActiveAnnouncement } from '../utils/elearningStore';
 
 /**
  * Scrolling notice text for the header announcement bar
@@ -10,15 +9,11 @@ const AnnouncementMarquee = ({ text }) => {
 
   useEffect(() => {
     const fetchAnnouncement = async () => {
-      if (!db) return;
+      if (!isSupabaseConfigured) return;
       try {
-        const q = query(collection(db, 'content'), where('type', '==', 'announcement'), where('isActive', '==', true));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-           setFirestoreText(querySnapshot.docs[0].data().content);
-        }
+        setFirestoreText(await loadActiveAnnouncement());
       } catch (error) {
-        console.error("Error fetching announcement:", error);
+        console.error('Failed to load announcement from Supabase:', error);
       }
     };
     fetchAnnouncement();

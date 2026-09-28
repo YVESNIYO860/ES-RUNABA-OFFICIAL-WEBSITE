@@ -1,90 +1,110 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { Trash2, Plus, LogOut, CheckCircle, Save } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { createSchoolUpdate, deleteSchoolUpdate, isSupabaseConfigured, loadSchoolUpdates, setSchoolUpdateActive, updateSchoolUpdate } from '../utils/elearningStore';
 
 const SuperAdminDashboard = () => {
+  const { user, logout } = useAuth();
   const [items, setItems] = useState([]);
   const [type, setType] = useState('news');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [error, setError] = useState(isSupabaseConfigured ? '' : 'Supabase is not configured for this deployment.');
+  const [loading, setLoading] = useState(isSupabaseConfigured);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Basic protection (redirects if not logged in or wrong email)
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (!user || (user.email !== 'yvensiyonkuru2022@gmail.com' && user.email !== 'yvesniyonkuru2022@gmail.com')) {
-        navigate('/');
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
+    if (!user?.isAdmin || !isSupabaseConfigured) return undefined;
+    let isActive = true;
+    loadSchoolUpdates()
+      .then(data => { if (isActive) setItems(data); })
+      .catch(loadError => {
+        console.error('Failed to load school updates from Supabase:', loadError);
+        if (isActive) setError(loadError.message || 'Could not load school updates.');
+      })
+      .finally(() => { if (isActive) setLoading(false); });
+    return () => { isActive = false; };
+  }, [user?.id, user?.isAdmin]);
 
-  const fetchData = async () => {
-    if (!db) return;
-    try {
-      const q = query(collection(db, 'content'), orderBy('createdAt', 'desc'));
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setItems(data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
+  if (!user?.isAdmin) return <Navigate to="/dos-login" replace />;
+
+  const resetForm = () => {
+    setType('news');
+    setTitle('');
+    setContent('');
+    setEditingId(null);
   };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!title || !content || !db) return;
+    if (!title.trim() || !content.trim()) return;
+    setError('');
     try {
-      await addDoc(collection(db, 'content'), {
-        type,
-        title,
-        content,
-        isActive: type === 'announcement' ? true : false,
-        createdAt: new Date().toISOString()
-      });
-      setTitle('');
-      setContent('');
-      fetchData();
+      if (editingId) {
+        const updated = await updateSchoolUpdate(editingId, {
+          type,
+          title: title.trim(),
+          content: content.trim(),
+          isActive: items.find(item => item.id === editingId)?.isActive || false
+        });
+        setItems(current => current.map(item => item.id === editingId ? updated : item));
+      } else {
+        const created = await createSchoolUpdate({
+          type,
+          title: title.trim(),
+          content: content.trim(),
+          isActive: false
+        }, user);
+        setItems(current => [created, ...current]);
+        if (type === 'announcement') {
+          const activeAnnouncement = await setSchoolUpdateActive(created.id, true);
+          setItems(current => current.map(item => item.id === created.id ? activeAnnouncement : item));
+        }
+      }
+      resetForm();
     } catch (error) {
-      console.error("Error adding document:", error);
-      alert("Failed to add content.");
+      console.error('Failed to save school update:', error);
+      setError(error.message || 'Failed to save content.');
     }
   };
 
   const handleDelete = async (id) => {
-    if (!db) return;
     try {
-      await deleteDoc(doc(db, 'content', id));
-      fetchData();
+      await deleteSchoolUpdate(id);
+      setItems(current => current.filter(item => item.id !== id));
     } catch (error) {
-      console.error("Error deleting document:", error);
+      console.error('Failed to delete school update:', error);
+      setError(error.message || 'Could not delete content.');
     }
   };
 
   const toggleActive = async (id, currentStatus) => {
-    if (!db) return;
     try {
-      if (!currentStatus && type === 'announcement') {
-        const announcements = items.filter(i => i.type === 'announcement' && i.isActive);
-        for (let a of announcements) {
-           await updateDoc(doc(db, 'content', a.id), { isActive: false });
-        }
-      }
-      await updateDoc(doc(db, 'content', id), { isActive: !currentStatus });
-      fetchData();
+      const updated = await setSchoolUpdateActive(id, !currentStatus);
+      setItems(current => current.map(item => ({
+        ...item,
+        ...(item.type === 'announcement' && !currentStatus ? { isActive: item.id === id } : {}),
+        ...(item.id === id ? updated : {})
+      })));
     } catch (error) {
-      console.error("Error updating document:", error);
+      console.error('Failed to update announcement:', error);
+      setError(error.message || 'Could not update announcement status.');
     }
   };
 
-  const handleLogout = () => {
-    auth.signOut();
+  const handleEdit = (item) => {
+    setEditingId(item.id);
+    setType(item.type);
+    setTitle(item.title);
+    setContent(item.content);
+    setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -94,7 +114,7 @@ const SuperAdminDashboard = () => {
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-school-blue">Super Admin Portal</h1>
-            <p className="text-slate-500">Manage News, Notices, and Announcements</p>
+            <p className="text-slate-500">Manage shared News, Notices, and Announcements</p>
           </div>
           <button onClick={handleLogout} className="flex w-full sm:w-auto justify-center items-center gap-2 text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg font-bold transition-colors">
             <LogOut size={20} /> Logout
@@ -102,7 +122,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         <form onSubmit={handleAdd} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
-          <h2 className="text-xl font-bold mb-4">Add New Content</h2>
+          <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Content' : 'Add New Content'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1">Content Type</label>
@@ -121,9 +141,11 @@ const SuperAdminDashboard = () => {
               <textarea required rows="4" value={content} onChange={e => setContent(e.target.value)} className="w-full border border-slate-300 rounded-md p-2"></textarea>
             </div>
           </div>
+          {error && <p role="alert" className="mb-4 text-sm font-semibold text-red-600">{error}</p>}
           <button type="submit" className="bg-school-blue text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors">
-            <Plus size={20} /> Publish Content
+            {editingId ? <Save size={20} /> : <Plus size={20} />} {editingId ? 'Save Changes' : 'Publish Content'}
           </button>
+          {editingId && <button type="button" onClick={resetForm} className="ml-3 inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-600"><X size={16} /> Cancel edit</button>}
         </form>
 
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -131,8 +153,10 @@ const SuperAdminDashboard = () => {
             <h2 className="text-xl font-bold">Published Content</h2>
           </div>
           <div className="divide-y divide-slate-100">
-            {items.length === 0 && <p className="p-6 text-slate-500 text-center">No content published yet.</p>}
-            {items.map(item => (
+            {loading && <p className="p-6 text-center text-slate-500">Loading shared content...</p>}
+            {!loading && error && <p role="alert" className="p-6 text-center text-sm font-medium text-red-600">{error}</p>}
+            {!loading && !error && items.length === 0 && <p className="p-6 text-slate-500 text-center">No content published yet.</p>}
+            {!loading && items.map(item => (
               <div key={item.id} className="p-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between hover:bg-slate-50 transition-colors">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -162,7 +186,10 @@ const SuperAdminDashboard = () => {
                       <CheckCircle size={20} />
                     </button>
                   )}
-                  <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                  <button type="button" onClick={() => handleEdit(item)} className="p-2 text-school-blue hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                    <Edit3 size={20} />
+                  </button>
+                  <button type="button" onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
                     <Trash2 size={20} />
                   </button>
                 </div>

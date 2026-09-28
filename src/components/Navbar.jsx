@@ -257,12 +257,17 @@ const Navbar = () => {
                 ) : (
                   <div className="flex items-center gap-3">
                     <Link
-                      to={user.role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard'}
+                      to={user.role === 'student' ? '/student-dashboard' : '/teacher-dashboard'}
                       className="flex items-center gap-2 text-school-blue font-bold hover:text-school-green transition-colors text-sm whitespace-nowrap"
                     >
                       <LayoutDashboard size={18} />
                       {user.isAdmin ? 'Admin' : 'Portal'}
                     </Link>
+                    {user.isAdmin && (
+                      <Link to="/super-admin" className="text-sm font-semibold text-slate-600 hover:text-school-green whitespace-nowrap">
+                        Content
+                      </Link>
+                    )}
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -364,12 +369,21 @@ const Navbar = () => {
                   ) : (
                     <>
                       <Link
-                        to={user.role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard'}
+                        to={user.role === 'student' ? '/student-dashboard' : '/teacher-dashboard'}
                         onClick={() => setIsOpen(false)}
                         className="w-full flex items-center justify-center gap-2 py-3.5 bg-school-blue/10 text-school-blue dark:text-school-green font-bold rounded-xl border border-school-blue/20"
                       >
                         <LayoutDashboard size={20} /> Dashboard
                       </Link>
+                      {user.isAdmin && (
+                        <Link
+                          to="/super-admin"
+                          onClick={() => setIsOpen(false)}
+                          className="w-full flex items-center justify-center gap-2 py-3.5 text-school-blue dark:text-school-green font-bold rounded-xl border border-school-blue/20"
+                        >
+                          Manage News & Notices
+                        </Link>
+                      )}
                       <button
                         type="button"
                         onClick={handleLogout}

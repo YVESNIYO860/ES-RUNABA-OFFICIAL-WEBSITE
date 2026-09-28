@@ -44,8 +44,6 @@ export const AuthProvider = ({ children }) => {
   const [siteContent, setSiteContent] = useState(null);
 
   const updateSiteContent = async (newContent) => {
-    setSiteContent(newContent);
-    localStorage.setItem('es_runaba_content', JSON.stringify(newContent));
     if (isSupabaseConfigured) {
       const { error } = await supabase.from('site_content').upsert({
         id: 'main',
@@ -58,6 +56,8 @@ export const AuthProvider = ({ children }) => {
         throw error;
       }
     }
+    localStorage.setItem('es_runaba_content', JSON.stringify(newContent));
+    setSiteContent(newContent);
   };
 
   // Initialize from localStorage

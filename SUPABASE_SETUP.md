@@ -7,6 +7,8 @@ Create a Supabase project for ES RUNABA and save its database password in your p
 ## 2. Apply the database schema
 
 In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, e-learning records, attendance, public site content/events, row-level security policies, and the private `elearning-notes` Storage bucket.
+In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, e-learning records, attendance, public site content/events/news, row-level security policies, and the private `elearning-notes` Storage bucket.
+What Uses Supabase
 
 The SQL Editor path does not require a database password or CLI login.
 
@@ -58,8 +60,8 @@ Use `npx vercel dev` to test locally. It runs both the Vite app and the `/api/el
 
 ## What Uses Supabase
 
-Student, teacher, and DOS Auth; student profiles; assignments; quizzes; submissions; quiz results; notes and private note files; attendance; public site content; and school events use Supabase when the environment variables are configured. All teachers and DOS can mark attendance for any current class. The Site Designer and event management are restricted to the system administrator.
+Student, teacher, and DOS Auth; student profiles; assignments; quizzes; submissions; quiz results; lessons and private lesson files; attendance; public site content; school events; and news, notices, and announcements use Supabase when the environment variables are configured. The content manager supports adding, editing, activating, and deleting public updates. All teachers and DOS can mark attendance for any current class. Site design, class management, and news management are restricted to the system administrator.
 
 The student sign-in URL is `/student-login`, teacher sign-in is `/teacher-login`, and DOS sign-in is `/dos-login`. These routes and the dashboards are outside the public website layout, so e-learning acts as a separate portal experience.
 
-Existing records in browser localStorage are not automatically imported. Keep that browser data until a one-time import has been planned and verified.
+Existing records in browser localStorage and legacy Firebase collections are not automatically imported into Supabase. Keep the old data until a one-time import has been planned and verified.

@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
 import { motion } from 'framer-motion';
 import { Calendar, Bell, Info } from 'lucide-react';
+import { isSupabaseConfigured, loadSchoolUpdates } from '../utils/elearningStore';
+
+const MotionDiv = motion.div;
 
 const NewsAndNotices = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!db) {
+      if (!isSupabaseConfigured) {
+         setError('News database is not configured for this deployment.');
          setLoading(false);
          return;
       }
       try {
-        const q = query(collection(db, 'content'), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setItems(data.filter(d => d.type === 'news' || d.type === 'notice'));
+        const data = await loadSchoolUpdates();
+        setItems(data.filter(item => item.type === 'news' || item.type === 'notice'));
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error('Error fetching news and notices:', error);
+        setError('Could not load news and notices. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -48,6 +50,8 @@ const NewsAndNotices = () => {
 
         {loading ? (
           <div className="text-center py-20 text-slate-400">Loading latest updates...</div>
+        ) : error ? (
+          <div role="alert" className="border-y border-red-200 bg-red-50 px-6 py-8 text-center text-sm font-medium text-red-700">{error}</div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
             <Info className="mx-auto text-slate-300 mb-4" size={48} />
@@ -57,7 +61,7 @@ const NewsAndNotices = () => {
         ) : (
           <div className="space-y-6">
             {filteredItems.map((item, index) => (
-              <motion.div
+              <MotionDiv
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -81,7 +85,7 @@ const NewsAndNotices = () => {
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800 mb-3">{item.title}</h2>
                 <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">{item.content}</p>
-              </motion.div>
+              </MotionDiv>
             ))}
           </div>
         )}

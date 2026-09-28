@@ -297,6 +297,95 @@ export const loadSchoolEvents = async () => {
   }));
 };
 
+const mapSchoolUpdate = (row) => ({
+  id: row.id,
+  type: row.type,
+  title: row.title,
+  content: row.content,
+  isActive: row.is_active,
+  createdAt: row.created_at
+});
+
+export const loadSchoolUpdates = async () => {
+  const { data, error } = await supabase
+    .from('school_updates')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data.map(mapSchoolUpdate);
+};
+
+export const loadActiveAnnouncement = async () => {
+  const { data, error } = await supabase
+    .from('school_updates')
+    .select('content')
+    .eq('type', 'announcement')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.content || '';
+};
+
+export const createSchoolUpdate = async (update, user) => {
+  const { data, error } = await supabase
+    .from('school_updates')
+    .insert({
+      type: update.type,
+      title: update.title,
+      content: update.content,
+      is_active: Boolean(update.isActive),
+      created_by: user?.id || null
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return mapSchoolUpdate(data);
+};
+
+export const updateSchoolUpdate = async (id, update) => {
+  const { data, error } = await supabase
+    .from('school_updates')
+    .update({
+      type: update.type,
+      title: update.title,
+      content: update.content,
+      is_active: Boolean(update.isActive)
+    })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return mapSchoolUpdate(data);
+};
+
+export const deleteSchoolUpdate = async (id) => {
+  const { error } = await supabase.from('school_updates').delete().eq('id', id);
+  if (error) throw error;
+};
+
+export const setSchoolUpdateActive = async (id, isActive) => {
+  if (isActive) {
+    const { error: deactivateError } = await supabase
+      .from('school_updates')
+      .update({ is_active: false })
+      .eq('type', 'announcement')
+      .eq('is_active', true)
+      .neq('id', id);
+    if (deactivateError) throw deactivateError;
+  }
+
+  const { data, error } = await supabase
+    .from('school_updates')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return mapSchoolUpdate(data);
+};
+
 export const saveSchoolEvent = async (event, user) => {
   const { error } = await supabase.from('school_events').upsert({
     id: event.id,
