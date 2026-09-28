@@ -9,6 +9,13 @@ const tableByType = {
   quizResults: 'elearning_quiz_results'
 };
 
+const throwFriendlyDuplicateNameError = (error, entity, indexName) => {
+  if (error?.code === '23505' || error?.message?.includes(indexName)) {
+    throw new Error(`A ${entity} with that name already exists. Choose a different name.`);
+  }
+  throw error;
+};
+
 const parseApiResponse = async (response, fallbackMessage) => {
   const responseText = await response.text();
   const contentType = response.headers.get('content-type') || '';
@@ -183,13 +190,15 @@ export const loadSchoolClasses = async () => {
 };
 
 export const createSchoolClass = async (name) => {
+  const classes = await loadSchoolClasses();
+  if (classes.some(item => item.toLowerCase() === name.toLowerCase())) {
+    throw new Error('A class with that name already exists. Choose a different name.');
+  }
   if (isSupabaseConfigured) {
     const { data, error } = await supabase.from('school_classes').insert({ name }).select('name').single();
-    if (error) throw error;
+    if (error) throwFriendlyDuplicateNameError(error, 'class', 'school_classes_name_ci_idx');
     return data.name;
   }
-  const classes = await loadSchoolClasses();
-  if (classes.some(item => item.toLowerCase() === name.toLowerCase())) throw new Error('That class already exists.');
   const nextClasses = [...classes, name].sort();
   localStorage.setItem('school_classes_db', JSON.stringify(nextClasses));
   return name;
@@ -219,13 +228,15 @@ export const loadSchoolCourses = async () => {
 };
 
 export const createSchoolCourse = async (name) => {
+  const courses = await loadSchoolCourses();
+  if (courses.some(item => item.toLowerCase() === name.toLowerCase())) {
+    throw new Error('A course with that name already exists. Choose a different name.');
+  }
   if (isSupabaseConfigured) {
     const { data, error } = await supabase.from('school_courses').insert({ name }).select('name').single();
-    if (error) throw error;
+    if (error) throwFriendlyDuplicateNameError(error, 'course', 'school_courses_name_ci_idx');
     return data.name;
   }
-  const courses = await loadSchoolCourses();
-  if (courses.some(item => item.toLowerCase() === name.toLowerCase())) throw new Error('That course already exists.');
   localStorage.setItem('school_courses_db', JSON.stringify([...courses, name].sort()));
   return name;
 };
@@ -244,9 +255,13 @@ export const deleteSchoolCourse = async (name) => {
 };
 
 export const renameSchoolCourse = async (oldName, newName) => {
+  const courses = await loadSchoolCourses();
+  if (courses.some(course => course !== oldName && course.toLowerCase() === newName.toLowerCase())) {
+    throw new Error('A course with that name already exists. Choose a different name.');
+  }
   if (isSupabaseConfigured) {
     const { error } = await supabase.rpc('rename_school_course', { old_name: oldName, new_name: newName });
-    if (error) throw error;
+    if (error) throwFriendlyDuplicateNameError(error, 'course', 'school_courses_name_ci_idx');
     return;
   }
   for (const key of ['students_db', 'staff_db', 'assignments_db', 'quizzes_db', 'notes_db']) {
@@ -257,17 +272,21 @@ export const renameSchoolCourse = async (oldName, newName) => {
       ...(record.subject === oldName ? { subject: newName } : {})
     }))));
   }
-  const courses = (await loadSchoolCourses()).map(course => course === oldName ? newName : course);
-  localStorage.setItem('school_courses_db', JSON.stringify([...new Set(courses)].sort()));
+  const renamedCourses = courses.map(course => course === oldName ? newName : course);
+  localStorage.setItem('school_courses_db', JSON.stringify([...new Set(renamedCourses)].sort()));
 };
 
 export const renameSchoolClass = async (oldName, newName) => {
+  const classes = await loadSchoolClasses();
+  if (classes.some(className => className !== oldName && className.toLowerCase() === newName.toLowerCase())) {
+    throw new Error('A class with that name already exists. Choose a different name.');
+  }
   if (isSupabaseConfigured) {
     const { error } = await supabase.rpc('rename_school_class', {
       old_name: oldName,
       new_name: newName
     });
-    if (error) throw error;
+    if (error) throwFriendlyDuplicateNameError(error, 'class', 'school_classes_name_ci_idx');
     return;
   }
 
@@ -284,8 +303,8 @@ export const renameSchoolClass = async (oldName, newName) => {
 
   ['students_db', 'assignments_db', 'quizzes_db', 'notes_db', 'submissions_db', 'quiz_results_db', 'attendance_db']
     .forEach(updateRecords);
-  const classes = (await loadSchoolClasses()).map(className => className === oldName ? newName : className);
-  localStorage.setItem('school_classes_db', JSON.stringify([...new Set(classes)].sort()));
+  const renamedClasses = classes.map(className => className === oldName ? newName : className);
+  localStorage.setItem('school_classes_db', JSON.stringify([...new Set(renamedClasses)].sort()));
 };
 
 export const provisionAccount = async (account) => {
