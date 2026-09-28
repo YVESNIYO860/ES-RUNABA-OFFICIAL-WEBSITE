@@ -5,9 +5,14 @@ import { studentAuthEmail } from '../utils/studentAuth';
 
 const AuthContext = createContext(null);
 
+const isPrimaryDosAccount = (profile) =>
+  profile.role === 'teacher'
+  && profile.is_admin
+  && profile.email?.toLowerCase() === 'yvesniyonkuru2022@gmail.com';
+
 const mapProfileToUser = (profile) => ({
   id: profile.id,
-  role: profile.role,
+  role: isPrimaryDosAccount(profile) ? 'dos' : profile.role,
   name: profile.full_name,
   fullName: profile.full_name,
   email: profile.email,
@@ -251,7 +256,7 @@ export const AuthProvider = ({ children }) => {
       .select('*')
       .eq('id', data.user.id)
       .single();
-    if (profileError || profile.role !== 'dos') {
+    if (profileError || (profile.role !== 'dos' && !isPrimaryDosAccount(profile))) {
       await supabase.auth.signOut();
       return { success: false, error: 'This account is not registered for Director of Studies access.' };
     }
