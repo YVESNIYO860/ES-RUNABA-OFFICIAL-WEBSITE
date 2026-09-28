@@ -6,12 +6,13 @@
   --color-school-blue: #003366;
   --color-school-green: #2E7D32;
   --color-school-light: #F5F5F5;
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
 @layer base {
   html {
     scroll-behavior: smooth;
+    font-family: var(--font-sans);
   }
   
   body {

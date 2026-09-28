@@ -79,7 +79,7 @@ const SchoolLoader = () => {
         <SchoolBrand
           as="h1"
           className="text-2xl font-bold tracking-widest uppercase"
-          style={{ color: navy, fontFamily: 'serif' }}
+          style={{ color: navy }}
         />
         
         <motion.p

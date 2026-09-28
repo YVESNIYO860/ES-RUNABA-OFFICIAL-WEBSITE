@@ -185,7 +185,7 @@ const HeroSlideshow = ({ slides }) => {
               </button>
             ))}
           </div>
-          <div className="text-white font-mono text-sm md:text-base tracking-widest font-bold ml-8">
+          <div className="text-white text-sm md:text-base tracking-widest font-bold ml-8">
             {String(current + 1).padStart(2, '0')} <span className="text-white/40">/ {String(slideList.length).padStart(2, '0')}</span>
           </div>
         </div>
@@ -294,8 +294,9 @@ const Home = () => {
       </section>
 
       {/* Head Teacher Message */}
-      <section className="border-b border-slate-200 bg-[#f4f8f6] px-6 py-14 md:px-12 md:py-16">
-        <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_280px] md:items-center md:gap-14">
+      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-[#f4f8f6] px-6 py-14 md:px-12 md:py-16">
+        <img aria-hidden="true" src="/runaba-logo.png" alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[min(48vw,380px)] -translate-x-1/2 -translate-y-1/2 opacity-[0.18] dark:opacity-[0.23]" />
+        <div className="relative z-10 mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_280px] md:items-center md:gap-14">
           <div className="border-l-4 border-school-green pl-6 md:pl-8">
             <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-school-blue">A word from our Head Teacher</p>
             <Quote size={28} className="mb-3 text-school-green" />
@@ -328,13 +329,14 @@ const Home = () => {
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
             whileHover={{ y: -10 }}
-            className="p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
+            className="relative isolate overflow-hidden p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
           >
-            <div className="w-20 h-20 bg-school-blue/10 text-school-blue rounded-2xl flex items-center justify-center mb-6 rotate-3 group-hover:rotate-0 transition-transform">
+            <img aria-hidden="true" src="/runaba-logo.png" alt="" className="pointer-events-none absolute bottom-3 right-3 z-0 w-28 opacity-[0.16]" />
+            <div className="relative z-10 w-20 h-20 bg-school-blue/10 text-school-blue rounded-2xl flex items-center justify-center mb-6 rotate-3 group-hover:rotate-0 transition-transform">
               <BookOpen size={40} />
             </div>
-            <h3 className="text-2xl font-black text-slate-800 mb-4">Quality Academics</h3>
-            <p className="text-slate-500 leading-relaxed">
+            <h3 className="relative z-10 text-2xl font-black text-slate-800 mb-4">Quality Academics</h3>
+            <p className="relative z-10 text-slate-500 leading-relaxed">
               Offering both O-Level and specialized A-Level combinations with experienced and dedicated tutors.
             </p>
           </motion.div>
@@ -345,13 +347,14 @@ const Home = () => {
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
             whileHover={{ y: -10 }}
-            className="p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
+            className="relative isolate overflow-hidden p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
           >
-            <div className="w-20 h-20 bg-school-green/10 text-school-green rounded-2xl flex items-center justify-center mb-6 -rotate-3 group-hover:rotate-0 transition-transform">
+            <img aria-hidden="true" src="/runaba-logo.png" alt="" className="pointer-events-none absolute bottom-3 right-3 z-0 w-28 opacity-[0.16]" />
+            <div className="relative z-10 w-20 h-20 bg-school-green/10 text-school-green rounded-2xl flex items-center justify-center mb-6 -rotate-3 group-hover:rotate-0 transition-transform">
               <Users size={40} />
             </div>
-            <h3 className="text-2xl font-black text-slate-800 mb-4">Vibrant Community</h3>
-            <p className="text-slate-500 leading-relaxed">
+            <h3 className="relative z-10 text-2xl font-black text-slate-800 mb-4">Vibrant Community</h3>
+            <p className="relative z-10 text-slate-500 leading-relaxed">
               A diverse and inclusive environment where every student has the chance to belong and thrive.
             </p>
           </motion.div>
@@ -362,13 +365,14 @@ const Home = () => {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
             whileHover={{ y: -10 }}
-            className="p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
+            className="relative isolate overflow-hidden p-10 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.1)] transition-all group"
           >
-            <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 rotate-6 group-hover:rotate-0 transition-transform">
+            <img aria-hidden="true" src="/runaba-logo.png" alt="" className="pointer-events-none absolute bottom-3 right-3 z-0 w-28 opacity-[0.16]" />
+            <div className="relative z-10 w-20 h-20 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6 rotate-6 group-hover:rotate-0 transition-transform">
               <Trophy size={40} />
             </div>
-            <h3 className="text-2xl font-black text-slate-800 mb-4">Success Path</h3>
-            <p className="text-slate-500 leading-relaxed">
+            <h3 className="relative z-10 text-2xl font-black text-slate-800 mb-4">Success Path</h3>
+            <p className="relative z-10 text-slate-500 leading-relaxed">
               We take deep pride in our students' national exam performance and extra-curricular victories.
             </p>
           </motion.div>
@@ -608,7 +612,7 @@ const Home = () => {
               }
             ].map((t, i) => !t.placeholder ? (
               <div key={i} className="bg-white border border-slate-200 shadow p-6">
-                <div className="text-school-green text-4xl font-serif leading-none mb-2">"</div>
+                <div className="text-school-green text-4xl leading-none mb-2">"</div>
                 <p className="text-slate-700 leading-relaxed text-sm mb-6">{t.text}</p>
                 <div className="flex items-center gap-3 border-t border-slate-100 pt-4">
                   <div className="w-12 h-12 bg-slate-200 border-2 border-school-green flex items-center justify-center text-slate-500 font-bold text-lg">

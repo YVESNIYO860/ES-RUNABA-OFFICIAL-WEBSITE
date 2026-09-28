@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
+import LearningSettings from '../components/LearningSettings';
+import { printQuiz } from '../utils/printQuiz';
 import {
   deleteLearningRecord,
   createSchoolClass,
@@ -33,9 +35,34 @@ import {
   uploadLearningNote
 } from '../utils/elearningStore';
 
+const getStaffDashboardTabs = (user) => [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+  { id: 'attendance', label: 'Attendance', icon: CheckSquare },
+  ...(['teacher', 'dos'].includes(user?.role) ? [
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'assignments', label: 'Assignments', icon: FileText },
+    { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
+    { id: 'notes', label: user.role === 'dos' ? 'Lessons' : 'Lessons & Resources', icon: FileUp }
+  ] : []),
+  ...(user?.isAdmin ? [
+    { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
+    { id: 'classes', label: 'Classes', icon: Users },
+    { id: 'courses', label: 'Courses', icon: BookOpen },
+    { id: 'site-editor', label: 'Site Designer', icon: Globe },
+    { id: 'staff', label: 'Staff Management', icon: Shield },
+    { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
+  ] : []),
+  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'contact', label: 'Contact', icon: MessageSquare }
+];
+
 const TeacherDashboard = () => {
   const { user, logout, siteContent, updateSiteContent } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const dashboardTabs = getStaffDashboardTabs(user);
+  const [activeTab, setActiveTab] = useState(() => {
+    const savedTab = localStorage.getItem(`es_runaba_learning_home_${user?.id}`);
+    return dashboardTabs.some(tab => tab.id === savedTab) ? savedTab : 'overview';
+  });
   const [isNavOpen, setIsNavOpen] = useState(false);
   
   // Data State
@@ -120,29 +147,12 @@ const TeacherDashboard = () => {
           </button>
         </div>
         <nav id="teacher-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} flex-col gap-1 border-t border-white/10 px-3 pb-4 pt-3 sm:px-4 md:flex md:flex-1 md:gap-2 md:overflow-visible md:border-0 md:pb-4 md:pt-2`}>
-          {[
-            { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-            { id: 'attendance', label: 'Attendance', icon: CheckSquare },
-            ...(['teacher', 'dos'].includes(user.role) ? [
-              { id: 'students', label: 'Students', icon: Users },
-              { id: 'assignments', label: 'Assignments', icon: FileText },
-              { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
-              { id: 'notes', label: user.role === 'dos' ? 'Lessons' : 'Lessons & Resources', icon: FileUp }
-            ] : []),
-            ...(user.isAdmin ? [
-              { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
-              { id: 'classes', label: 'Classes', icon: Users },
-              { id: 'courses', label: 'Courses', icon: BookOpen },
-              { id: 'site-editor', label: 'Site Designer', icon: Globe },
-              { id: 'staff', label: 'Staff Management', icon: Shield },
-              { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
-            ] : []),
-            { id: 'contact', label: 'Contact', icon: MessageSquare },
-          ].map(tab => (
+          {dashboardTabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id);
+                localStorage.setItem(`es_runaba_learning_home_${user.id}`, tab.id);
                 setIsNavOpen(false);
               }}
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors md:px-4 ${activeTab === tab.id ? 'bg-school-green font-medium text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
@@ -167,7 +177,7 @@ const TeacherDashboard = () => {
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={classGroups} />}
             {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
             { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} classGroups={classGroups} courses={courses} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} /> }
             { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} students={students} classGroups={classGroups} courses={courses} /> }
             { activeTab === 'classes' && <ClassesTab classes={classes} setClasses={setClasses} onClassRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.class === oldName ? { ...student, class: newName } : student));
@@ -189,6 +199,7 @@ const TeacherDashboard = () => {
             { activeTab === 'site-editor' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
             { activeTab === 'staff' && <StaffTab /> }
             { activeTab === 'analytics' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
+            { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
             { activeTab === 'contact' && <LearningContact /> }
         </motion.div>
       </main>
@@ -502,7 +513,7 @@ const AttendanceTab = ({ students, user, classGroups }) => {
             {classStudents.map((student) => (
               <li key={student.id} className="grid grid-cols-1 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_180px] sm:items-center sm:gap-4">
                 <span className="font-semibold text-slate-900">{student.fullName || student.name}</span>
-                <span className="font-mono text-sm text-slate-500">{student.regNumber}</span>
+                <span className="text-sm text-slate-500">{student.regNumber}</span>
                 <select aria-label={`Attendance status for ${student.fullName || student.name}`} value={statusByStudent[student.id] || ''} onChange={(event) => setStatusByStudent((current) => ({ ...current, [student.id]: event.target.value }))} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
                   <option value="">Not marked</option>
                   <option value="present">Present</option>
@@ -658,7 +669,7 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
               </select>
             </div>
             <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-              Registration number: <span className="font-mono font-bold text-school-blue">{registrationPreview || 'Enter a name to preview'}</span>
+              Registration number: <span className="font-bold text-school-blue">{registrationPreview || 'Enter a name to preview'}</span>
             </div>
             <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
               The student password will be generated automatically from the registration number.
@@ -683,10 +694,10 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
             {students.length === 0 ? (<tr><td colSpan="5" className="p-8 text-center text-slate-500">No students registered yet.</td></tr>) : null}
             {students.map(s => (
               <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
-                <td className="p-4 font-mono text-sm font-bold text-school-blue">{s.regNumber}</td>
+                <td className="p-4 text-sm font-bold text-school-blue">{s.regNumber}</td>
                 <td className="p-4 font-medium text-slate-800">{s.fullName}</td>
                 <td className="p-4 text-slate-600">{s.class}</td>
-                <td className="p-4 text-sm text-slate-500 font-mono">{s.password || (isSupabaseConfigured ? 'Supabase Auth' : '')}</td>
+                <td className="p-4 text-sm text-slate-500">{s.password || (isSupabaseConfigured ? 'Supabase Auth' : '')}</td>
                 <td className="p-4 text-right">
                   <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 p-2"><Trash2 size={18} /></button>
                 </td>
@@ -809,7 +820,7 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, course
   );
 };
 
-const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses }) => {
+const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolName }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '' });
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
@@ -950,7 +961,10 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses }) => {
             {quizzes.length === 0 && <p className="text-slate-500">No quizzes created yet.</p>}
             {quizzes.map(q => (
                 <div key={q.id} className="card relative border-t-4 border-t-purple-500">
-                    <button onClick={() => handleDelete(q.id)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+                    <div className="absolute top-4 right-4 flex items-center gap-3">
+                      <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true' })} aria-label={`Print ${q.title}`} title="Print exam" className="text-school-blue hover:text-school-green"><Printer size={18} /></button>
+                      <button type="button" onClick={() => handleDelete(q.id)} aria-label={`Delete ${q.title}`} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+                    </div>
                     <h3 className="font-bold text-lg">{q.title}</h3>
                     <div className="flex gap-2 text-xs font-semibold mt-2 mb-3">
                         <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{q.subject}</span>
@@ -1201,7 +1215,7 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
                                         }))}
                                       />
                                       <span className="min-w-0 flex-1 truncate">{student.fullName || student.name} <span className="text-slate-500">({student.class})</span></span>
-                                      <span className="shrink-0 font-mono text-xs text-slate-500">{student.regNumber}</span>
+                                      <span className="shrink-0 text-xs text-slate-500">{student.regNumber}</span>
                                     </label>
                                   ))}
                                 {students.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Add students first to assign this lesson individually.</p>}
@@ -1239,7 +1253,7 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
                         <p className="text-slate-600 text-sm mb-4 line-clamp-2">{n.description}</p>
                         
                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-xs text-slate-400 font-mono flex items-center gap-1"><FileText size={14}/> {n.fileName}</span>
+                            <span className="text-xs text-slate-400 flex items-center gap-1"><FileText size={14}/> {n.fileName}</span>
                             <a href={n.fileData} download={n.fileName} className="text-blue-600 hover:text-blue-800 bg-blue-50 p-2 rounded-lg" title="Download">
                                 <Download size={18} />
                             </a>

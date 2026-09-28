@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from '../supabase';
 import { schoolClassGroups } from './schoolClasses';
+import { runWithLearningActivity } from './learningActivity';
 
 const tableByType = {
   assignments: 'elearning_assignments',
@@ -311,30 +312,34 @@ export const provisionAccount = async (account) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Please sign in again before managing accounts.');
 
-  const response = await fetch('/api/elearning/users', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`
-    },
-    body: JSON.stringify(account)
+  return runWithLearningActivity('Creating your school account', async () => {
+    const response = await fetch('/api/elearning/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(account)
+    });
+    return parseApiResponse(response, 'Could not create the account.');
   });
-  return parseApiResponse(response, 'Could not create the account.');
 };
 
 export const deleteProvisionedAccount = async (id) => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Please sign in again before managing accounts.');
 
-  const response = await fetch('/api/elearning/users', {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`
-    },
-    body: JSON.stringify({ id })
+  return runWithLearningActivity('Removing the school account', async () => {
+    const response = await fetch('/api/elearning/users', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ id })
+    });
+    await parseApiResponse(response, 'Could not remove the account.');
   });
-  await parseApiResponse(response, 'Could not remove the account.');
 };
 
 export const uploadLearningNote = async (file, className, noteId) => {

@@ -1,16 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare } from 'lucide-react';
+import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, saveLearningRecord } from '../utils/elearningStore';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
+import LearningSettings from '../components/LearningSettings';
+
+const studentTabs = [
+    { id: 'assignments', label: 'My Assignments', icon: BookOpen },
+    { id: 'quizzes', label: 'My Quizzes', icon: CheckSquare },
+    { id: 'notes', label: 'My Lessons', icon: BookOpen },
+    { id: 'profile', label: 'Profile', icon: UserCircle },
+    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'contact', label: 'Contact', icon: MessageSquare },
+];
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState('assignments');
+    const [activeTab, setActiveTab] = useState(() => {
+        const savedTab = localStorage.getItem(`es_runaba_learning_home_${user?.id}`);
+        return studentTabs.some(tab => tab.id === savedTab) ? savedTab : 'assignments';
+    });
     const [isNavOpen, setIsNavOpen] = useState(false);
 
     // Data State
@@ -82,7 +95,7 @@ const StudentDashboard = () => {
                     </div>
                     <div className="min-w-0 md:w-full">
                         <h2 className="truncate text-lg font-bold md:text-xl">{user.fullName}</h2>
-                        <p className="mt-1 truncate font-mono text-sm text-school-green">{user.regNumber}</p>
+                        <p className="mt-1 truncate text-sm text-school-green">{user.regNumber}</p>
                         <p className="mt-1 truncate text-xs text-slate-400">{user.class}</p>
                     </div>
                     <button
@@ -97,17 +110,12 @@ const StudentDashboard = () => {
                     </button>
                 </div>
                 <nav id="student-dashboard-nav" className={`${isNavOpen ? 'flex' : 'hidden'} flex-col gap-1 border-t border-white/10 px-3 pb-4 pt-3 sm:px-4 md:flex md:flex-1 md:gap-2 md:overflow-visible md:border-0 md:pb-4 md:pt-2`}>
-                    {[
-                        { id: 'assignments', label: 'My Assignments', icon: BookOpen },
-                        { id: 'quizzes', label: 'My Quizzes', icon: CheckSquare },
-                        { id: 'notes', label: 'My Lessons', icon: BookOpen },
-                        { id: 'profile', label: 'Profile', icon: UserCircle },
-                        { id: 'contact', label: 'Contact', icon: MessageSquare },
-                    ].map(tab => (
+                    {studentTabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => {
                                 setActiveTab(tab.id);
+                                localStorage.setItem(`es_runaba_learning_home_${user.id}`, tab.id);
                                 setIsNavOpen(false);
                             }}
                             className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition-colors md:px-4 ${activeTab === tab.id ? 'bg-school-green font-medium text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
@@ -132,6 +140,7 @@ const StudentDashboard = () => {
                          {activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} quizResults={quizResults} setQuizResults={setQuizResults} user={user} />}
                          {activeTab === 'notes' && <NotesTab notes={notes} />}
                          {activeTab === 'profile' && <ProfileTab user={user} />}
+                         {activeTab === 'settings' && <LearningSettings user={user} views={studentTabs} />}
                          {activeTab === 'contact' && <LearningContact />}
                     </motion.div>
             </main>
@@ -310,7 +319,7 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
                         <h2 className="text-2xl font-bold">{activeQuiz.title}</h2>
                         <span className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded-full text-sm inline-block mt-2">{activeQuiz.subject}</span>
                     </div>
-                    <div className={`flex items-center gap-2 font-mono text-xl font-black px-4 py-2 rounded-lg ${timeLeft < 10 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-800'}`}>
+                    <div className={`flex items-center gap-2 text-xl font-black px-4 py-2 rounded-lg ${timeLeft < 10 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-800'}`}>
                         <Timer size={24} />
                         {formatTime(timeLeft)}
                     </div>
@@ -413,7 +422,7 @@ const ProfileTab = ({ user }) => (
 
             <div className="bg-slate-50 inline-block p-4 rounded-xl border border-slate-200">
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Registration Number</p>
-                <p className="text-xl font-mono font-bold text-school-blue">{user.regNumber}</p>
+                <p className="text-xl font-bold text-school-blue">{user.regNumber}</p>
             </div>
         </div>
     </div>

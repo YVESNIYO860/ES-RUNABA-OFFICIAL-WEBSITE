@@ -306,7 +306,7 @@ const StudentLife = () => {
       <section className="bg-slate-900 py-24 px-4 md:px-8 relative overflow-hidden">
         <div className="absolute inset-0 bg-[#000000] opacity-50 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-800 to-transparent pointer-events-none"></div>
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4 relative z-10">
-          <span className="text-amber-500 font-bold uppercase tracking-[0.2em] text-xs font-mono">Excellence on the Field</span>
+          <span className="text-amber-500 font-bold uppercase tracking-[0.2em] text-xs">Excellence on the Field</span>
           <h2 className="text-4xl md:text-5xl font-bold text-white">Health & Sports</h2>
           <p className="text-slate-300 text-lg leading-relaxed">
             At {general.schoolName}, we believe a healthy body houses a healthy mind. Our sports programs foster teamwork, discipline, and physical fitness.

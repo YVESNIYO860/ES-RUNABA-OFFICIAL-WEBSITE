@@ -109,14 +109,19 @@ const About = () => {
       </section>
 
       {/* History & Context */}
-      <section className="py-20 px-4 md:px-8 max-w-5xl mx-auto text-center space-y-8">
-        <h2 className="text-4xl font-black text-school-blue italic tracking-tighter uppercase">Our Legacy of Excellence</h2>
-        <p className="text-slate-600 leading-relaxed text-xl font-light">
-          {general.schoolName} stands as a beacon of academic excellence in the region. Founded in 2003 with a vision to transform lives through quality education, our institution has evolved into a prestigious center for holistic development, guided by a total of three visionary leaders throughout its history.
-        </p>
-        <p className="text-slate-600 leading-relaxed text-lg">
-          At {general.schoolName}, we pride ourselves on our strong integration with the community and the history of our academic combinations. We work closely with parents and local leaders to create a conducive environment for learning, where every student is valued, respected, and supported in their unique educational journey.
-        </p>
+      <section className="relative isolate mx-auto max-w-5xl overflow-hidden py-20 px-4 text-center md:px-8">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
+          <img src="/runaba-logo.png" alt="" className="w-[min(76vw,400px)] opacity-[0.18] dark:opacity-[0.23]" />
+        </div>
+        <div className="relative z-10 space-y-8">
+          <h2 className="text-4xl font-black text-school-blue italic tracking-tighter uppercase">Our Legacy of Excellence</h2>
+          <p className="text-slate-600 leading-relaxed text-xl font-light">
+            {general.schoolName} stands as a beacon of academic excellence in the region. Founded in 2003 with a vision to transform lives through quality education, our institution has evolved into a prestigious center for holistic development, guided by a total of three visionary leaders throughout its history.
+          </p>
+          <p className="text-slate-600 leading-relaxed text-lg">
+            At {general.schoolName}, we pride ourselves on our strong integration with the community and the history of our academic combinations. We work closely with parents and local leaders to create a conducive environment for learning, where every student is valued, respected, and supported in their unique educational journey.
+          </p>
+        </div>
       </section>
 
       {/* School in Action Section */}
@@ -310,7 +315,7 @@ const About = () => {
                 <p className="text-school-green text-[10px] font-black tracking-[0.2em] uppercase mb-6">{item.type}</p>
                 <div className="pt-6 border-t border-white/10 flex items-center gap-3">
                    <div className="bg-white/10 w-2 h-2 rounded-full animate-pulse"></div>
-                   <span className="font-mono text-xl tracking-widest">{item.time}</span>
+                   <span className="text-xl tracking-widest">{item.time}</span>
                 </div>
               </motion.div>
             ))}
@@ -324,7 +329,7 @@ const About = () => {
                { t: '02:00 PM', e: 'Afternoon Session' }
              ].map((s, i) => (
                <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/5 text-center">
-                  <p className="text-school-green font-mono text-sm mb-1">{s.t}</p>
+                  <p className="text-school-green text-sm mb-1">{s.t}</p>
                   <p className="text-sm text-slate-400">{s.e}</p>
                </div>
              ))}
