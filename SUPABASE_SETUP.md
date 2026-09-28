@@ -50,6 +50,8 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 `.env.local` is ignored by Git. The service-role key is highly privileged: never prefix it with `VITE_`, commit it, or paste it into chat. Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to the Vercel project's server-side environment variables as well.
 
+In Vercel, also add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under **Project Settings → Environment Variables** for every environment you deploy (Production, Preview, and Development as needed). Vite embeds these values during the build, so redeploy after adding or changing them. Keep the service-role key server-only; never create a `VITE_SUPABASE_SERVICE_ROLE_KEY` variable.
+
 ## 5. Run and deploy
 
 Use `npx vercel dev` to test locally. It runs both the Vite app and the `/api/elearning/users` server function; plain `npm run dev` does not serve that API route. Deploy to Vercel after adding the server-side environment variables.
