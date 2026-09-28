@@ -121,6 +121,9 @@ export default async function handler(request, response) {
     return response.status(200).json({ success: true });
   } catch (error) {
     console.error('Supabase user provisioning error:', error);
-    return sendError(response, 503, 'Supabase server configuration is unavailable.');
+    const message = error.message === 'Supabase server credentials are not configured.'
+      ? 'Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the Vercel server environment, then redeploy.'
+      : 'Supabase server configuration is unavailable.';
+    return sendError(response, 503, message);
   }
 }
