@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 export const createSupabaseAdmin = () => {
   const serverEnv = globalThis.process?.env || {};
-  const url = serverEnv.SUPABASE_URL;
-  const serviceRoleKey = serverEnv.SUPABASE_SERVICE_ROLE_KEY;
+  const url = serverEnv.SUPABASE_URL || serverEnv.VITE_SUPABASE_URL;
+  const serviceRoleKey = serverEnv.SUPABASE_SERVICE_ROLE_KEY || serverEnv.esrunaba_vercel;
   if (!url || !serviceRoleKey) throw new Error('Supabase server credentials are not configured.');
 
   return createClient(url, serviceRoleKey, {
