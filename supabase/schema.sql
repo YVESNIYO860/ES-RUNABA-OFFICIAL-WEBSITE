@@ -119,6 +119,62 @@ create table if not exists public.school_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.school_classes (
+  name text primary key check (name = btrim(name) and name <> ''),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.school_courses (
+  name text primary key check (name = btrim(name) and name <> ''),
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists school_classes_name_ci_idx on public.school_classes (lower(name));
+create unique index if not exists school_courses_name_ci_idx on public.school_courses (lower(name));
+
+insert into public.school_classes (name)
+select distinct btrim(class_name)
+from (
+  select class as class_name from public.profiles
+  union all select class from public.elearning_assignments
+  union all select class from public.elearning_quizzes
+  union all select class from public.elearning_notes
+  union all select unnest(target_classes) from public.elearning_notes
+  union all select class from public.attendance_records
+  union all select class from public.elearning_submissions
+  union all select class from public.elearning_quiz_results
+  union all select unnest(array[
+    'Senior 1', 'Senior 2', 'Senior 3',
+    'Senior 4 Stream 1', 'Senior 4 Stream 2', 'Senior 4 MEG', 'Senior 4 MCE', 'Senior 4 PCB',
+    'Senior 4 Science Stream One', 'Senior 4 Science Stream Two',
+    'Senior 5 Stream 1', 'Senior 5 Stream 2', 'Senior 5 MEG', 'Senior 5 MCE', 'Senior 5 PCB',
+    'Senior 5 Science Stream One', 'Senior 5 Science Stream Two',
+    'Senior 6 MEG', 'Senior 6 MCE', 'Senior 6 PCB'
+  ])
+  union all select jsonb_array_elements_text(coalesce(content -> 'general' -> 'customClasses', '[]'::jsonb))
+    from public.site_content where id = 'main'
+  union all select value from public.site_content,
+    lateral jsonb_each_text(coalesce(content -> 'general' -> 'classRenames', '{}'::jsonb))
+    where id = 'main'
+) class_values
+where nullif(btrim(class_name), '') is not null
+on conflict do nothing;
+
+insert into public.school_courses (name)
+select min(btrim(course_name))
+from (
+  select subject as course_name from public.profiles
+  union all select subject from public.elearning_assignments
+  union all select subject from public.elearning_quizzes
+  union all select subject from public.elearning_notes
+  union all select 'BIO'
+  union all select 'MATH'
+  union all select 'ENG'
+) course_values
+where nullif(btrim(course_name), '') is not null
+group by lower(btrim(course_name))
+on conflict do nothing;
+
 create index if not exists elearning_assignments_class_idx on public.elearning_assignments (class);
 create index if not exists elearning_quizzes_class_idx on public.elearning_quizzes (class);
 create index if not exists elearning_notes_class_idx on public.elearning_notes (class);
@@ -175,6 +231,7 @@ begin
     return;
   end if;
 
+  update public.school_classes set name = new_name where name = old_name;
   update public.profiles set class = new_name where role = 'student' and class = old_name;
   update public.elearning_assignments set class = new_name where class = old_name;
   update public.elearning_quizzes set class = new_name where class = old_name;
@@ -190,6 +247,85 @@ $$;
 
 revoke all on function public.rename_school_class(text, text) from public;
 grant execute on function public.rename_school_class(text, text) to authenticated;
+
+create or replace function public.delete_school_class(class_name text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.current_user_role() not in ('teacher', 'dos') or not public.is_school_admin() then
+    raise exception 'Administrator access is required to remove classes.' using errcode = '42501';
+  end if;
+
+  if exists (select 1 from public.profiles where class = class_name)
+    or exists (select 1 from public.elearning_assignments where class = class_name)
+    or exists (select 1 from public.elearning_quizzes where class = class_name)
+    or exists (select 1 from public.elearning_notes where class = class_name or class_name = any(target_classes))
+    or exists (select 1 from public.attendance_records where class = class_name)
+    or exists (select 1 from public.elearning_submissions where class = class_name)
+    or exists (select 1 from public.elearning_quiz_results where class = class_name) then
+    raise exception 'This class is still assigned to students or learning records. Reassign those records before removing it.' using errcode = '23503';
+  end if;
+
+  delete from public.school_classes where name = class_name;
+end;
+$$;
+
+create or replace function public.rename_school_course(old_name text, new_name text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.current_user_role() not in ('teacher', 'dos') or not public.is_school_admin() then
+    raise exception 'Administrator access is required to rename courses.' using errcode = '42501';
+  end if;
+  if nullif(btrim(old_name), '') is null or nullif(btrim(new_name), '') is null then
+    raise exception 'Both course names are required.' using errcode = '22023';
+  end if;
+  if old_name = new_name then
+    return;
+  end if;
+
+  update public.school_courses set name = new_name where name = old_name;
+  update public.profiles set subject = new_name where subject = old_name;
+  update public.elearning_assignments set subject = new_name where subject = old_name;
+  update public.elearning_quizzes set subject = new_name where subject = old_name;
+  update public.elearning_notes set subject = new_name where subject = old_name;
+end;
+$$;
+
+create or replace function public.delete_school_course(course_name text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.current_user_role() not in ('teacher', 'dos') or not public.is_school_admin() then
+    raise exception 'Administrator access is required to remove courses.' using errcode = '42501';
+  end if;
+
+  if exists (select 1 from public.profiles where subject = course_name)
+    or exists (select 1 from public.elearning_assignments where subject = course_name)
+    or exists (select 1 from public.elearning_quizzes where subject = course_name)
+    or exists (select 1 from public.elearning_notes where subject = course_name) then
+    raise exception 'This course is still assigned to students or learning records. Reassign those records before removing it.' using errcode = '23503';
+  end if;
+
+  delete from public.school_courses where name = course_name;
+end;
+$$;
+
+revoke all on function public.delete_school_class(text) from public;
+revoke all on function public.rename_school_course(text, text) from public;
+revoke all on function public.delete_school_course(text) from public;
+grant execute on function public.delete_school_class(text) to authenticated;
+grant execute on function public.rename_school_course(text, text) to authenticated;
+grant execute on function public.delete_school_course(text) to authenticated;
 
 create or replace function public.create_student_profile()
 returns trigger
@@ -233,6 +369,8 @@ alter table public.attendance_records enable row level security;
 alter table public.site_content enable row level security;
 alter table public.school_events enable row level security;
 alter table public.school_updates enable row level security;
+alter table public.school_classes enable row level security;
+alter table public.school_courses enable row level security;
 
 grant select, insert, update, delete on public.profiles to authenticated;
 grant select, insert, update, delete on public.elearning_assignments to authenticated;
@@ -247,6 +385,9 @@ grant select on public.school_events to anon, authenticated;
 grant insert, update, delete on public.school_events to authenticated;
 grant select on public.school_updates to anon, authenticated;
 grant insert, update, delete on public.school_updates to authenticated;
+grant select on public.school_classes to anon, authenticated;
+grant insert, update, delete on public.school_classes to authenticated;
+grant select, insert, update, delete on public.school_courses to authenticated;
 
 drop policy if exists "profiles_select_self_or_teacher" on public.profiles;
 create policy "profiles_select_self_or_teacher" on public.profiles
@@ -373,6 +514,28 @@ create policy "school_updates_public_read" on public.school_updates
 
 drop policy if exists "school_updates_admin_manage" on public.school_updates;
 create policy "school_updates_admin_manage" on public.school_updates
+  for all to authenticated
+  using (public.is_school_admin())
+  with check (public.is_school_admin());
+
+drop policy if exists "school_classes_public_read" on public.school_classes;
+create policy "school_classes_public_read" on public.school_classes
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "school_classes_admin_manage" on public.school_classes;
+create policy "school_classes_admin_manage" on public.school_classes
+  for all to authenticated
+  using (public.is_school_admin())
+  with check (public.is_school_admin());
+
+drop policy if exists "school_courses_staff_read" on public.school_courses;
+create policy "school_courses_staff_read" on public.school_courses
+  for select to authenticated
+  using (public.current_user_role() in ('teacher', 'dos') or public.is_school_admin());
+
+drop policy if exists "school_courses_admin_manage" on public.school_courses;
+create policy "school_courses_admin_manage" on public.school_courses
   for all to authenticated
   using (public.is_school_admin())
   with check (public.is_school_admin());

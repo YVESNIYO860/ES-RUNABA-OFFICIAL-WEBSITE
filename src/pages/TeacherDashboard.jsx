@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
-import { getSchoolClassGroups } from '../utils/schoolClasses';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
 import {
   deleteLearningRecord,
+  createSchoolClass,
+  createSchoolCourse,
+  deleteSchoolClass,
+  deleteSchoolCourse,
   deleteProvisionedAccount,
+    loadSchoolClasses,
+    loadSchoolCourses,
   deleteSchoolEvent,
   isSupabaseConfigured,
   loadSchoolEvents,
@@ -20,6 +25,7 @@ import {
   mapSupabaseProfile,
   provisionAccount,
   renameSchoolClass,
+  renameSchoolCourse,
   removeLearningNoteFile,
   saveLearningRecord,
   saveAttendanceRecords,
@@ -29,9 +35,6 @@ import {
 
 const TeacherDashboard = () => {
   const { user, logout, siteContent, updateSiteContent } = useAuth();
-  const customClasses = siteContent?.general?.customClasses || [];
-  const classRenames = siteContent?.general?.classRenames || {};
-  const classGroups = getSchoolClassGroups(customClasses, classRenames);
   const [activeTab, setActiveTab] = useState('overview');
   const [isNavOpen, setIsNavOpen] = useState(false);
   
@@ -41,19 +44,28 @@ const TeacherDashboard = () => {
   const [quizzes, setQuizzes] = useState([]);
   const [notes, setNotes] = useState([]);
   const [events, setEvents] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const classGroups = classes.length
+    ? [{ label: 'Classes', options: classes.map(name => ({ value: name, label: name })) }]
+    : [];
 
   useEffect(() => {
     let isActive = true;
     const loadDashboardData = async () => {
       try {
         if (isSupabaseConfigured) {
-          const [studentRecords, eventRecords] = await Promise.all([
+          const [studentRecords, eventRecords, classRecords, courseRecords] = await Promise.all([
             loadProfiles('student'),
-            loadSchoolEvents()
+            loadSchoolEvents(),
+            loadSchoolClasses(),
+            loadSchoolCourses()
           ]);
           if (!isActive) return;
           setStudents(studentRecords);
           setEvents(eventRecords);
+          setClasses(classRecords);
+          setCourses(courseRecords);
           const [assignmentRecords, quizRecords, noteRecords] = await Promise.all([
             loadLearningRecords('assignments'),
             loadLearningRecords('quizzes'),
@@ -72,6 +84,8 @@ const TeacherDashboard = () => {
         setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]'));
         setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]'));
         setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
+        setClasses(await loadSchoolClasses());
+        setCourses(await loadSchoolCourses());
       } catch (error) {
         console.error('Failed to load dashboard data', error);
       }
@@ -118,6 +132,7 @@ const TeacherDashboard = () => {
             ...(user.isAdmin ? [
               { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
               { id: 'classes', label: 'Classes', icon: Users },
+              { id: 'courses', label: 'Courses', icon: BookOpen },
               { id: 'site-editor', label: 'Site Designer', icon: Globe },
               { id: 'staff', label: 'Staff Management', icon: Shield },
               { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
@@ -150,11 +165,11 @@ const TeacherDashboard = () => {
         >
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={classGroups} />}
-            {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} />}
-            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} classGroups={classGroups} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} /> }
-            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} students={students} classGroups={classGroups} /> }
-            { activeTab === 'classes' && <ClassesTab classGroups={classGroups} customClasses={customClasses} classRenames={classRenames} siteContent={siteContent} updateSiteContent={updateSiteContent} onClassRenamed={(oldName, newName) => {
+            {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
+            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} students={students} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'classes' && <ClassesTab classes={classes} setClasses={setClasses} onClassRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.class === oldName ? { ...student, class: newName } : student));
               setAssignments(current => current.map(assignment => assignment.class === oldName ? { ...assignment, class: newName } : assignment));
               setQuizzes(current => current.map(quiz => quiz.class === oldName ? { ...quiz, class: newName } : quiz));
@@ -163,6 +178,12 @@ const TeacherDashboard = () => {
                 class: note.class === oldName ? newName : note.class,
                 targetClasses: note.targetClasses?.map(className => className === oldName ? newName : className) || []
               })));
+            }} /> }
+            { activeTab === 'courses' && <CoursesTab courses={courses} setCourses={setCourses} onCourseRenamed={(oldName, newName) => {
+              setStudents(current => current.map(student => student.module === oldName ? { ...student, module: newName } : student));
+              setAssignments(current => current.map(assignment => assignment.subject === oldName ? { ...assignment, subject: newName } : assignment));
+              setQuizzes(current => current.map(quiz => quiz.subject === oldName ? { ...quiz, subject: newName } : quiz));
+              setNotes(current => current.map(note => note.subject === oldName ? { ...note, subject: newName } : note));
             }} /> }
             { activeTab === 'events' && <EventsTab events={events} setEvents={setEvents} user={user} /> }
             { activeTab === 'site-editor' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
@@ -179,35 +200,23 @@ const TeacherDashboard = () => {
 
 // --- TABS ---
 
-const ClassesTab = ({ classGroups, customClasses, classRenames, siteContent, updateSiteContent, onClassRenamed }) => {
-  const [newClassName, setNewClassName] = useState('');
-  const [editingClass, setEditingClass] = useState('');
+const ClassesTab = ({ classes, setClasses, onClassRenamed }) => {
+  const [newName, setNewName] = useState('');
   const [editingName, setEditingName] = useState('');
+  const [editingClass, setEditingClass] = useState('');
   const [error, setError] = useState('');
-  const classNames = classGroups.flatMap(group => group.options.map(option => option.value));
-
-  const saveCustomClasses = async (nextClasses) => {
-    await updateSiteContent({
-      ...siteContent,
-      general: { ...siteContent.general, customClasses: nextClasses }
-    });
-  };
 
   const handleCreate = async (event) => {
     event.preventDefault();
-    const name = newClassName.trim();
+    const name = newName.trim();
     if (!name) return;
-    if (classNames.some(className => className.toLowerCase() === name.toLowerCase())) {
-      setError('That class already exists.');
-      return;
-    }
-
     try {
-      await saveCustomClasses([...customClasses, name]);
-      setNewClassName('');
+      const created = await createSchoolClass(name);
+      setClasses(current => [...new Set([...current, created])].sort());
+      setNewName('');
       setError('');
     } catch (saveError) {
-      setError(saveError.message || 'Could not create the class.');
+      setError(saveError.message || 'Could not add the class.');
     }
   };
 
@@ -215,30 +224,26 @@ const ClassesTab = ({ classGroups, customClasses, classRenames, siteContent, upd
     event.preventDefault();
     const name = editingName.trim();
     if (!name || !editingClass) return;
-    if (classNames.some(className => className !== editingClass && className.toLowerCase() === name.toLowerCase())) {
-      setError('That class already exists.');
-      return;
-    }
-
     try {
       await renameSchoolClass(editingClass, name);
-      const nextCustomClasses = customClasses.map(className => className === editingClass ? name : className);
-      const nextClassRenames = { ...classRenames };
-      const originalName = Object.entries(classRenames).find(([, currentName]) => currentName === editingClass)?.[0] || editingClass;
-      Object.keys(nextClassRenames).forEach(sourceName => {
-        if (nextClassRenames[sourceName] === editingClass) nextClassRenames[sourceName] = name;
-      });
-      if (!customClasses.includes(editingClass)) nextClassRenames[originalName] = name;
-      await updateSiteContent({
-        ...siteContent,
-        general: { ...siteContent.general, customClasses: nextCustomClasses, classRenames: nextClassRenames }
-      });
+      setClasses(current => [...new Set(current.map(item => item === editingClass ? name : item))].sort());
       onClassRenamed(editingClass, name);
       setEditingClass('');
       setEditingName('');
       setError('');
     } catch (saveError) {
-      setError(saveError.message || 'Could not update the class.');
+      setError(saveError.message || 'Could not rename the class.');
+    }
+  };
+
+  const handleDelete = async (name) => {
+    if (!window.confirm(`Remove class "${name}"? Classes still used by students or learning records cannot be removed.`)) return;
+    try {
+      await deleteSchoolClass(name);
+      setClasses(current => current.filter(item => item !== name));
+      setError('');
+    } catch (deleteError) {
+      setError(deleteError.message || 'Could not remove the class. Reassign its records first.');
     }
   };
 
@@ -246,33 +251,118 @@ const ClassesTab = ({ classGroups, customClasses, classRenames, siteContent, upd
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-school-blue">Classes</h2>
-        <p className="mt-1 text-sm text-slate-600">Add classes or rename custom classes. Renaming updates enrolled students and their learning records.</p>
+        <p className="mt-1 text-sm text-slate-600">Classes are stored separately. Renaming updates enrolled students and their lessons, assignments, quizzes, and attendance.</p>
       </div>
-
       <form onSubmit={handleCreate} className="flex flex-col gap-3 border-y border-slate-200 bg-white py-4 sm:flex-row">
-        <input value={newClassName} onChange={event => setNewClassName(event.target.value)} aria-label="New class name" placeholder="New class name" className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+        <input value={newName} onChange={event => setNewName(event.target.value)} aria-label="New class name" placeholder="New class name" className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
         <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2"><Plus size={18} /> Add class</button>
       </form>
-
       {error && <p role="alert" className="text-sm font-medium text-red-600">{error}</p>}
-
       <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
-        {classGroups.flatMap(group => group.options.map(option => (
-          <div key={option.value} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
-            {editingClass === option.value ? (
+        {classes.map(name => (
+          <div key={name} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            {editingClass === name ? (
               <form onSubmit={handleRename} className="flex min-w-0 flex-1 flex-wrap gap-2">
-                <input autoFocus value={editingName} onChange={event => setEditingName(event.target.value)} aria-label={`Rename ${option.label}`} className="min-w-[12rem] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <input autoFocus value={editingName} onChange={event => setEditingName(event.target.value)} aria-label={`Rename ${name}`} className="min-w-[12rem] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
                 <button type="submit" className="font-semibold text-school-blue hover:text-school-green">Save</button>
                 <button type="button" onClick={() => setEditingClass('')} className="font-medium text-slate-500 hover:text-slate-800">Cancel</button>
               </form>
             ) : (
               <>
-                <span className="min-w-0 truncate text-sm font-medium text-slate-800">{option.label}</span>
-                <button type="button" onClick={() => { setEditingClass(option.value); setEditingName(option.value); setError(''); }} className="font-semibold text-school-blue hover:text-school-green">Rename</button>
+                <span className="min-w-0 truncate text-sm font-medium text-slate-800">{name}</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => { setEditingClass(name); setEditingName(name); setError(''); }} className="font-semibold text-school-blue hover:text-school-green">Rename</button>
+                  <button type="button" onClick={() => handleDelete(name)} aria-label={`Remove ${name}`} className="text-slate-400 hover:text-red-600"><Trash2 size={18} /></button>
+                </div>
               </>
             )}
           </div>
-        )))}
+        ))}
+        {classes.length === 0 && <p className="px-4 py-6 text-sm text-slate-500">No classes are registered yet.</p>}
+      </div>
+    </div>
+  );
+};
+
+const CoursesTab = ({ courses, setCourses, onCourseRenamed }) => {
+  const [newName, setNewName] = useState('');
+  const [editingName, setEditingName] = useState('');
+  const [editingCourse, setEditingCourse] = useState('');
+  const [error, setError] = useState('');
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      const created = await createSchoolCourse(name);
+      setCourses(current => [...new Set([...current, created])].sort());
+      setNewName('');
+      setError('');
+    } catch (saveError) {
+      setError(saveError.message || 'Could not add the course.');
+    }
+  };
+
+  const handleRename = async (event) => {
+    event.preventDefault();
+    const name = editingName.trim();
+    if (!name || !editingCourse) return;
+    try {
+      await renameSchoolCourse(editingCourse, name);
+      setCourses(current => [...new Set(current.map(item => item === editingCourse ? name : item))].sort());
+      onCourseRenamed(editingCourse, name);
+      setEditingCourse('');
+      setEditingName('');
+      setError('');
+    } catch (saveError) {
+      setError(saveError.message || 'Could not rename the course.');
+    }
+  };
+
+  const handleDelete = async (name) => {
+    if (!window.confirm(`Remove course "${name}"? Courses still used by students or learning records cannot be removed.`)) return;
+    try {
+      await deleteSchoolCourse(name);
+      setCourses(current => current.filter(item => item !== name));
+      setError('');
+    } catch (deleteError) {
+      setError(deleteError.message || 'Could not remove the course. Reassign its records first.');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-school-blue">Courses</h2>
+        <p className="mt-1 text-sm text-slate-600">Courses are managed independently from classes. Renaming updates existing student and learning records.</p>
+      </div>
+      <form onSubmit={handleCreate} className="flex flex-col gap-3 border-y border-slate-200 bg-white py-4 sm:flex-row">
+        <input value={newName} onChange={event => setNewName(event.target.value)} aria-label="New course name" placeholder="New course name" className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+        <button type="submit" className="btn-primary inline-flex items-center justify-center gap-2"><Plus size={18} /> Add course</button>
+      </form>
+      {error && <p role="alert" className="text-sm font-medium text-red-600">{error}</p>}
+      <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+        {courses.map(name => (
+          <div key={name} className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            {editingCourse === name ? (
+              <form onSubmit={handleRename} className="flex min-w-0 flex-1 flex-wrap gap-2">
+                <input autoFocus value={editingName} onChange={event => setEditingName(event.target.value)} aria-label={`Rename ${name}`} className="min-w-[12rem] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm" />
+                <button type="submit" className="font-semibold text-school-blue hover:text-school-green">Save</button>
+                <button type="button" onClick={() => setEditingCourse('')} className="font-medium text-slate-500 hover:text-slate-800">Cancel</button>
+              </form>
+            ) : (
+              <>
+                <span className="min-w-0 truncate text-sm font-medium text-slate-800">{name}</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => { setEditingCourse(name); setEditingName(name); setError(''); }} className="font-semibold text-school-blue hover:text-school-green">Rename</button>
+                  <button type="button" onClick={() => handleDelete(name)} aria-label={`Remove ${name}`} className="text-slate-400 hover:text-red-600"><Trash2 size={18} /></button>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        {courses.length === 0 && <p className="px-4 py-6 text-sm text-slate-500">No courses are registered yet.</p>}
       </div>
     </div>
   );
@@ -470,7 +560,7 @@ const OverviewTab = ({ students, assignments, quizzes }) => (
   </div>
 );
 
-const StudentsTab = ({ students, setStudents, classGroups }) => {
+const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState(() => ({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() }));
   const registrationPreview = generateStudentRegistrationNumber(formData.fullName, formData.startYear, students);
@@ -562,7 +652,10 @@ const StudentsTab = ({ students, setStudents, classGroups }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Module / Subject Code</label>
-              <input required type="text" value={formData.module} onChange={e => setFormData({...formData, module: e.target.value.toUpperCase()})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. BIO, MATH, ENG" />
+              <select required value={formData.module} onChange={e => setFormData({...formData, module: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
+                <option value="">Select course</option>
+                {courses.map(course => <option key={course} value={course}>{course}</option>)}
+              </select>
             </div>
             <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
               Registration number: <span className="font-mono font-bold text-school-blue">{registrationPreview || 'Enter a name to preview'}</span>
@@ -606,7 +699,7 @@ const StudentsTab = ({ students, setStudents, classGroups }) => {
   );
 };
 
-const AssignmentsTab = ({ assignments, setAssignments, user, classGroups }) => {
+const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, courses }) => {
    const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
 
@@ -667,7 +760,10 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups }) => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-              <input required type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. Mathematics" />
+              <select required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
+                <option value="">Select course</option>
+                {courses.map(course => <option key={course} value={course}>{course}</option>)}
+              </select>
             </div>
              <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Target Class</label>
@@ -713,7 +809,7 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups }) => {
   );
 };
 
-const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups }) => {
+const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '' });
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
@@ -781,7 +877,10 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups }) => {
                 <h3 className="text-xl font-bold mb-4 text-purple-700">Quiz Settings</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
-                    <input type="text" placeholder="Subject" value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded" />
+                    <select required value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded">
+                      <option value="">Select course</option>
+                      {courses.map(course => <option key={course} value={course}>{course}</option>)}
+                    </select>
                     <select value={formData.class} onChange={e=>setFormData({...formData, class: e.target.value})} className="border p-2 rounded">
                         {classGroups.map((group) => (
                           <optgroup key={group.label} label={group.label}>
@@ -866,7 +965,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups }) => {
   );
 }
 
-const NotesTab = ({ notes, setNotes, user, students, classGroups }) => {
+const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => {
     const [showAdd, setShowAdd] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
     const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
@@ -1038,7 +1137,10 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-                            <input required type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full border border-slate-300 rounded-md p-2" placeholder="e.g. Physics" />
+                            <select required value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} className="w-full border border-slate-300 rounded-md p-2">
+                              <option value="">Select course</option>
+                              {courses.map(course => <option key={course} value={course}>{course}</option>)}
+                            </select>
                         </div>
                         <div className="md:col-span-2">
                           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">

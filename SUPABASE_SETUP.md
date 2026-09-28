@@ -7,7 +7,7 @@ Create a Supabase project for ES RUNABA and save its database password in your p
 ## 2. Apply the database schema
 
 In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, e-learning records, attendance, public site content/events, row-level security policies, and the private `elearning-notes` Storage bucket.
-In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, e-learning records, attendance, public site content/events/news, row-level security policies, and the private `elearning-notes` Storage bucket.
+In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, separate Classes and Courses registries, e-learning records, attendance, public site content/events/news, row-level security policies, and the private `elearning-notes` Storage bucket. It seeds the new registries from current records and preserves existing student and learning data.
 What Uses Supabase
 
 The SQL Editor path does not require a database password or CLI login.
@@ -60,7 +60,7 @@ Use `npx vercel dev` to test locally. It runs both the Vite app and the `/api/el
 
 ## What Uses Supabase
 
-Student, teacher, and DOS Auth; student profiles; assignments; quizzes; submissions; quiz results; lessons and private lesson files; attendance; public site content; school events; and news, notices, and announcements use Supabase when the environment variables are configured. The content manager supports adding, editing, activating, and deleting public updates. All teachers and DOS can mark attendance for any current class. Site design, class management, and news management are restricted to the system administrator.
+Student, teacher, and DOS Auth; student profiles; Classes; Courses; assignments; quizzes; submissions; quiz results; lessons and private lesson files; attendance; public site content; school events; and news, notices, and announcements use Supabase when the environment variables are configured. DOS can add, rename, and remove classes and courses separately. A class or course still used by records cannot be removed until those records are reassigned. The content manager supports adding, editing, activating, and deleting public updates. All teachers and DOS can mark attendance for any registered class. Site design, class management, and news management are restricted to the system administrator.
 
 The student sign-in URL is `/student-login`, teacher sign-in is `/teacher-login`, and DOS sign-in is `/dos-login`. These routes and the dashboards are outside the public website layout, so e-learning acts as a separate portal experience.
 

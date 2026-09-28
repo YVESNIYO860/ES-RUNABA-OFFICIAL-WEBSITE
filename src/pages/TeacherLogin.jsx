@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Info, Lock, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
 import { getELearningClassGroups } from '../utils/schoolClasses';
 import { isSupabaseConfigured } from '../supabase';
+import { loadSchoolClasses } from '../utils/elearningStore';
 
 const TeacherLogin = ({ initialRole = 'student' }) => {
   const location = useLocation();
@@ -14,13 +15,24 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedClass, setSelectedClass] = useState(initialClass);
+  const [classNames, setClassNames] = useState(() => getELearningClassGroups().flatMap(group => group.options.map(option => option.value)));
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { loginTeacher, loginDos, loginStudent, siteContent } = useAuth();
-  const classGroups = getELearningClassGroups(siteContent?.general?.customClasses || [], siteContent?.general?.classRenames || {});
+  const classGroups = [{ label: 'Classes', options: classNames.map(name => ({ value: name, label: name })) }];
   const navigate = useNavigate();
   const branding = siteContent?.general || { schoolName: 'ES RUNABA', motto: "HUMILITY, UNITY, GOD'S LOVE" };
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let isActive = true;
+    loadSchoolClasses()
+      .then(names => { if (isActive) setClassNames(names); })
+      .catch(loadError => console.error('Failed to load registered classes:', loadError));
+    return () => { isActive = false; };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');

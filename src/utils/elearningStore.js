@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from '../supabase';
+import { schoolClassGroups } from './schoolClasses';
 
 const tableByType = {
   assignments: 'elearning_assignments',
@@ -171,6 +172,95 @@ export const loadProfiles = async (role) => {
   return data.map(mapSupabaseProfile);
 };
 
+export const loadSchoolClasses = async () => {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('school_classes').select('name').order('name');
+    if (error) throw error;
+    return data.map(row => row.name);
+  }
+  const storedClasses = JSON.parse(localStorage.getItem('school_classes_db') || '[]');
+  return [...new Set([...schoolClassGroups.flatMap(group => group.options.map(option => option.value)), ...storedClasses])].sort();
+};
+
+export const createSchoolClass = async (name) => {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('school_classes').insert({ name }).select('name').single();
+    if (error) throw error;
+    return data.name;
+  }
+  const classes = await loadSchoolClasses();
+  if (classes.some(item => item.toLowerCase() === name.toLowerCase())) throw new Error('That class already exists.');
+  const nextClasses = [...classes, name].sort();
+  localStorage.setItem('school_classes_db', JSON.stringify(nextClasses));
+  return name;
+};
+
+export const deleteSchoolClass = async (name) => {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('delete_school_class', { class_name: name });
+    if (error) throw error;
+    return;
+  }
+  const references = ['students_db', 'assignments_db', 'quizzes_db', 'notes_db', 'attendance_db', 'submissions_db', 'quiz_results_db']
+    .some(key => JSON.parse(localStorage.getItem(key) || '[]').some(record => record.class === name || record.targetClasses?.includes(name)));
+  if (references) throw new Error('This class is still assigned to records. Reassign those records before removing it.');
+  const classes = (await loadSchoolClasses()).filter(item => item !== name);
+  localStorage.setItem('school_classes_db', JSON.stringify(classes));
+};
+
+export const loadSchoolCourses = async () => {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('school_courses').select('name').order('name');
+    if (error) throw error;
+    return data.map(row => row.name);
+  }
+  const storedCourses = JSON.parse(localStorage.getItem('school_courses_db') || '[]');
+  return [...new Set(['BIO', 'MATH', 'ENG', ...storedCourses])].sort();
+};
+
+export const createSchoolCourse = async (name) => {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('school_courses').insert({ name }).select('name').single();
+    if (error) throw error;
+    return data.name;
+  }
+  const courses = await loadSchoolCourses();
+  if (courses.some(item => item.toLowerCase() === name.toLowerCase())) throw new Error('That course already exists.');
+  localStorage.setItem('school_courses_db', JSON.stringify([...courses, name].sort()));
+  return name;
+};
+
+export const deleteSchoolCourse = async (name) => {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('delete_school_course', { course_name: name });
+    if (error) throw error;
+    return;
+  }
+  const references = ['students_db', 'staff_db', 'assignments_db', 'quizzes_db', 'notes_db']
+    .some(key => JSON.parse(localStorage.getItem(key) || '[]').some(record => record.module === name || record.subject === name));
+  if (references) throw new Error('This course is still assigned to records. Reassign those records before removing it.');
+  const courses = (await loadSchoolCourses()).filter(item => item !== name);
+  localStorage.setItem('school_courses_db', JSON.stringify(courses));
+};
+
+export const renameSchoolCourse = async (oldName, newName) => {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('rename_school_course', { old_name: oldName, new_name: newName });
+    if (error) throw error;
+    return;
+  }
+  for (const key of ['students_db', 'staff_db', 'assignments_db', 'quizzes_db', 'notes_db']) {
+    const records = JSON.parse(localStorage.getItem(key) || '[]');
+    localStorage.setItem(key, JSON.stringify(records.map(record => ({
+      ...record,
+      ...(record.module === oldName ? { module: newName } : {}),
+      ...(record.subject === oldName ? { subject: newName } : {})
+    }))));
+  }
+  const courses = (await loadSchoolCourses()).map(course => course === oldName ? newName : course);
+  localStorage.setItem('school_courses_db', JSON.stringify([...new Set(courses)].sort()));
+};
+
 export const renameSchoolClass = async (oldName, newName) => {
   if (isSupabaseConfigured) {
     const { error } = await supabase.rpc('rename_school_class', {
@@ -194,6 +284,8 @@ export const renameSchoolClass = async (oldName, newName) => {
 
   ['students_db', 'assignments_db', 'quizzes_db', 'notes_db', 'submissions_db', 'quiz_results_db', 'attendance_db']
     .forEach(updateRecords);
+  const classes = (await loadSchoolClasses()).map(className => className === oldName ? newName : className);
+  localStorage.setItem('school_classes_db', JSON.stringify([...new Set(classes)].sort()));
 };
 
 export const provisionAccount = async (account) => {
