@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
+import LearningPortalHeader from '../components/LearningPortalHeader';
 import { printQuiz } from '../utils/printQuiz';
 import {
   deleteLearningRecord,
@@ -20,6 +21,9 @@ import {
     loadSchoolCourses,
   deleteSchoolEvent,
   isSupabaseConfigured,
+  loadSchoolClassesWithHeads,
+  assignSchoolClassHead,
+  getStudentWorkUrl,
   loadSchoolEvents,
   loadLearningRecords,
   loadAttendanceRecords,
@@ -39,19 +43,19 @@ const getStaffDashboardTabs = (user) => [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   ...(['teacher', 'dos'].includes(user?.role) ? [
-    { id: 'students', label: 'Students', icon: Users },
     { id: 'assignments', label: 'Assignments', icon: FileText },
     { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
     { id: 'notes', label: user.role === 'dos' ? 'Lessons' : 'Lessons & Resources', icon: FileUp }
   ] : []),
-  ...(user?.isAdmin ? [
+  ...(user?.role === 'dos' ? [
+    { id: 'students', label: 'Students', icon: Users },
     { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
     { id: 'classes', label: 'Classes', icon: Users },
     { id: 'courses', label: 'Courses', icon: BookOpen },
     { id: 'site-editor', label: 'Site Designer', icon: Globe },
-    { id: 'staff', label: 'Staff Management', icon: Shield },
     { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
   ] : []),
+  ...(user?.role === 'dos' ? [{ id: 'class-heads', label: 'Class Heads', icon: UserCheck }] : []),
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'contact', label: 'Contact', icon: MessageSquare }
 ];
@@ -70,8 +74,10 @@ const TeacherDashboard = () => {
   const [assignments, setAssignments] = useState([]);
   const [quizzes, setQuizzes] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [events, setEvents] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [headedClasses, setHeadedClasses] = useState([]);
   const [courses, setCourses] = useState([]);
   const classGroups = classes.length
     ? [{ label: 'Classes', options: classes.map(name => ({ value: name, label: name })) }]
@@ -82,37 +88,46 @@ const TeacherDashboard = () => {
     const loadDashboardData = async () => {
       try {
         if (isSupabaseConfigured) {
-          const [studentRecords, eventRecords, classRecords, courseRecords] = await Promise.all([
+          const [studentRecords, eventRecords, classRecords, courseRecords, classHeadRecords] = await Promise.all([
             loadProfiles('student'),
             loadSchoolEvents(),
             loadSchoolClasses(),
-            loadSchoolCourses()
+            loadSchoolCourses(),
+            user.role === 'teacher' ? loadSchoolClassesWithHeads() : Promise.resolve([])
           ]);
           if (!isActive) return;
           setStudents(studentRecords);
           setEvents(eventRecords);
           setClasses(classRecords);
           setCourses(courseRecords);
-          const [assignmentRecords, quizRecords, noteRecords] = await Promise.all([
+          setHeadedClasses(classHeadRecords.filter(schoolClass => schoolClass.headTeacherId === user.id).map(schoolClass => schoolClass.name));
+          const [assignmentRecords, quizRecords, noteRecords, submissionRecords] = await Promise.all([
             loadLearningRecords('assignments'),
             loadLearningRecords('quizzes'),
-            loadLearningRecords('notes')
+            loadLearningRecords('notes'),
+            loadLearningRecords('submissions')
           ]);
           if (!isActive) return;
           setAssignments(assignmentRecords);
           setQuizzes(quizRecords);
           setNotes(noteRecords);
+          setSubmissions(submissionRecords);
           return;
         }
 
         if (!isActive) return;
         setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
-        setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]'));
-        setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]'));
-        setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]'));
+        setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
+        setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
+        setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]').filter(note => user.role === 'dos' || note.createdBy === user.id));
+        setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
         setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
         setClasses(await loadSchoolClasses());
         setCourses(await loadSchoolCourses());
+        if (user.role === 'teacher') {
+          const classHeadRecords = await loadSchoolClassesWithHeads();
+          setHeadedClasses(classHeadRecords.filter(schoolClass => schoolClass.headTeacherId === user.id).map(schoolClass => schoolClass.name));
+        }
       } catch (error) {
         console.error('Failed to load dashboard data', error);
       }
@@ -127,7 +142,9 @@ const TeacherDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50">
+      <LearningPortalHeader user={user} />
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row">
       {/* Sidebar sidebar */}
       <aside className="z-10 flex w-full shrink-0 flex-col bg-school-blue pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
         <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10">
@@ -174,12 +191,12 @@ const TeacherDashboard = () => {
           transition={{ duration: 0.2 }}
         >
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
-            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={classGroups} />}
-            {activeTab === 'students' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
-            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} user={user} classGroups={classGroups} courses={courses} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} /> }
-            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} user={user} students={students} classGroups={classGroups} courses={courses} /> }
-            { activeTab === 'classes' && <ClassesTab classes={classes} setClasses={setClasses} onClassRenamed={(oldName, newName) => {
+            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
+            {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
+            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} submissions={submissions} students={students} headedClasses={headedClasses} canManage={user.role === 'teacher'} user={user} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} canManage={user.role === 'teacher'} user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} /> }
+            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} canManage={user.role === 'teacher'} user={user} students={students} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'classes' && user.role === 'dos' && <ClassesTab classes={classes} setClasses={setClasses} onClassRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.class === oldName ? { ...student, class: newName } : student));
               setAssignments(current => current.map(assignment => assignment.class === oldName ? { ...assignment, class: newName } : assignment));
               setQuizzes(current => current.map(quiz => quiz.class === oldName ? { ...quiz, class: newName } : quiz));
@@ -189,27 +206,93 @@ const TeacherDashboard = () => {
                 targetClasses: note.targetClasses?.map(className => className === oldName ? newName : className) || []
               })));
             }} /> }
-            { activeTab === 'courses' && <CoursesTab courses={courses} setCourses={setCourses} onCourseRenamed={(oldName, newName) => {
+            { activeTab === 'class-heads' && user.role === 'dos' && <ClassHeadsTab /> }
+            { activeTab === 'courses' && user.role === 'dos' && <CoursesTab courses={courses} setCourses={setCourses} onCourseRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.module === oldName ? { ...student, module: newName } : student));
               setAssignments(current => current.map(assignment => assignment.subject === oldName ? { ...assignment, subject: newName } : assignment));
               setQuizzes(current => current.map(quiz => quiz.subject === oldName ? { ...quiz, subject: newName } : quiz));
               setNotes(current => current.map(note => note.subject === oldName ? { ...note, subject: newName } : note));
             }} /> }
-            { activeTab === 'events' && <EventsTab events={events} setEvents={setEvents} user={user} /> }
-            { activeTab === 'site-editor' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
-            { activeTab === 'staff' && <StaffTab /> }
-            { activeTab === 'analytics' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
+            { activeTab === 'events' && user.role === 'dos' && <EventsTab events={events} setEvents={setEvents} user={user} /> }
+            { activeTab === 'site-editor' && user.role === 'dos' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
+            { activeTab === 'analytics' && user.role === 'dos' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
             { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
             { activeTab === 'contact' && <LearningContact /> }
         </motion.div>
       </main>
       <LearningDashboardFooter user={user} onLogout={logout} onContact={() => setActiveTab('contact')} />
       </div>
+      </div>
     </div>
   );
 };
 
 // --- TABS ---
+
+const ClassHeadsTab = () => {
+  const [schoolClasses, setSchoolClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savingClass, setSavingClass] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    let isActive = true;
+    Promise.all([loadSchoolClassesWithHeads(), loadProfiles('teacher')])
+      .then(([classRecords, teacherRecords]) => {
+        if (!isActive) return;
+        setSchoolClasses(classRecords);
+        setTeachers(teacherRecords);
+      })
+      .catch(error => {
+        if (isActive) setMessage(error.message || 'Could not load classes and teachers.');
+      })
+      .finally(() => { if (isActive) setLoading(false); });
+    return () => { isActive = false; };
+  }, []);
+
+  const handleAssign = async (className, teacherId) => {
+    setSavingClass(className);
+    setMessage('');
+    try {
+      await assignSchoolClassHead(className, teacherId);
+      setSchoolClasses(current => current.map(schoolClass => schoolClass.name === className
+        ? { ...schoolClass, headTeacherId: teacherId || null }
+        : schoolClass));
+      setMessage(`Head teacher updated for ${className}.`);
+    } catch (error) {
+      setMessage(error.message || 'Could not assign the class head.');
+    } finally {
+      setSavingClass('');
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-school-blue">Class Heads</h2>
+        <p className="mt-1 text-sm text-slate-600">Assign one teacher to lead each class. Class heads can manage attendance and review student work for their assigned classes.</p>
+      </div>
+      {message && <p role="status" className="border-y border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
+      {loading ? (
+        <p className="border-y border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">Loading class assignments...</p>
+      ) : (
+        <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+          {schoolClasses.map(schoolClass => (
+            <label key={schoolClass.name} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="font-semibold text-slate-800">{schoolClass.name}</span>
+              <select aria-label={`Class head for ${schoolClass.name}`} value={schoolClass.headTeacherId || ''} disabled={savingClass === schoolClass.name} onChange={event => handleAssign(schoolClass.name, event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm sm:max-w-sm">
+                <option value="">No class head assigned</option>
+                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.fullName || teacher.name}</option>)}
+              </select>
+            </label>
+          ))}
+          {schoolClasses.length === 0 && <p className="px-4 py-8 text-sm text-slate-500">Register classes before assigning class heads.</p>}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ClassesTab = ({ classes, setClasses, onClassRenamed }) => {
   const [newName, setNewName] = useState('');
@@ -710,13 +793,26 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
   );
 };
 
-const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, courses }) => {
+const AssignmentsTab = ({ assignments, setAssignments, submissions, students, headedClasses, canManage, user, classGroups, courses }) => {
    const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
+  const [downloadingSubmission, setDownloadingSubmission] = useState('');
+
+  const openStudentWork = async (submission) => {
+    setDownloadingSubmission(submission.id);
+    try {
+      const url = submission.filePath?.startsWith('data:') ? submission.filePath : await getStudentWorkUrl(submission.filePath);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      window.alert(error.message || 'Could not open the student submission.');
+    } finally {
+      setDownloadingSubmission('');
+    }
+  };
 
    const handleAdd = async (e) => {
     e.preventDefault();
-    const newAssignment = { ...formData, id: Date.now().toString() };
+    const newAssignment = { ...formData, id: Date.now().toString(), createdBy: user.id };
     if (isSupabaseConfigured) {
       try {
         const savedAssignment = await saveLearningRecord('assignments', newAssignment, user);
@@ -756,12 +852,12 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, course
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-school-blue">Assignments</h2>
-        <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
+        {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
           {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Create Assignment'}
-        </button>
+        </button>}
       </div>
 
-       {showAdd && (
+       {showAdd && canManage && (
         <form onSubmit={handleAdd} className="card bg-white p-6 mb-8 border-2 border-school-blue/20">
           <h3 className="text-xl font-bold mb-4">New Assignment</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -805,7 +901,7 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, course
           {assignments.length === 0 && <p className="text-slate-500">No assignments created yet.</p>}
           {assignments.map(a => (
               <div key={a.id} className="card relative border-l-4 border-l-school-blue">
-                  <button onClick={() => handleDelete(a.id)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+                  {canManage && <button onClick={() => handleDelete(a.id)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>}
                   <h3 className="font-bold text-lg">{a.title}</h3>
                   <div className="flex gap-2 text-xs font-semibold mt-2 mb-3">
                       <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{a.subject}</span>
@@ -813,6 +909,31 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, course
                   </div>
                   <p className="text-slate-600 text-sm mb-4 line-clamp-2">{a.description}</p>
                   <p className="text-xs font-bold text-red-500">Due: {a.dueDate}</p>
+                  {(user.role === 'dos' || headedClasses.includes(a.class)) && (
+                    <div className="mt-5 border-t border-slate-100 pt-4">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Student submissions</p>
+                      {submissions.filter(submission => submission.assignmentId === a.id).length === 0 ? (
+                        <p className="text-xs text-slate-500">No work submitted yet.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {submissions.filter(submission => submission.assignmentId === a.id).map(submission => {
+                            const student = students.find(record => record.regNumber === submission.studentId);
+                            return (
+                              <li key={submission.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2">
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-800">{student?.fullName || submission.studentId}</p>
+                                  <p className="truncate text-xs text-slate-500">{submission.fileName || 'Legacy submission'}{submission.fileType ? ` · ${submission.fileType}` : ''}</p>
+                                </div>
+                                {submission.filePath && <button type="button" onClick={() => openStudentWork(submission)} disabled={downloadingSubmission === submission.id} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-school-blue hover:text-school-green disabled:opacity-50">
+                                  <Download size={15} /> {downloadingSubmission === submission.id ? 'Opening...' : 'Open work'}
+                                </button>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
               </div>
           ))}
       </div>
@@ -820,11 +941,35 @@ const AssignmentsTab = ({ assignments, setAssignments, user, classGroups, course
   );
 };
 
-const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolName }) => {
+const createQuizDraft = (schoolName = 'ES RUNABA') => ({
+  title: '',
+  class: 'Senior 4 Stream 1',
+  subject: '',
+  deadline: '',
+  paperSettings: {
+    ministry: 'MINISTRY OF EDUCATION',
+    district: 'BURERA DISTRICT',
+    schoolName: schoolName || 'ES RUNABA',
+    academicYear: String(new Date().getFullYear()),
+    term: '',
+    venue: '',
+    instructions: 'Answer all questions. Read each section carefully and show your work where needed.',
+    coverMessage: '',
+    includeCoverPage: true,
+    showWatermark: true
+  }
+});
+
+const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses, schoolName }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '' });
+  const [formData, setFormData] = useState(() => createQuizDraft(schoolName));
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
   const [questions, setQuestions] = useState([]);
+
+  const updatePaperSetting = (field, value) => setFormData(current => ({
+    ...current,
+    paperSettings: { ...current.paperSettings, [field]: value }
+  }));
 
   const addQuestion = (e) => {
       e.preventDefault();
@@ -838,7 +983,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
 
   const handleCreateQuiz = async () => {
       if(questions.length === 0) return alert("Add at least one question.");
-      const newQuiz = { ...formData, questions, id: Date.now().toString() };
+      const newQuiz = { ...formData, questions, id: Date.now().toString(), createdBy: user.id };
       if (isSupabaseConfigured) {
         try {
           const savedQuiz = await saveLearningRecord('quizzes', newQuiz, user);
@@ -853,7 +998,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
       localStorage.setItem('quizzes_db', JSON.stringify(updated));
       }
       setShowAdd(false);
-      setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '' });
+      setFormData(createQuizDraft(schoolName));
       setQuestions([]);
   };
 
@@ -878,15 +1023,15 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-school-blue">Quizzes</h2>
-          <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
+          {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
             {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Create Quiz'}
-          </button>
+          </button>}
         </div>
 
-        {showAdd && (
+        {showAdd && canManage && (
             <div className="card bg-white p-6 mb-8 border-2 border-purple-500/20">
                 <h3 className="text-xl font-bold mb-4 text-purple-700">Quiz Settings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
                     <select required value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded">
                       <option value="">Select course</option>
@@ -901,7 +1046,29 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
                           </optgroup>
                         ))}
                     </select>
+                    <label className="text-xs font-semibold text-slate-600">Deadline
+                      <input type="date" value={formData.deadline} onChange={e => setFormData({ ...formData, deadline: e.target.value })} className="mt-1 w-full border p-2 rounded text-sm" />
+                    </label>
                 </div>
+
+                <details open className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-bold text-slate-800">Exam header and cover page</summary>
+                  <p className="mt-2 text-xs text-slate-500">Review or edit these details before publishing. They will appear on the printable exam.</p>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-semibold text-slate-600">Ministry header<input value={formData.paperSettings.ministry} onChange={event => updatePaperSetting('ministry', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">District<input value={formData.paperSettings.district} onChange={event => updatePaperSetting('district', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">School name<input value={formData.paperSettings.schoolName} onChange={event => updatePaperSetting('schoolName', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Academic year<input value={formData.paperSettings.academicYear} onChange={event => updatePaperSetting('academicYear', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Term<input value={formData.paperSettings.term} onChange={event => updatePaperSetting('term', event.target.value)} placeholder="e.g. Term I" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Examination venue<input value={formData.paperSettings.venue} onChange={event => updatePaperSetting('venue', event.target.value)} placeholder="e.g. ES RUNABA Examination Hall" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Instructions<textarea rows="2" value={formData.paperSettings.instructions} onChange={event => updatePaperSetting('instructions', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Cover message<textarea rows="2" value={formData.paperSettings.coverMessage} onChange={event => updatePaperSetting('coverMessage', event.target.value)} placeholder="Optional cover page message" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-5 text-sm text-slate-700">
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formData.paperSettings.includeCoverPage} onChange={event => updatePaperSetting('includeCoverPage', event.target.checked)} /> Include a cover page</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" checked={formData.paperSettings.showWatermark} onChange={event => updatePaperSetting('showWatermark', event.target.checked)} /> Show ES RUNABA logo watermark</label>
+                  </div>
+                </details>
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="flex justify-between items-center mb-3">
@@ -962,14 +1129,15 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
             {quizzes.map(q => (
                 <div key={q.id} className="card relative border-t-4 border-t-purple-500">
                     <div className="absolute top-4 right-4 flex items-center gap-3">
-                      <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true' })} aria-label={`Print ${q.title}`} title="Print exam" className="text-school-blue hover:text-school-green"><Printer size={18} /></button>
-                      <button type="button" onClick={() => handleDelete(q.id)} aria-label={`Delete ${q.title}`} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>
+                      <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true', preparationPlace: localStorage.getItem(`es_runaba_exam_preparation_place_${user.id}`) || '', paperSettings: q.paperSettings || {} })} aria-label={`Print ${q.title}`} title="Print or save exam as PDF" className="text-school-blue hover:text-school-green"><Printer size={18} /></button>
+                      {canManage && <button type="button" onClick={() => handleDelete(q.id)} aria-label={`Delete ${q.title}`} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>}
                     </div>
                     <h3 className="font-bold text-lg">{q.title}</h3>
                     <div className="flex gap-2 text-xs font-semibold mt-2 mb-3">
                         <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{q.subject}</span>
                         <span className="bg-purple-500/10 text-purple-600 px-2 py-1 rounded">{q.class}</span>
                         <span className="bg-slate-800 text-white px-2 py-1 rounded">{q.questions.length} Qs</span>
+                        {q.deadline && <span className="bg-red-50 text-red-700 px-2 py-1 rounded">Until {q.deadline}</span>}
                         <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">Strict Paging</span>
                     </div>
                 </div>
@@ -979,7 +1147,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, user, classGroups, courses, schoolNam
   );
 }
 
-const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => {
+const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, courses }) => {
     const [showAdd, setShowAdd] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
     const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
@@ -992,9 +1160,9 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
         const file = e.target.files[0];
         if (!file) return;
 
-        // 1.5MB size limit to avoid blowing up localStorage
-        if (file.size > 1.5 * 1024 * 1024) {
-             setError("File is too large. Maximum size is 1.5MB.");
+           const maximumSize = isSupabaseConfigured ? 25 * 1024 * 1024 : 1.5 * 1024 * 1024;
+           if (file.size > maximumSize) {
+             setError(`File is too large. Maximum size is ${isSupabaseConfigured ? '25 MB' : '1.5 MB in demo mode'}.`);
              setFileData(null);
              setFileName('');
              return;
@@ -1063,7 +1231,7 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
           uploadedFilePath = editingNote?.filePath || '';
           if (fileData) {
             const uploadId = editingNote ? `${noteId}-${Date.now()}` : noteId;
-            newUploadPath = await uploadLearningNote(fileData, formData.targetClasses[0] || 'selected-students', uploadId);
+            newUploadPath = await uploadLearningNote(fileData, formData.targetClasses[0] || 'selected-students', uploadId, user.id);
             uploadedFilePath = newUploadPath;
           }
           const savedNote = await saveLearningRecord('notes', {
@@ -1099,6 +1267,7 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
             targetStudentIds: formData.targetStudentIds,
             fileName: fileData ? fileName : editingNote?.fileName || fileName,
             fileData: fileData || editingNote?.fileData,
+            createdBy: editingNote?.createdBy || user.id,
             datePosted: editingNote?.datePosted || new Date().toLocaleDateString()
         };
 
@@ -1136,12 +1305,12 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-school-blue">{user.role === 'dos' ? 'Lessons' : 'Lessons & Resources'}</h2>
-                <button type="button" onClick={showAdd ? resetEditor : openNewNote} className="btn-secondary flex items-center gap-2">
+                {canManage && <button type="button" onClick={showAdd ? resetEditor : openNewNote} className="btn-secondary flex items-center gap-2">
                   {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : user.role === 'dos' ? 'Add Lesson' : 'Upload File'}
-                </button>
+                </button>}
             </div>
 
-            {showAdd && (
+            {showAdd && canManage && (
                 <form onSubmit={handleAdd} className="card bg-white p-6 mb-8 border-2 border-school-blue/20">
                     <h3 className="text-xl font-bold mb-4">{editingNote ? 'Update Lesson' : user.role === 'dos' ? 'Add Lesson' : 'Upload New Material'}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1223,9 +1392,9 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
                             <p className="mt-1 text-xs text-slate-500">{formData.targetClasses.length || formData.targetStudentIds.length ? `Selected ${formData.targetClasses.length} class${formData.targetClasses.length === 1 ? '' : 'es'} and ${formData.targetStudentIds.length} individual student${formData.targetStudentIds.length === 1 ? '' : 's'}.` : 'Select at least one class or student.'}</p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">File (PDF, DOCX) - Max 1.5MB</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">File (any format) - Max {isSupabaseConfigured ? '25 MB' : '1.5 MB in demo mode'}</label>
                             {editingNote && <p className="mb-1 text-xs text-slate-500">Current file: {editingNote.fileName}. Select a file only to replace it.</p>}
-                            <input required={!editingNote} type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} className="w-full border border-slate-300 rounded-md p-1.5 text-sm" />
+                              <input required={!editingNote} type="file" onChange={handleFileChange} className="w-full border border-slate-300 rounded-md p-1.5 text-sm" />
                             {error && <p className="text-red-500 text-xs mt-1 font-bold">{error}</p>}
                         </div>
                         <div className="md:col-span-2">
@@ -1242,8 +1411,8 @@ const NotesTab = ({ notes, setNotes, user, students, classGroups, courses }) => 
                 {notes.map(n => (
                     <div key={n.id} className="card relative border-t-4 border-t-blue-500 flex flex-col">
                         <div className="absolute right-4 top-4 flex gap-2">
-                          <button type="button" onClick={() => handleEdit(n)} className="inline-flex items-center gap-1 text-sm font-semibold text-school-blue hover:text-school-green" title="Edit lesson"><Edit3 size={16} /> Edit</button>
-                          <button type="button" onClick={() => handleDelete(n.id)} className="text-slate-400 hover:text-red-500" title="Delete lesson"><Trash2 size={18}/></button>
+                          {canManage && <button type="button" onClick={() => handleEdit(n)} className="inline-flex items-center gap-1 text-sm font-semibold text-school-blue hover:text-school-green" title="Edit lesson"><Edit3 size={16} /> Edit</button>}
+                          {canManage && <button type="button" onClick={() => handleDelete(n.id)} className="text-slate-400 hover:text-red-500" title="Delete lesson"><Trash2 size={18}/></button>}
                         </div>
                         <h3 className="font-bold text-lg mb-1">{n.title}</h3>
                         <div className="flex gap-2 text-xs font-semibold mb-3">

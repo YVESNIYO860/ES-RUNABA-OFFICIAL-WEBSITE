@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Info, Lock, User } from 'lucide-react';
+import { Info, Lock, User } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
@@ -82,8 +82,8 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
           <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
             <div className="bg-school-blue px-8 py-10 text-white sm:px-10 sm:py-12">
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/10 text-white shadow-lg">
-                  <BookOpen size={24} />
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white p-1 shadow-lg">
+                  <img src="/runaba-logo.png" alt="ES RUNABA logo" className="h-full w-full object-contain" />
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-200">{branding.schoolName}</p>

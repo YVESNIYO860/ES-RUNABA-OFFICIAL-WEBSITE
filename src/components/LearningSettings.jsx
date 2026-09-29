@@ -9,8 +9,10 @@ const LearningSettings = ({ user, views }) => {
   const { isDark } = useTheme();
   const defaultViewKey = `es_runaba_learning_home_${user.id}`;
   const answerKeyKey = `es_runaba_include_answer_key_${user.id}`;
+  const preparationPlaceKey = `es_runaba_exam_preparation_place_${user.id}`;
   const [defaultView, setDefaultView] = useState(() => localStorage.getItem(defaultViewKey) || views[0]?.id || '');
   const [includeAnswerKey, setIncludeAnswerKey] = useState(() => localStorage.getItem(answerKeyKey) === 'true');
+  const [preparationPlace, setPreparationPlace] = useState(() => localStorage.getItem(preparationPlaceKey) || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState('');
@@ -26,6 +28,12 @@ const LearningSettings = ({ user, views }) => {
     const enabled = event.target.checked;
     setIncludeAnswerKey(enabled);
     localStorage.setItem(answerKeyKey, String(enabled));
+  };
+
+  const handlePreparationPlaceChange = (event) => {
+    const place = event.target.value;
+    setPreparationPlace(place);
+    localStorage.setItem(preparationPlaceKey, place);
   };
 
   const handlePasswordUpdate = async (event) => {
@@ -102,6 +110,11 @@ const LearningSettings = ({ user, views }) => {
               <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
                 <input type="checkbox" checked={includeAnswerKey} onChange={handleAnswerKeyChange} className="mt-0.5 accent-school-green" />
                 <span>Include a separate teacher answer key when printing exams.</span>
+              </label>
+              <label htmlFor="exam-preparation-place" className="mt-4 block text-sm font-medium text-slate-700">
+                Place of examination preparation
+                <input id="exam-preparation-place" type="text" value={preparationPlace} onChange={handlePreparationPlaceChange} placeholder="e.g. ES RUNABA Examination Office" className="mt-1 w-full max-w-md rounded-md border border-slate-300 bg-white px-3 py-2 text-sm" />
+                <span className="mt-1 block text-xs font-normal text-slate-500">This place is shown on printed exam papers and saved on this device.</span>
               </label>
             </div>
           </div>

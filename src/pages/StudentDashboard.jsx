@@ -4,10 +4,35 @@ import { Navigate } from 'react-router-dom';
 import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
-import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, saveLearningRecord } from '../utils/elearningStore';
+import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, removeStudentWorkFile, saveLearningRecord, uploadStudentWork } from '../utils/elearningStore';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
+import LearningPortalHeader from '../components/LearningPortalHeader';
+
+const isQuizAvailable = (quiz) => {
+    if (!quiz.deadline) return true;
+    const [year, month, day] = quiz.deadline.split('-').map(Number);
+    if (!year || !month || !day) return true;
+    const deadlineEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+    return deadlineEnd >= new Date();
+};
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read the selected file.'));
+    reader.readAsDataURL(file);
+});
+
+const getFileFormat = (file) => file.name.split('.').pop()?.toUpperCase() || file.type || 'FILE';
+
+const isAssignmentOpen = (dueDate) => {
+    if (!dueDate) return true;
+    const [year, month, day] = dueDate.split('-').map(Number);
+    if (!year || !month || !day) return true;
+    return new Date(year, month - 1, day, 23, 59, 59, 999) >= new Date();
+};
 
 const studentTabs = [
     { id: 'assignments', label: 'My Assignments', icon: BookOpen },
@@ -49,7 +74,7 @@ const StudentDashboard = () => {
                     ]);
                     if (!isActive) return;
                     setAssignments(classAssignments);
-                    setQuizzes(classQuizzes);
+                    setQuizzes(classQuizzes.filter(isQuizAvailable));
                     setNotes(classNotes);
                     setSubmissions(studentSubmissions);
                     setQuizResults(studentQuizResults);
@@ -61,7 +86,7 @@ const StudentDashboard = () => {
                 const allNotes = JSON.parse(localStorage.getItem('notes_db') || '[]');
                 if (!isActive) return;
                 setAssignments(allAssignments.filter(a => a.class === user.class));
-                setQuizzes(allQuizzes.filter(q => q.class === user.class));
+                setQuizzes(allQuizzes.filter(q => q.class === user.class && isQuizAvailable(q)));
                 setNotes(allNotes.filter(note => {
                     const targetClasses = note.targetClasses || [];
                     const targetStudentIds = note.targetStudentIds || [];
@@ -86,7 +111,9 @@ const StudentDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+                <div className="min-h-screen bg-slate-50">
+                    <LearningPortalHeader user={user} />
+                    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row">
             {/* Sidebar */}
             <aside className="z-10 flex w-full shrink-0 flex-col bg-slate-900 pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 text-left sm:p-6 md:flex-col md:text-center">
@@ -146,34 +173,66 @@ const StudentDashboard = () => {
             </main>
             <LearningDashboardFooter user={user} onLogout={logout} onContact={() => setActiveTab('contact')} />
             </div>
+                    </div>
         </div>
     );
 };
 
 
 const AssignmentsTab = ({ assignments, submissions, setSubmissions, user }) => {
-    
-    const isSubmitted = (assignmentId) => {
-        return submissions.some(s => s.assignmentId === assignmentId && s.studentId === user.regNumber);
-    };
+    const [selectedFiles, setSelectedFiles] = useState({});
+    const [messages, setMessages] = useState({});
 
-    const handleSubmit = async (assignmentId) => {
-        const newSubmission = { id: Date.now().toString(), assignmentId, studentId: user.regNumber, class: user.class, submittedAt: new Date().toISOString() };
-        if (isSupabaseConfigured) {
-            try {
-                const savedSubmission = await saveLearningRecord('submissions', newSubmission, user);
-                setSubmissions(current => [...current, savedSubmission]);
-                alert('Assignment marked as submitted.');
-            } catch (error) {
-                alert(error.message || 'Could not submit this assignment.');
-            }
+    const getSubmission = (assignmentId) => submissions.find(submission => submission.assignmentId === assignmentId && submission.studentId === user.regNumber);
+
+    const handleSubmit = async (assignment) => {
+        const file = selectedFiles[assignment.id];
+        if (!file) {
+            setMessages(current => ({ ...current, [assignment.id]: 'Choose a file to upload first.' }));
             return;
         }
-        const updated = [...submissions, newSubmission];
-        setSubmissions(updated);
-        localStorage.setItem('submissions_db', JSON.stringify(updated));
-        saveFirestoreDocument('submissions', newSubmission).catch((error) => console.error('Failed to sync submission to Firebase', error));
-        alert("Assignment marked as submitted (Demo)");
+        const maximumSize = isSupabaseConfigured ? 25 * 1024 * 1024 : 1.5 * 1024 * 1024;
+        if (file.size > maximumSize) {
+            setMessages(current => ({ ...current, [assignment.id]: `The selected file exceeds the ${isSupabaseConfigured ? '25 MB' : '1.5 MB demo'} upload limit.` }));
+            return;
+        }
+
+        const previousSubmission = getSubmission(assignment.id);
+        let uploadedFilePath = '';
+        setMessages(current => ({ ...current, [assignment.id]: 'Uploading your work...' }));
+        try {
+            const upload = isSupabaseConfigured
+                ? await uploadStudentWork(file, user, assignment.id)
+                : { filePath: await readFileAsDataUrl(file), fileType: getFileFormat(file) };
+            uploadedFilePath = upload.filePath;
+            const submission = {
+                id: previousSubmission?.id || `${assignment.id}-${user.id}`,
+                assignmentId: assignment.id,
+                studentId: user.regNumber,
+                class: user.class,
+                submittedAt: new Date().toISOString(),
+                fileName: file.name,
+                filePath: upload.filePath,
+                fileType: upload.fileType
+            };
+
+            if (isSupabaseConfigured) {
+                const savedSubmission = await saveLearningRecord('submissions', submission, user);
+                setSubmissions(current => [...current.filter(item => item.id !== savedSubmission.id), savedSubmission]);
+                if (previousSubmission?.filePath && previousSubmission.filePath !== upload.filePath) {
+                    await removeStudentWorkFile(previousSubmission.filePath).catch(() => {});
+                }
+            } else {
+                const updated = [...submissions.filter(item => item.assignmentId !== assignment.id || item.studentId !== user.regNumber), submission];
+                setSubmissions(updated);
+                localStorage.setItem('submissions_db', JSON.stringify(updated));
+            }
+            setSelectedFiles(current => ({ ...current, [assignment.id]: null }));
+            setMessages(current => ({ ...current, [assignment.id]: `Submitted ${file.name} (${getFileFormat(file)}).` }));
+        } catch (error) {
+            if (uploadedFilePath && isSupabaseConfigured) await removeStudentWorkFile(uploadedFilePath).catch(() => {});
+            setMessages(current => ({ ...current, [assignment.id]: error.message || 'Could not upload this file.' }));
+        }
     };
 
     return (
@@ -183,27 +242,35 @@ const AssignmentsTab = ({ assignments, submissions, setSubmissions, user }) => {
             
             <div className="grid grid-cols-1 gap-4">
                 {assignments.map(a => {
-                    const submitted = isSubmitted(a.id);
+                    const submission = getSubmission(a.id);
+                    const isOpen = isAssignmentOpen(a.dueDate);
+                    const selectedFile = selectedFiles[a.id];
                     return (
-                        <div key={a.id} className={`card flex flex-col md:flex-row gap-6 items-start md:items-center justify-between border-l-4 ${submitted ? 'border-l-school-green opacity-70' : 'border-l-school-blue'}`}>
+                        <div key={a.id} className={`card flex flex-col md:flex-row gap-6 items-start justify-between border-l-4 ${submission ? 'border-l-school-green' : 'border-l-school-blue'}`}>
                             <div className="flex-1">
                                 <h3 className="font-bold text-xl mb-1">{a.title}</h3>
                                 <div className="flex gap-2 text-xs font-semibold mb-3">
                                     <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{a.subject}</span>
-                                    <span className={submitted ? 'text-school-green' : 'text-red-500'}>Due: {a.dueDate}</span>
+                                    {a.dueDate && <span className={isOpen ? 'text-slate-500' : 'text-red-600'}>Due: {a.dueDate}</span>}
                                 </div>
                                 <p className="text-slate-600 text-sm">{a.description}</p>
+                                {submission?.fileName && <p className="mt-3 text-xs font-semibold text-school-green">Submitted: {submission.fileName} ({submission.fileType || 'FILE'})</p>}
                             </div>
-                            <div>
-                                {submitted ? (
-                                     <div className="flex items-center gap-2 text-school-green font-bold bg-school-green/10 px-4 py-2 rounded-lg">
-                                        <CheckCircle2 size={20}/> Submitted
-                                     </div>
+                            <div className="w-full space-y-2 md:max-w-xs">
+                                {isOpen ? (
+                                    <>
+                                      <label className="block text-xs font-semibold text-slate-600">{submission ? 'Replace submitted work' : 'Upload your work'}
+                                        <input type="file" onChange={event => setSelectedFiles(current => ({ ...current, [a.id]: event.target.files?.[0] || null }))} className="mt-1 block w-full text-xs text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-school-blue/10 file:px-3 file:py-2 file:font-semibold file:text-school-blue" />
+                                      </label>
+                                      {selectedFile && <p className="break-all text-xs text-slate-500">Detected format: {getFileFormat(selectedFile)}</p>}
+                                      <button type="button" disabled={!selectedFile} onClick={() => handleSubmit(a)} className="btn-primary flex items-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50">
+                                        {submission ? 'Update work' : 'Submit work'} <Send size={16} />
+                                      </button>
+                                    </>
                                 ) : (
-                                    <button onClick={() => handleSubmit(a.id)} className="btn-primary flex items-center gap-2 whitespace-nowrap">
-                                        Mark Done <CheckCircle2 size={18}/>
-                                    </button>
+                                    <p className="text-sm font-semibold text-red-600">Submission deadline passed.</p>
                                 )}
+                                {messages[a.id] && <p role="status" className="text-xs text-slate-600">{messages[a.id]}</p>}
                             </div>
                         </div>
                     );

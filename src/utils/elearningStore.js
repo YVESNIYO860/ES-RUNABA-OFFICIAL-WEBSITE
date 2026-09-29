@@ -51,7 +51,8 @@ const parseApiResponse = async (response, fallbackMessage) => {
 };
 
 const toAppRecord = (type, row) => {
-  if (type === 'assignments') return { ...row, dueDate: row.due_date };
+  if (type === 'assignments') return { ...row, dueDate: row.due_date, createdBy: row.created_by };
+  if (type === 'quizzes') return { ...row, deadline: row.deadline || '', paperSettings: row.paper_settings || {}, createdBy: row.created_by };
   if (type === 'notes') return {
     ...row,
     fileName: row.file_name,
@@ -60,7 +61,15 @@ const toAppRecord = (type, row) => {
     targetStudentIds: row.target_student_ids || [],
     datePosted: row.date_posted
   };
-  if (type === 'submissions') return { ...row, assignmentId: row.assignment_id, studentId: row.student_reg_number, submittedAt: row.submitted_at };
+  if (type === 'submissions') return {
+    ...row,
+    assignmentId: row.assignment_id,
+    studentId: row.student_reg_number,
+    submittedAt: row.submitted_at,
+    fileName: row.file_name,
+    filePath: row.file_path,
+    fileType: row.file_type
+  };
   if (type === 'quizResults') return { ...row, quizId: row.quiz_id, studentId: row.student_reg_number, hasEssay: row.has_essay };
   return row;
 };
@@ -85,6 +94,8 @@ const toDatabaseRecord = (type, record, user) => {
       class: record.class,
       subject: record.subject || '',
       questions: record.questions || [],
+      deadline: record.deadline || null,
+      paper_settings: record.paperSettings || {},
       created_by: createdBy
     };
   }
@@ -110,7 +121,10 @@ const toDatabaseRecord = (type, record, user) => {
       student_id: user.id,
       student_reg_number: user.regNumber,
       class: user.class,
-      submitted_at: record.submittedAt
+      submitted_at: record.submittedAt,
+      file_name: record.fileName || null,
+      file_path: record.filePath || null,
+      file_type: record.fileType || null
     };
   }
   if (type === 'quizResults') {
@@ -188,6 +202,37 @@ export const loadSchoolClasses = async () => {
   }
   const storedClasses = JSON.parse(localStorage.getItem('school_classes_db') || '[]');
   return [...new Set([...schoolClassGroups.flatMap(group => group.options.map(option => option.value)), ...storedClasses])].sort();
+};
+
+export const loadSchoolClassesWithHeads = async () => {
+  if (isSupabaseConfigured) {
+    const { data, error } = await supabase.from('school_classes').select('name, head_teacher_id').order('name');
+    if (error) throw error;
+    return data.map(row => ({ name: row.name, headTeacherId: row.head_teacher_id }));
+  }
+  const classes = await loadSchoolClasses();
+  const assignedHeads = JSON.parse(localStorage.getItem('class_heads_db') || '{}');
+  return classes.map(name => ({ name, headTeacherId: assignedHeads[name] || null }));
+};
+
+export const loadHeadedSchoolClasses = async (teacherId) =>
+  (await loadSchoolClassesWithHeads())
+    .filter(schoolClass => schoolClass.headTeacherId === teacherId)
+    .map(schoolClass => schoolClass.name);
+
+export const assignSchoolClassHead = async (className, teacherId) => {
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('assign_school_class_head', {
+      class_name: className,
+      teacher_profile_id: teacherId || null
+    });
+    if (error) throw error;
+    return;
+  }
+  const assignments = JSON.parse(localStorage.getItem('class_heads_db') || '{}');
+  if (teacherId) assignments[className] = teacherId;
+  else delete assignments[className];
+  localStorage.setItem('class_heads_db', JSON.stringify(assignments));
 };
 
 export const createSchoolClass = async (name) => {
@@ -342,15 +387,40 @@ export const deleteProvisionedAccount = async (id) => {
   });
 };
 
-export const uploadLearningNote = async (file, className, noteId) => {
+export const uploadLearningNote = async (file, className, noteId, userId) => {
   const safeClass = encodeURIComponent(className);
   const safeName = file.name.replace(/[^\w.-]/g, '_');
-  const filePath = `${safeClass}/${noteId}-${safeName}`;
+  const filePath = `${userId}/${safeClass}/${noteId}-${safeName}`;
   const { error } = await supabase.storage
     .from('elearning-notes')
-    .upload(filePath, file, { upsert: true });
+    .upload(filePath, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
   if (error) throw error;
   return filePath;
+};
+
+export const uploadStudentWork = async (file, user, assignmentId) => {
+  const safeName = file.name.replace(/[^\w.-]/g, '_');
+  const filePath = `${user.id}/${assignmentId}/${Date.now()}-${safeName}`;
+  const fileType = file.type || safeName.split('.').pop()?.toLowerCase() || 'unknown';
+  const { error } = await supabase.storage
+    .from('student-work')
+    .upload(filePath, file, { upsert: false, contentType: file.type || 'application/octet-stream' });
+  if (error) throw error;
+  return { filePath, fileType };
+};
+
+export const getStudentWorkUrl = async (filePath) => {
+  const { data, error } = await supabase.storage
+    .from('student-work')
+    .createSignedUrl(filePath, 60);
+  if (error) throw error;
+  return data.signedUrl;
+};
+
+export const removeStudentWorkFile = async (filePath) => {
+  if (!filePath) return;
+  const { error } = await supabase.storage.from('student-work').remove([filePath]);
+  if (error) throw error;
 };
 
 export const getLearningNoteUrl = async (filePath) => {

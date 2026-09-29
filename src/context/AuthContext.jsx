@@ -4,6 +4,24 @@ import { isSupabaseConfigured, supabase } from '../supabase';
 import { studentAuthEmail } from '../utils/studentAuth';
 
 const AuthContext = createContext(null);
+const AUTH_PROFILE_STORAGE_KEY = 'es_runaba_authenticated_profile';
+
+const getCachedAuthenticatedProfile = (userId) => {
+  try {
+    const profile = JSON.parse(localStorage.getItem(AUTH_PROFILE_STORAGE_KEY) || 'null');
+    return profile?.id === userId ? profile : null;
+  } catch {
+    return null;
+  }
+};
+
+const persistAuthenticatedProfile = (profile) => {
+  try {
+    localStorage.setItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  } catch (error) {
+    console.warn('Could not cache the signed-in profile for page refresh.', error);
+  }
+};
 
 const isPrimaryDosAccount = (profile) =>
   profile.role === 'teacher'
@@ -41,6 +59,7 @@ const deepMergeContent = (defaults, overrides) => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(!isSupabaseConfigured);
   const [siteContent, setSiteContent] = useState(null);
 
   const updateSiteContent = async (newContent) => {
@@ -195,28 +214,66 @@ export const AuthProvider = ({ children }) => {
     if (!isSupabaseConfigured) return undefined;
 
     let isMounted = true;
+    let isSessionLoaded = false;
+    let queuedSession;
+    let latestSyncId = 0;
     const syncUser = async (session) => {
+      const syncId = ++latestSyncId;
       if (!session?.user) {
-        if (isMounted) setUser(null);
+        if (isMounted) {
+          setUser(null);
+          localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
+          setIsAuthInitialized(true);
+        }
         return;
       }
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      const cachedProfile = getCachedAuthenticatedProfile(session.user.id);
+      if (isMounted && cachedProfile) {
+        setUser(cachedProfile);
+        setIsAuthInitialized(true);
+      }
 
-      if (error) {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!profile) {
+          if (!cachedProfile) console.error('No Supabase profile exists for the signed-in account.');
+          return;
+        }
+
+        const authenticatedProfile = mapProfileToUser(profile);
+        if (isMounted && syncId === latestSyncId) {
+          setUser(authenticatedProfile);
+          persistAuthenticatedProfile(authenticatedProfile);
+        }
+      } catch (error) {
         console.error('Failed to load Supabase profile', error);
-        return;
+        if (!cachedProfile && isMounted && syncId === latestSyncId) setUser(null);
+      } finally {
+        if (isMounted && syncId === latestSyncId) setIsAuthInitialized(true);
       }
-      if (isMounted) setUser(mapProfileToUser(profile));
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => syncUser(session));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      isSessionLoaded = true;
+      void syncUser(queuedSession ?? session);
+    }).catch((error) => {
+      console.error('Failed to restore the Supabase session', error);
+      if (isMounted) setIsAuthInitialized(true);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      Promise.resolve().then(() => syncUser(session));
+      if (!isSessionLoaded) {
+        queuedSession = session;
+        return;
+      }
+      void syncUser(session);
     });
 
     return () => {
@@ -241,7 +298,9 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'This account is not registered for teacher access.' };
     }
 
-    setUser(mapProfileToUser(profile));
+    const authenticatedProfile = mapProfileToUser(profile);
+    setUser(authenticatedProfile);
+    persistAuthenticatedProfile(authenticatedProfile);
     return { success: true };
   };
 
@@ -261,7 +320,9 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'This account is not registered for Director of Studies access.' };
     }
 
-    setUser(mapProfileToUser(profile));
+    const authenticatedProfile = mapProfileToUser(profile);
+    setUser(authenticatedProfile);
+    persistAuthenticatedProfile(authenticatedProfile);
     return { success: true };
   };
 
@@ -288,18 +349,21 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'The selected class does not match this student account.' };
     }
 
-    setUser(mapProfileToUser(profile));
+    const authenticatedProfile = mapProfileToUser(profile);
+    setUser(authenticatedProfile);
+    persistAuthenticatedProfile(authenticatedProfile);
     return { success: true };
   };
 
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('es_runaba_user');
+    localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
     if (isSupabaseConfigured) await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized, siteContent, updateSiteContent }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized: isInitialized && isAuthInitialized, siteContent, updateSiteContent }}>
       {children}
     </AuthContext.Provider>
   );
