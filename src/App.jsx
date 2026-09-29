@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 
 // Lazy loading or direct imports for pages
@@ -40,6 +40,7 @@ function AppContent() {
 
   return (
     <Router>
+      <ScrollToTop />
       <LearningActivityOverlay />
       <Routes>
         <Route path="/" element={<Layout />}>
@@ -66,5 +67,21 @@ function AppContent() {
     </Router>
   );
 }
+
+const ScrollToTop = () => {
+  const { pathname, search, hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) {
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    const targetId = decodeURIComponent(hash.slice(1));
+    requestAnimationFrame(() => document.getElementById(targetId)?.scrollIntoView());
+  }, [pathname, search, hash]);
+
+  return null;
+};
 
 export default App;
