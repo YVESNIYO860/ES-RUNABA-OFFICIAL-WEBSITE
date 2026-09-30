@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
@@ -743,7 +743,7 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
           class: formData.class,
           module: formData.module
         });
-        const newStudent = { ...mapSupabaseProfile(result.student), password: result.password };
+        const newStudent = { ...mapSupabaseProfile(result.profile), password: result.password };
         setStudents(current => [...current, newStudent]);
         setShowAdd(false);
         setFormData({ fullName: '', class: 'Senior 1', module: 'BIO', startYear: new Date().getFullYear() });
@@ -1996,6 +1996,10 @@ const StaffTab = () => {
   const [headMessage, setHeadMessage] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
+  const [newCredentials, setNewCredentials] = useState(null);
+  const [savingStaff, setSavingStaff] = useState(false);
+  const [staffMessage, setStaffMessage] = useState('');
+  const [copiedField, setCopiedField] = useState('');
 
   useEffect(() => {
     let isActive = true;
@@ -2054,7 +2058,16 @@ const StaffTab = () => {
 
   const handleAdd = async (e) => {
     e.preventDefault();
+    setStaffMessage(null);
+    setNewCredentials(null);
+
+    if (formData.password.length < 8) {
+      setStaffMessage({ tone: 'error', text: 'Choose an initial password of at least 8 characters.' });
+      return;
+    }
+
     if (isSupabaseConfigured) {
+      setSavingStaff(true);
       try {
         const result = await provisionAccount({
           type: formData.role,
@@ -2065,11 +2078,22 @@ const StaffTab = () => {
           subject: formData.subject,
           isAdmin: formData.isAdmin
         });
-        setStaffList(current => [...current, mapSupabaseProfile(result.profile)]);
+        const created = mapSupabaseProfile(result.profile);
+        setStaffList(current => [...current, created]);
+        setNewCredentials({
+          name: created.name,
+          username: created.username || formData.username,
+          email: created.email || formData.email,
+          password: result.password || formData.password,
+          role: created.role
+        });
         setShowAdd(false);
+        setStaffMessage({ tone: 'success', text: `${created.name} can now sign in to the e-learning dashboard.` });
         setFormData({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
       } catch (error) {
-        alert(error.message || 'Could not register staff.');
+        setStaffMessage({ tone: 'error', text: error.message || 'Could not register staff.' });
+      } finally {
+        setSavingStaff(false);
       }
       return;
     }
@@ -2083,20 +2107,36 @@ const StaffTab = () => {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to remove this staff member?')) {
-      if (isSupabaseConfigured) {
-        try {
-          await deleteProvisionedAccount(id);
-          setStaffList(current => current.filter(staff => staff.id !== id));
-        } catch (error) {
-          alert(error.message || 'Could not remove staff.');
-        }
-        return;
-      }
+    const member = staffList.find(s => s.id === id);
+    if (!confirm(`Remove ${member?.name || 'this staff member'}? They will lose access to the e-learning dashboard immediately.`)) return;
+    setStaffMessage(null);
 
-      const updated = staffList.filter(s => s.id !== id);
-      setStaffList(updated);
-      localStorage.setItem('staff_db', JSON.stringify(updated));
+    if (isSupabaseConfigured) {
+      try {
+        await deleteProvisionedAccount(id);
+        setStaffList(current => current.filter(staff => staff.id !== id));
+        setSchoolClasses(current => current.map(schoolClass => (
+          schoolClass.headTeacherId === id ? { ...schoolClass, headTeacherId: null } : schoolClass
+        )));
+        setStaffMessage({ tone: 'success', text: `${member?.name || 'The staff member'} was removed.` });
+      } catch (error) {
+        setStaffMessage({ tone: 'error', text: error.message || 'Could not remove staff.' });
+      }
+      return;
+    }
+
+    const updated = staffList.filter(s => s.id !== id);
+    setStaffList(updated);
+    localStorage.setItem('staff_db', JSON.stringify(updated));
+  };
+
+  const copyCredential = async (field, value) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(''), 2000);
+    } catch (error) {
+      console.error('Could not copy to the clipboard', error);
     }
   };
 
@@ -2156,8 +2196,66 @@ const StaffTab = () => {
               <p className="text-xs text-slate-400 mt-1 ml-8">Admins can edit the website, manage events, and view the staff database.</p>
             </div>}
           </div>
-          <button type="submit" className="btn-primary mt-6 flex items-center gap-2"><Save size={18} /> Register Staff Account</button>
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-6">
+            <p className="text-xs text-slate-500 max-w-md">
+              {formData.role === 'dos'
+                ? 'This account gets full Director of Studies access to the e-learning dashboard.'
+                : 'The teacher signs in with this username or email and the initial password you set.'}
+            </p>
+            <button type="submit" disabled={savingStaff} className="btn-primary flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              <Save size={18} /> {savingStaff ? 'Registering…' : 'Register Staff Account'}
+            </button>
+          </div>
         </form>
+      )}
+
+      {staffMessage && (
+        <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${staffMessage.tone === 'error'
+          ? 'border-red-200 bg-red-50 text-red-700'
+          : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+          {staffMessage.text}
+        </div>
+      )}
+
+      {newCredentials && (
+        <div className="card bg-white p-6 mb-8 border-2 border-school-green/30">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-school-green/10">
+                <KeyRound size={20} className="text-school-green" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-school-blue">Sign-in details for {newCredentials.name}</h3>
+                <p className="text-sm text-slate-500">Share these once. The password is not stored and cannot be shown again.</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setNewCredentials(null)} className="text-slate-400 hover:text-slate-600" aria-label="Dismiss sign-in details">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { key: 'username', label: 'Username', value: newCredentials.username },
+              { key: 'email', label: 'Email', value: newCredentials.email },
+              { key: 'password', label: 'Initial password', value: newCredentials.password }
+            ].map(({ key, label, value }) => (
+              <div key={key} className="border border-slate-200 rounded-lg p-3 bg-slate-50">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <code className="text-sm font-mono text-slate-800 break-all">{value}</code>
+                  <button type="button" onClick={() => copyCredential(key, value)} className="text-slate-400 hover:text-school-blue shrink-0" aria-label={`Copy ${label}`}>
+                    <Copy size={15} />
+                  </button>
+                </div>
+                {copiedField === key && <div className="text-[10px] text-school-green font-bold mt-1">Copied</div>}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-500 mt-4">
+            Role: <span className="font-bold uppercase text-slate-700">{newCredentials.role === 'dos' ? 'Director of Studies' : 'Teacher'}</span>
+            {newCredentials.role === 'teacher' ? ' — assign this teacher as a class head below.' : ''}
+          </p>
+        </div>
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
