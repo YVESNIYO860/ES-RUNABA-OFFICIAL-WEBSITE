@@ -16,6 +16,7 @@ import SearchResults from './pages/SearchResults';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NewsAndNotices from './pages/NewsAndNotices';
 import LearningActivityOverlay from './components/LearningActivityOverlay';
+import SessionTimeoutNotice from './components/SessionTimeoutNotice';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import SchoolLoader from './components/SchoolLoader';
@@ -42,6 +43,7 @@ function AppContent() {
     <Router>
       <ScrollToTop />
       <LearningActivityOverlay />
+      <SessionTimeoutNotice />
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />

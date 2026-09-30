@@ -6,6 +6,10 @@ import { studentAuthEmail } from '../utils/studentAuth';
 const AuthContext = createContext(null);
 const AUTH_PROFILE_STORAGE_KEY = 'es_runaba_authenticated_profile';
 
+/* Idle sign-out window and the point at which the user is warned. */
+const INACTIVITY_LIMIT_MS = 20 * 60 * 1000;
+const INACTIVITY_WARNING_MS = 19 * 60 * 1000;
+
 const getCachedAuthenticatedProfile = (userId) => {
   try {
     const profile = JSON.parse(localStorage.getItem(AUTH_PROFILE_STORAGE_KEY) || 'null');
@@ -67,6 +71,7 @@ export const AuthProvider = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthInitialized, setIsAuthInitialized] = useState(!isSupabaseConfigured);
   const [siteContent, setSiteContent] = useState(null);
+  const [sessionWarning, setSessionWarning] = useState(false);
 
   const updateSiteContent = async (newContent) => {
     if (isSupabaseConfigured) {
@@ -368,8 +373,46 @@ export const AuthProvider = ({ children }) => {
     if (isSupabaseConfigured) await supabase.auth.signOut();
   };
 
+  /* Sign the user out after 20 minutes without any activity, so an
+     unattended device cannot keep a portal session open. Any real
+     interaction (typing, clicking, scrolling, key presses, touch) resets
+     the countdown. */
+  useEffect(() => {
+    if (!user) return undefined;
+
+    let timeoutId;
+    let warningTimeoutId;
+    const resetTimer = () => {
+      window.clearTimeout(timeoutId);
+      window.clearTimeout(warningTimeoutId);
+      timeoutId = window.setTimeout(() => {
+        void logout();
+      }, INACTIVITY_LIMIT_MS);
+      warningTimeoutId = window.setTimeout(() => {
+        setSessionWarning(true);
+      }, INACTIVITY_WARNING_MS);
+    };
+
+    const handleVisibility = () => {
+      // Coming back to a tab counts as returning to the portal.
+      if (document.visibilityState === 'visible') resetTimer();
+    };
+
+    const events = ['mousedown', 'keydown', 'wheel', 'touchstart', 'mousemove', 'focus'];
+    events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
+    document.addEventListener('visibilitychange', handleVisibility);
+    resetTimer();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearTimeout(warningTimeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized: isInitialized && isAuthInitialized, siteContent, updateSiteContent }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized: isInitialized && isAuthInitialized, siteContent, updateSiteContent, sessionWarning, dismissSessionWarning: () => setSessionWarning(false) }}>
       {children}
     </AuthContext.Provider>
   );

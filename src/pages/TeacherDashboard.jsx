@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft } from 'lucide-react';
@@ -48,10 +48,10 @@ const getStaffDashboardTabs = (user) => [
     { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
     { id: 'classes', label: 'Classes', icon: Users },
     { id: 'courses', label: 'Courses', icon: BookOpen },
+    { id: 'staff', label: 'Staff & Class Heads', icon: UserCheck },
     { id: 'site-editor', label: 'Site Designer', icon: Globe },
     { id: 'analytics', label: 'Academic Analytics', icon: BarChart3 }
   ] : []),
-  ...(user?.role === 'dos' ? [{ id: 'class-heads', label: 'Class Heads', icon: UserCheck }] : []),
   { id: 'settings', label: 'Settings', icon: Settings },
   { id: 'contact', label: 'Contact', icon: MessageSquare }
 ];
@@ -204,7 +204,7 @@ const TeacherDashboard = () => {
                 targetClasses: note.targetClasses?.map(className => className === oldName ? newName : className) || []
               })));
             }} /> }
-            { activeTab === 'class-heads' && user.role === 'dos' && <ClassHeadsTab /> }
+            { activeTab === 'staff' && user.role === 'dos' && <StaffTab /> }
             { activeTab === 'courses' && user.role === 'dos' && <CoursesTab courses={courses} setCourses={setCourses} onCourseRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.module === oldName ? { ...student, module: newName } : student));
               setAssignments(current => current.map(assignment => assignment.subject === oldName ? { ...assignment, subject: newName } : assignment));
@@ -258,70 +258,6 @@ const TeachingToolsTab = ({ onSelect }) => {
   );
 };
 
-const ClassHeadsTab = () => {
-  const [schoolClasses, setSchoolClasses] = useState([]);
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [savingClass, setSavingClass] = useState('');
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    let isActive = true;
-    Promise.all([loadSchoolClassesWithHeads(), loadProfiles('teacher')])
-      .then(([classRecords, teacherRecords]) => {
-        if (!isActive) return;
-        setSchoolClasses(classRecords);
-        setTeachers(teacherRecords);
-      })
-      .catch(error => {
-        if (isActive) setMessage(error.message || 'Could not load classes and teachers.');
-      })
-      .finally(() => { if (isActive) setLoading(false); });
-    return () => { isActive = false; };
-  }, []);
-
-  const handleAssign = async (className, teacherId) => {
-    setSavingClass(className);
-    setMessage('');
-    try {
-      await assignSchoolClassHead(className, teacherId);
-      setSchoolClasses(current => current.map(schoolClass => schoolClass.name === className
-        ? { ...schoolClass, headTeacherId: teacherId || null }
-        : schoolClass));
-      setMessage(`Head teacher updated for ${className}.`);
-    } catch (error) {
-      setMessage(error.message || 'Could not assign the class head.');
-    } finally {
-      setSavingClass('');
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-school-blue">Class Heads</h2>
-        <p className="mt-1 text-sm text-slate-600">Assign one teacher to lead each class. Class heads can manage attendance and review student work for their assigned classes.</p>
-      </div>
-      {message && <p role="status" className="border-y border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
-      {loading ? (
-        <p className="border-y border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">Loading class assignments...</p>
-      ) : (
-        <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
-          {schoolClasses.map(schoolClass => (
-            <label key={schoolClass.name} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="font-semibold text-slate-800">{schoolClass.name}</span>
-              <select aria-label={`Class head for ${schoolClass.name}`} value={schoolClass.headTeacherId || ''} disabled={savingClass === schoolClass.name} onChange={event => handleAssign(schoolClass.name, event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm sm:max-w-sm">
-                <option value="">No class head assigned</option>
-                {teachers.map(teacher => <option key={teacher.id} value={teacher.id}>{teacher.fullName || teacher.name}</option>)}
-              </select>
-            </label>
-          ))}
-          {schoolClasses.length === 0 && <p className="px-4 py-8 text-sm text-slate-500">Register classes before assigning class heads.</p>}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const ClassesTab = ({ classes, setClasses, onClassRenamed }) => {
   const [newName, setNewName] = useState('');
@@ -954,7 +890,7 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
                               <li key={submission.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-slate-50 px-3 py-2">
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-semibold text-slate-800">{student?.fullName || submission.studentId}</p>
-                                  <p className="truncate text-xs text-slate-500">{submission.fileName || 'Legacy submission'}{submission.fileType ? ` · ${submission.fileType}` : ''}</p>
+                                  <p className="truncate text-xs text-slate-500">{submission.fileName || 'Legacy submission'}{submission.fileType ? ` Â· ${submission.fileType}` : ''}</p>
                                 </div>
                                 {submission.filePath && <button type="button" onClick={() => openStudentWork(submission)} disabled={downloadingSubmission === submission.id} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-school-blue hover:text-school-green disabled:opacity-50">
                                   <Download size={15} /> {downloadingSubmission === submission.id ? 'Opening...' : 'Open work'}
@@ -1575,7 +1511,7 @@ const EventsTab = ({ events, setEvents, user }) => {
             <div className="flex-1">
               <h4 className="text-lg font-bold text-slate-800">{ev.title}</h4>
               <p className="text-slate-500 text-sm mt-1">{ev.desc}</p>
-              <span className="text-xs font-bold text-school-blue mt-2 block">📍 {ev.loc}</span>
+              <span className="text-xs font-bold text-school-blue mt-2 block">ðŸ“ {ev.loc}</span>
             </div>
             <button onClick={() => handleDelete(ev.id)} className="text-slate-400 hover:text-red-500 p-2 transition-colors">
               <Trash2 size={20} />
@@ -1947,6 +1883,9 @@ const SiteEditorTab = ({ siteContent, updateSiteContent }) => {
 };
 const StaffTab = () => {
   const [staffList, setStaffList] = useState([]);
+  const [schoolClasses, setSchoolClasses] = useState([]);
+  const [savingClass, setSavingClass] = useState('');
+  const [headMessage, setHeadMessage] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ name: '', username: '', email: '', password: '', subject: 'General', role: 'teacher', isAdmin: false });
 
@@ -1957,7 +1896,11 @@ const StaffTab = () => {
         const staff = isSupabaseConfigured
           ? (await Promise.all([loadProfiles('teacher'), loadProfiles('dos')])).flat()
           : JSON.parse(localStorage.getItem('staff_db') || '[]');
-        if (isActive) setStaffList(staff);
+        const classRecords = isSupabaseConfigured ? await loadSchoolClassesWithHeads() : [];
+        if (isActive) {
+          setStaffList(staff);
+          setSchoolClasses(classRecords);
+        }
       } catch (error) {
         console.error('Failed to load staff records', error);
       }
@@ -1965,6 +1908,22 @@ const StaffTab = () => {
     loadStaff();
     return () => { isActive = false; };
   }, []);
+
+  const handleAssignHead = async (className, teacherId) => {
+    setSavingClass(className);
+    setHeadMessage('');
+    try {
+      await assignSchoolClassHead(className, teacherId);
+      setSchoolClasses(current => current.map(schoolClass => schoolClass.name === className
+        ? { ...schoolClass, headTeacherId: teacherId || null }
+        : schoolClass));
+      setHeadMessage(`Head teacher updated for ${className}.`);
+    } catch (error) {
+      setHeadMessage(error.message || 'Could not assign the class head.');
+    } finally {
+      setSavingClass('');
+    }
+  };
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -2018,8 +1977,8 @@ const StaffTab = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-school-blue">Staff Database</h2>
-          <p className="text-slate-500 text-sm mt-1">Manage platform access for teachers and administrators.</p>
+          <h2 className="text-3xl font-bold text-school-blue">Staff &amp; Class Heads</h2>
+          <p className="text-slate-500 text-sm mt-1">Register teachers and administrators, then assign a class head to lead each class.</p>
         </div>
         <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
           {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Register Staff'}
@@ -2082,12 +2041,13 @@ const StaffTab = () => {
               <th className="p-4">Subject</th>
               <th className="p-4">Contact Info</th>
               <th className="p-4">Role / Access</th>
+              <th className="p-4">Classes Led</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {staffList.length === 0 ? (<tr><td colSpan="6" className="p-8 text-center text-slate-500">No staff members registered.</td></tr>) : null}
+            {staffList.length === 0 ? (<tr><td colSpan="7" className="p-8 text-center text-slate-500">No staff members registered.</td></tr>) : null}
             {staffList.map(s => (
               <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="p-4 font-bold text-slate-800">{s.name}</td>
@@ -2116,6 +2076,21 @@ const StaffTab = () => {
                     <div className="w-2 h-2 rounded-full bg-green-500"></div> Active
                   </span>
                 </td>
+                 <td className="p-4">
+                   {(() => {
+                     const led = schoolClasses.filter(schoolClass => schoolClass.headTeacherId === s.id).map(schoolClass => schoolClass.name);
+                     if (led.length === 0) return <span className="text-xs text-slate-400">â€”</span>;
+                     return (
+                       <div className="flex flex-wrap gap-1">
+                         {led.map(className => (
+                           <span key={className} className="rounded border border-school-green/20 bg-school-green/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-school-green">
+                             {className}
+                           </span>
+                         ))}
+                       </div>
+                     );
+                   })()}
+                 </td>
                 <td className="p-4 text-right">
                   <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 p-2 border border-red-100 rounded-lg hover:bg-red-50 transition-colors" title="Revoke Access">
                     <Trash2 size={16} />
@@ -2125,6 +2100,33 @@ const StaffTab = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Class head assignment */}
+      <div className="mt-10">
+        <h3 className="text-xl font-bold text-school-blue">Class Heads</h3>
+        <p className="mt-1 text-sm text-slate-600">Assign one teacher to lead each class. Class heads can mark attendance and review student work for their assigned classes.</p>
+        {headMessage && <p role="status" className="mt-3 border-y border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{headMessage}</p>}
+        <div className="mt-4 divide-y divide-slate-200 border-y border-slate-200 bg-white">
+          {schoolClasses.map(schoolClass => (
+            <label key={schoolClass.name} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="font-semibold text-slate-800">{schoolClass.name}</span>
+              <select
+                aria-label={`Class head for ${schoolClass.name}`}
+                value={schoolClass.headTeacherId || ''}
+                disabled={savingClass === schoolClass.name}
+                onChange={event => handleAssignHead(schoolClass.name, event.target.value)}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm sm:max-w-sm"
+              >
+                <option value="">No class head assigned</option>
+                {staffList.filter(staff => staff.role === 'teacher').map(teacher => (
+                  <option key={teacher.id} value={teacher.id}>{teacher.fullName || teacher.name}</option>
+                ))}
+              </select>
+            </label>
+          ))}
+          {schoolClasses.length === 0 && <p className="px-4 py-8 text-sm text-slate-500">Register classes before assigning class heads.</p>}
+        </div>
       </div>
     </div>
   );
