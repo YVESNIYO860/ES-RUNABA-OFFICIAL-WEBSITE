@@ -438,7 +438,7 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-3xl font-bold text-school-blue mb-8">My Quizzes</h2>
+            <h2 className="text-3xl font-bold text-school-blue mb-8">My Exams & Quizzes</h2>
              {quizzes.length === 0 && <p className="text-slate-500 bg-white p-8 rounded-xl text-center shadow-sm">No quizzes available for your class.</p>}
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -449,7 +449,10 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <h3 className="font-bold text-xl">{q.title}</h3>
-                                    <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 font-semibold mt-2 inline-block">{q.subject}</span>
+                                                                        <div className="mt-2 flex flex-wrap gap-2">
+                                                                            <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 font-semibold">{q.subject}</span>
+                                                                            <span className="text-xs bg-school-green/10 px-2 py-1 rounded text-school-green font-semibold">{q.paperSettings?.assessmentType === 'exam' ? 'Exam paper' : 'Quiz'}</span>
+                                                                        </div>
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-1">
                                     <span className="bg-purple-50 text-purple-600 text-xs font-bold px-2 py-1 rounded block">{q.questions.length} Qs</span>

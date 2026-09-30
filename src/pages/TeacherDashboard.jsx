@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
@@ -9,7 +9,7 @@ import LearningDashboardFooter from '../components/LearningDashboardFooter';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
-import { printQuiz } from '../utils/printQuiz';
+import { examPaperFormats, printQuiz } from '../utils/printQuiz';
 import {
   deleteLearningRecord,
   createSchoolClass,
@@ -42,11 +42,7 @@ import {
 const getStaffDashboardTabs = (user) => [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
-  ...(['teacher', 'dos'].includes(user?.role) ? [
-    { id: 'assignments', label: 'Assignments', icon: FileText },
-    { id: 'quizzes', label: 'Quizzes', icon: CheckSquare },
-    { id: 'notes', label: user.role === 'dos' ? 'Lessons' : 'Lessons & Resources', icon: FileUp }
-  ] : []),
+  ...(user?.role === 'teacher' ? [{ id: 'tools', label: 'Tools', icon: Laptop }] : []),
   ...(user?.role === 'dos' ? [
     { id: 'students', label: 'Students', icon: Users },
     { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
@@ -193,9 +189,11 @@ const TeacherDashboard = () => {
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
             {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
-            { activeTab === 'assignments' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} submissions={submissions} students={students} headedClasses={headedClasses} canManage={user.role === 'teacher'} user={user} classGroups={classGroups} courses={courses} /> }
-            { activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} setQuizzes={setQuizzes} canManage={user.role === 'teacher'} user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} /> }
-            { activeTab === 'notes' && <NotesTab notes={notes} setNotes={setNotes} canManage={user.role === 'teacher'} user={user} students={students} classGroups={classGroups} courses={courses} /> }
+            { activeTab === 'tools' && user.role === 'teacher' && <TeachingToolsTab onSelect={setActiveTab} /> }
+            { activeTab === 'assignments' && user.role === 'teacher' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} submissions={submissions} students={students} headedClasses={headedClasses} canManage user={user} classGroups={classGroups} courses={courses} onBack={() => setActiveTab('tools')} /> }
+            { activeTab === 'exam-prep' && user.role === 'teacher' && <QuizzesTab mode="exam" quizzes={quizzes} setQuizzes={setQuizzes} canManage user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} onBack={() => setActiveTab('tools')} /> }
+            { activeTab === 'quizzes' && user.role === 'teacher' && <QuizzesTab mode="quiz" quizzes={quizzes} setQuizzes={setQuizzes} canManage user={user} classGroups={classGroups} courses={courses} schoolName={siteContent?.general?.schoolName} onBack={() => setActiveTab('tools')} /> }
+            { activeTab === 'notes' && user.role === 'teacher' && <NotesTab notes={notes} setNotes={setNotes} canManage user={user} students={students} classGroups={classGroups} courses={courses} onBack={() => setActiveTab('tools')} /> }
             { activeTab === 'classes' && user.role === 'dos' && <ClassesTab classes={classes} setClasses={setClasses} onClassRenamed={(oldName, newName) => {
               setStudents(current => current.map(student => student.class === oldName ? { ...student, class: newName } : student));
               setAssignments(current => current.map(assignment => assignment.class === oldName ? { ...assignment, class: newName } : assignment));
@@ -228,6 +226,37 @@ const TeacherDashboard = () => {
 };
 
 // --- TABS ---
+
+const TeachingToolsTab = ({ onSelect }) => {
+  const tools = [
+    { id: 'exam-prep', label: 'Exam Preparator', description: 'Build a formal paper, choose one of 15 formats, and prepare its print header.', icon: Printer },
+    { id: 'quizzes', label: 'Quizzes', description: 'Create timed quizzes for students to complete in the e-learning portal.', icon: CheckSquare },
+    { id: 'assignments', label: 'Assignments', description: 'Post class work, add deadlines, and review submissions from your headed classes.', icon: FileText },
+    { id: 'notes', label: 'Lessons & Resources', description: 'Upload and update your own teaching resources for selected classes or students.', icon: FileUp }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-school-green">Teacher workspace</p>
+        <h2 className="mt-2 text-3xl font-bold text-school-blue">Teaching Tools</h2>
+        <p className="mt-2 text-sm text-slate-600">Choose a teaching task to continue.</p>
+      </header>
+      <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
+        {tools.map(({ id, label, description, icon: Icon }) => (
+          <button key={id} type="button" onClick={() => onSelect(id)} className="flex w-full items-center gap-4 px-4 py-5 text-left hover:bg-slate-50">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-school-blue/5 text-school-blue"><Icon size={20} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-slate-900">{label}</span>
+              <span className="mt-1 block text-sm text-slate-600">{description}</span>
+            </span>
+            <ChevronRight size={18} className="shrink-0 text-slate-400" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const ClassHeadsTab = () => {
   const [schoolClasses, setSchoolClasses] = useState([]);
@@ -793,7 +822,7 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
   );
 };
 
-const AssignmentsTab = ({ assignments, setAssignments, submissions, students, headedClasses, canManage, user, classGroups, courses }) => {
+const AssignmentsTab = ({ assignments, setAssignments, submissions, students, headedClasses, canManage, user, classGroups, courses, onBack }) => {
    const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
   const [downloadingSubmission, setDownloadingSubmission] = useState('');
@@ -851,7 +880,10 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-school-blue">Assignments</h2>
+        <div>
+          {onBack && <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green"><ArrowLeft size={16} /> Back to Tools</button>}
+          <h2 className="text-3xl font-bold text-school-blue">Assignments</h2>
+        </div>
         {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
           {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Create Assignment'}
         </button>}
@@ -941,35 +973,47 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
   );
 };
 
-const createQuizDraft = (schoolName = 'ES RUNABA') => ({
+const createQuizDraft = (schoolName = 'ES RUNABA', assessmentType = 'exam') => ({
   title: '',
   class: 'Senior 4 Stream 1',
   subject: '',
   deadline: '',
   paperSettings: {
+    assessmentType,
     ministry: 'MINISTRY OF EDUCATION',
     district: 'BURERA DISTRICT',
     schoolName: schoolName || 'ES RUNABA',
+    examFormat: 'standard',
     academicYear: String(new Date().getFullYear()),
     term: '',
     venue: '',
     instructions: 'Answer all questions. Read each section carefully and show your work where needed.',
-    coverMessage: '',
-    includeCoverPage: true,
-    showWatermark: true
   }
 });
 
-const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses, schoolName }) => {
+const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, classGroups, courses, schoolName, onBack }) => {
   const [showAdd, setShowAdd] = useState(false);
-  const [formData, setFormData] = useState(() => createQuizDraft(schoolName));
+  const [formData, setFormData] = useState(() => createQuizDraft(schoolName, mode));
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
   const [questions, setQuestions] = useState([]);
+  const visibleAssessments = quizzes.filter(quiz => (quiz.paperSettings?.assessmentType || 'quiz') === mode);
 
   const updatePaperSetting = (field, value) => setFormData(current => ({
     ...current,
     paperSettings: { ...current.paperSettings, [field]: value }
   }));
+
+  const handleExamFormatChange = (formatId) => {
+    const format = examPaperFormats.find(item => item.id === formatId) || examPaperFormats[0];
+    setFormData(current => ({
+      ...current,
+      paperSettings: {
+        ...current.paperSettings,
+        examFormat: format.id,
+        instructions: format.instructions
+      }
+    }));
+  };
 
   const addQuestion = (e) => {
       e.preventDefault();
@@ -983,7 +1027,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
 
   const handleCreateQuiz = async () => {
       if(questions.length === 0) return alert("Add at least one question.");
-      const newQuiz = { ...formData, questions, id: Date.now().toString(), createdBy: user.id };
+      const newQuiz = { ...formData, paperSettings: { ...formData.paperSettings, assessmentType: mode }, questions, id: Date.now().toString(), createdBy: user.id };
       if (isSupabaseConfigured) {
         try {
           const savedQuiz = await saveLearningRecord('quizzes', newQuiz, user);
@@ -998,7 +1042,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
       localStorage.setItem('quizzes_db', JSON.stringify(updated));
       }
       setShowAdd(false);
-      setFormData(createQuizDraft(schoolName));
+      setFormData(createQuizDraft(schoolName, mode));
       setQuestions([]);
   };
 
@@ -1022,16 +1066,19 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
   return (
       <div className="space-y-6">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-school-blue">Quizzes</h2>
+          <div>
+            {onBack && <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green"><ArrowLeft size={16} /> Back to Tools</button>}
+            <h2 className="text-3xl font-bold text-school-blue">{mode === 'exam' ? 'Exam Preparator' : 'Quizzes'}</h2>
+          </div>
           {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
-            {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Create Quiz'}
+            {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : mode === 'exam' ? 'Prepare Exam' : 'Create Quiz'}
           </button>}
         </div>
 
         {showAdd && canManage && (
             <div className="card bg-white p-6 mb-8 border-2 border-purple-500/20">
-                <h3 className="text-xl font-bold mb-4 text-purple-700">Quiz Settings</h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <h3 className="text-xl font-bold mb-4 text-purple-700">{mode === 'exam' ? 'Exam Paper Builder' : 'Quiz Builder'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
                     <select required value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded">
                       <option value="">Select course</option>
@@ -1051,10 +1098,15 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
                     </label>
                 </div>
 
-                <details open className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-bold text-slate-800">Exam header and cover page</summary>
-                  <p className="mt-2 text-xs text-slate-500">Review or edit these details before publishing. They will appear on the printable exam.</p>
+                {mode === 'exam' && <details open className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-bold text-slate-800">Exam header and paper format</summary>
+                  <p className="mt-2 text-xs text-slate-500">Choose a paper format and review the official header before publishing. The logo prints as a watermark; no separate cover page is added.</p>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Exam format
+                      <select value={formData.paperSettings.examFormat} onChange={event => handleExamFormatChange(event.target.value)} className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                        {examPaperFormats.map(format => <option key={format.id} value={format.id}>{format.label}</option>)}
+                      </select>
+                    </label>
                     <label className="text-xs font-semibold text-slate-600">Ministry header<input value={formData.paperSettings.ministry} onChange={event => updatePaperSetting('ministry', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">District<input value={formData.paperSettings.district} onChange={event => updatePaperSetting('district', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">School name<input value={formData.paperSettings.schoolName} onChange={event => updatePaperSetting('schoolName', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
@@ -1062,13 +1114,9 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
                     <label className="text-xs font-semibold text-slate-600">Term<input value={formData.paperSettings.term} onChange={event => updatePaperSetting('term', event.target.value)} placeholder="e.g. Term I" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">Examination venue<input value={formData.paperSettings.venue} onChange={event => updatePaperSetting('venue', event.target.value)} placeholder="e.g. ES RUNABA Examination Hall" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Instructions<textarea rows="2" value={formData.paperSettings.instructions} onChange={event => updatePaperSetting('instructions', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Cover message<textarea rows="2" value={formData.paperSettings.coverMessage} onChange={event => updatePaperSetting('coverMessage', event.target.value)} placeholder="Optional cover page message" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-5 text-sm text-slate-700">
-                    <label className="flex items-center gap-2"><input type="checkbox" checked={formData.paperSettings.includeCoverPage} onChange={event => updatePaperSetting('includeCoverPage', event.target.checked)} /> Include a cover page</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" checked={formData.paperSettings.showWatermark} onChange={event => updatePaperSetting('showWatermark', event.target.checked)} /> Show ES RUNABA logo watermark</label>
-                  </div>
-                </details>
+                  <p className="mt-4 text-xs font-semibold text-school-green">The ES RUNABA logo will be printed as a watermark.</p>
+                </details>}
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="flex justify-between items-center mb-3">
@@ -1119,14 +1167,14 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
 
                 <div className="mt-4">
                     <p className="text-sm font-bold text-slate-500 mb-2">{questions.length} Questions Added</p>
-                    <button onClick={handleCreateQuiz} disabled={!formData.title || questions.length===0} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">Save & Publish Quiz</button>
+                    <button onClick={handleCreateQuiz} disabled={!formData.title || questions.length===0} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">{mode === 'exam' ? 'Publish Exam Paper' : 'Save & Publish Quiz'}</button>
                 </div>
             </div>
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {quizzes.length === 0 && <p className="text-slate-500">No quizzes created yet.</p>}
-            {quizzes.map(q => (
+            {visibleAssessments.length === 0 && <p className="text-slate-500">{mode === 'exam' ? 'No exam papers prepared yet.' : 'No quizzes created yet.'}</p>}
+            {visibleAssessments.map(q => (
                 <div key={q.id} className="card relative border-t-4 border-t-purple-500">
                     <div className="absolute top-4 right-4 flex items-center gap-3">
                       <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true', preparationPlace: localStorage.getItem(`es_runaba_exam_preparation_place_${user.id}`) || '', paperSettings: q.paperSettings || {} })} aria-label={`Print ${q.title}`} title="Print or save exam as PDF" className="text-school-blue hover:text-school-green"><Printer size={18} /></button>
@@ -1147,7 +1195,7 @@ const QuizzesTab = ({ quizzes, setQuizzes, canManage, user, classGroups, courses
   );
 }
 
-const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, courses }) => {
+const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, courses, onBack }) => {
     const [showAdd, setShowAdd] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
     const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
@@ -1304,7 +1352,10 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-3xl font-bold text-school-blue">{user.role === 'dos' ? 'Lessons' : 'Lessons & Resources'}</h2>
+                <div>
+                  {onBack && <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green"><ArrowLeft size={16} /> Back to Tools</button>}
+                  <h2 className="text-3xl font-bold text-school-blue">Lessons & Resources</h2>
+                </div>
                 {canManage && <button type="button" onClick={showAdd ? resetEditor : openNewNote} className="btn-secondary flex items-center gap-2">
                   {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : user.role === 'dos' ? 'Add Lesson' : 'Upload File'}
                 </button>}

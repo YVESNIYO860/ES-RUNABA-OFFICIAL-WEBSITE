@@ -142,11 +142,15 @@ const toDatabaseRecord = (type, record, user) => {
   throw new Error(`Unsupported e-learning record type: ${type}`);
 };
 
-export const mapSupabaseProfile = (profile) => ({
+export const mapSupabaseProfile = (profile) => {
+  const fullName = profile.full_name?.trim().toLowerCase() === profile.email?.trim().toLowerCase()
+    ? (profile.role === 'dos' ? 'Director of Studies' : 'ES RUNABA User')
+    : profile.full_name;
+  return {
   id: profile.id,
   role: profile.role,
-  name: profile.full_name,
-  fullName: profile.full_name,
+  name: fullName,
+  fullName,
   email: profile.email,
   username: profile.username,
   isAdmin: profile.is_admin,
@@ -155,7 +159,8 @@ export const mapSupabaseProfile = (profile) => ({
   startYear: profile.start_year,
   module: profile.subject,
   subject: profile.subject
-});
+  };
+};
 
 export const loadLearningRecords = async (type) => {
   const table = tableByType[type];

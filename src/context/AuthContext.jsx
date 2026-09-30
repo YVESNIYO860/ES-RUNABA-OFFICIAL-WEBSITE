@@ -28,11 +28,16 @@ const isPrimaryDosAccount = (profile) =>
   && profile.is_admin
   && profile.email?.toLowerCase() === 'yvesniyonkuru2022@gmail.com';
 
-const mapProfileToUser = (profile) => ({
+const mapProfileToUser = (profile) => {
+  const role = isPrimaryDosAccount(profile) ? 'dos' : profile.role;
+  const fullName = profile.full_name?.trim().toLowerCase() === profile.email?.trim().toLowerCase()
+    ? (role === 'dos' ? 'Director of Studies' : 'ES RUNABA User')
+    : profile.full_name;
+  return {
   id: profile.id,
-  role: isPrimaryDosAccount(profile) ? 'dos' : profile.role,
-  name: profile.full_name,
-  fullName: profile.full_name,
+  role,
+  name: fullName,
+  fullName,
   email: profile.email,
   username: profile.username,
   isAdmin: profile.is_admin,
@@ -40,7 +45,8 @@ const mapProfileToUser = (profile) => ({
   class: profile.class,
   startYear: profile.start_year,
   subject: profile.subject
-});
+  };
+};
 
 const deepMergeContent = (defaults, overrides) => {
   const result = { ...defaults };

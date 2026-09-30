@@ -8,6 +8,26 @@ const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, character 
 
 const writingLines = (count) => Array.from({ length: count }, () => '<div class="writing-line"></div>').join('');
 
+export const examPaperFormats = [
+  { id: 'standard', label: 'Standard Examination', instructions: 'Answer all questions. Read each section carefully and show your work where needed.' },
+  { id: 'midterm', label: 'Mid-Term Examination', instructions: 'Answer all required questions. Manage your time across every section.' },
+  { id: 'end-term', label: 'End-of-Term Examination', instructions: 'Answer all required questions. Check your work before submitting.' },
+  { id: 'weekly-test', label: 'Weekly Test', instructions: 'Answer each question clearly. Keep responses focused on this week\'s topics.' },
+  { id: 'monthly-assessment', label: 'Monthly Assessment', instructions: 'Complete all sections. Show calculations and supporting work.' },
+  { id: 'mock-national', label: 'Mock National Examination', instructions: 'Follow examination rules. Do not communicate with other candidates.' },
+  { id: 'continuous-assessment', label: 'Continuous Assessment', instructions: 'Answer independently and show the steps used to reach each answer.' },
+  { id: 'multiple-choice', label: 'Multiple-Choice Paper', instructions: 'Select one answer for each question. Mark answers clearly.' },
+  { id: 'short-answer', label: 'Short-Answer Paper', instructions: 'Give concise, precise answers in the spaces provided.' },
+  { id: 'essay', label: 'Essay Examination', instructions: 'Plan each response and use clear, well-organized paragraphs.' },
+  { id: 'practical', label: 'Practical Assessment', instructions: 'Follow safety instructions, record observations, and show your working.' },
+  { id: 'oral', label: 'Oral Assessment', instructions: 'Respond clearly to each prompt. The examiner will record your responses.' },
+  { id: 'revision', label: 'Revision Paper', instructions: 'Attempt the questions selected by your teacher and review each section.' },
+  { id: 'supplementary', label: 'Supplementary Examination', instructions: 'Answer all required questions independently and follow examination rules.' },
+  { id: 'take-home', label: 'Take-Home Assessment', instructions: 'Complete independently by the stated deadline and acknowledge any sources used.' }
+];
+
+const getExamFormatLabel = (formatId) => examPaperFormats.find(format => format.id === formatId)?.label || examPaperFormats[0].label;
+
 export const printQuiz = (quiz, schoolName = 'ES RUNABA', { includeAnswerKey = false, preparationPlace = '', paperSettings = {} } = {}) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
@@ -48,38 +68,16 @@ export const printQuiz = (quiz, schoolName = 'ES RUNABA', { includeAnswerKey = f
     ministry: 'MINISTRY OF EDUCATION',
     district: 'BURERA DISTRICT',
     schoolName: schoolName || 'ES RUNABA',
+    examFormat: 'standard',
     academicYear: '',
     term: '',
     venue: '',
     instructions: 'Answer all questions. Read each section carefully and show your work where needed.',
-    coverMessage: '',
-    includeCoverPage: true,
-    showWatermark: true,
     ...paperSettings
   };
   const paperSchool = escapeHtml(paper.schoolName || schoolName || 'ES RUNABA');
   const crestUrl = `${window.location.origin}/runaba-logo.png`;
-  const coverPage = paper.includeCoverPage
-    ? `<section class="cover-page">
-        <img class="cover-crest" src="${crestUrl}" alt="ES RUNABA crest" />
-        <p class="cover-country">REPUBLIC OF RWANDA</p>
-        <p>${escapeHtml(paper.ministry)}</p>
-        <p>${escapeHtml(paper.district)}</p>
-        <h1>${paperSchool}</h1>
-        <h2>${title}</h2>
-        <div class="cover-details">
-          <p><strong>Subject:</strong> ${escapeHtml(quiz.subject)}</p>
-          <p><strong>Class:</strong> ${escapeHtml(quiz.class)}</p>
-          ${paper.term ? `<p><strong>Term:</strong> ${escapeHtml(paper.term)}</p>` : ''}
-          ${paper.academicYear ? `<p><strong>Academic year:</strong> ${escapeHtml(paper.academicYear)}</p>` : ''}
-          ${paper.venue ? `<p><strong>Venue:</strong> ${escapeHtml(paper.venue)}</p>` : ''}
-        </div>
-        ${paper.coverMessage ? `<p class="cover-message">${escapeHtml(paper.coverMessage)}</p>` : ''}
-      </section>`
-    : '';
-  const watermark = paper.showWatermark
-    ? `<img class="watermark" src="${crestUrl}" alt="" />`
-    : '';
+  const watermark = `<img class="watermark" src="${crestUrl}" alt="" />`;
   const documentHtml = `<!doctype html>
     <html lang="en">
       <head>
@@ -97,15 +95,8 @@ export const printQuiz = (quiz, schoolName = 'ES RUNABA', { includeAnswerKey = f
           .letterhead .school { margin-top: 4px; color: #173b5e; font-size: 18px; font-weight: 800; letter-spacing: 0.08em; }
           .exam-label { color: #64748b; font-size: 9px; font-weight: 700; letter-spacing: 0.1em; }
           .watermark { position: fixed; width: 310px; max-height: 310px; object-fit: contain; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: 0.075; z-index: -1; }
-          .cover-page { min-height: 250mm; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; break-after: page; border: 1px solid #cbd5e1; padding: 24mm 18mm; }
-          .cover-crest { width: 110px; height: 110px; object-fit: contain; margin-bottom: 20px; }
-          .cover-country { color: #173b5e; font-size: 18px; font-weight: 800; }
-          .cover-page p { margin: 3px 0; font-weight: 700; }
-          .cover-page h1 { margin-top: 14px; color: #173b5e; font-size: 24px; }
-          .cover-page h2 { margin-top: 28px; font-size: 22px; }
-          .cover-details { margin-top: 28px; width: 100%; text-align: left; }
-          .cover-message { margin-top: 28px !important; max-width: 520px; font-weight: 400 !important; }
           h1 { margin: 8px 0 0; font-size: 22px; }
+          .format-label { margin-top: 6px; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
           .metadata { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin: 20px 0; }
           .metadata div { border-bottom: 1px solid #9aa5b1; padding: 4px 0; }
           .instructions { margin: 16px 0 24px; padding: 10px 12px; background: #f1f5f9; }
@@ -126,7 +117,6 @@ export const printQuiz = (quiz, schoolName = 'ES RUNABA', { includeAnswerKey = f
       <body>
         ${watermark}
         <main class="paper">
-          ${coverPage}
           <header class="letterhead">
             <img class="crest" src="${window.location.origin}/runaba-logo.png" alt="ES RUNABA crest" />
             <div>
@@ -140,6 +130,7 @@ export const printQuiz = (quiz, schoolName = 'ES RUNABA', { includeAnswerKey = f
             <span class="exam-label">EXAMINATION</span>
           </header>
           <h1>${title}</h1>
+          <p class="format-label">${escapeHtml(getExamFormatLabel(paper.examFormat))}</p>
           <section class="metadata">
             <div><strong>Subject:</strong> ${escapeHtml(quiz.subject)}</div>
             <div><strong>Class:</strong> ${escapeHtml(quiz.class)}</div>

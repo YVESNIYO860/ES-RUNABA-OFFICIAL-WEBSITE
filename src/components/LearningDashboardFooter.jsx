@@ -8,7 +8,7 @@ const roleLabels = {
 };
 
 const LearningDashboardFooter = ({ user, onLogout, onContact }) => {
-  const displayName = user.fullName || user.name || user.email || 'User';
+  const displayName = user.fullName || user.name || roleLabels[user.role] || 'User';
   const roleLabel = roleLabels[user.role] || 'Portal user';
   const classLabel = user.role === 'student' && user.class ? ` · ${user.class}` : '';
 
