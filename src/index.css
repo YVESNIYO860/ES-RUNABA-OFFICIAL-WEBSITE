@@ -6,6 +6,18 @@
   --color-school-blue: #003366;
   --color-school-green: #2E7D32;
   --color-school-light: #F5F5F5;
+
+  /* E-Learning portal — shades derived from the school brand colours
+     so the login portal stays visually consistent with the main site. */
+  --color-school-blue-dark: #001F3F;
+  --color-school-blue-mid: #002B54;
+  --color-school-blue-light: #E8EFF6;
+  --color-school-blue-soft: #F4F7FA;
+  --color-school-green-dark: #1F5D24;
+  --color-school-green-mid: #276B2B;
+  --color-school-green-light: #E8F2E8;
+  --color-school-green-soft: #F4F8F4;
+
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "DM Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 }
 
@@ -222,4 +234,88 @@ font[style*="vertical-align: inherit"] {
 }
 .dark .border-slate-300 {
   @apply border-slate-600;
+}
+
+/* ============================================================
+   E-Learning cartoon scenes — pure CSS cartoon animation
+   ============================================================ */
+
+@keyframes scene-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes scene-drift {
+  0% { transform: translateX(-12vw); }
+  100% { transform: translateX(112vw); }
+}
+
+@keyframes scene-drift-reverse {
+  0% { transform: translateX(112vw); }
+  100% { transform: translateX(-12vw); }
+}
+
+@keyframes scene-drift-slow {
+  0% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-16px) rotate(8deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes book-page-turn {
+  0% { transform: rotateY(0deg); }
+  45% { transform: rotateY(-155deg); }
+  55% { transform: rotateY(-155deg); }
+  100% { transform: rotateY(-360deg); }
+}
+
+@keyframes arm-point {
+  0%, 100% { transform: rotate(-14deg); }
+  50% { transform: rotate(12deg); }
+}
+
+@keyframes arm-write {
+  0%, 100% { transform: rotate(-10deg) translateY(0); }
+  50% { transform: rotate(2deg) translateY(4px); }
+}
+
+@keyframes leg-swing {
+  0%, 100% { transform: rotate(16deg); }
+  50% { transform: rotate(-16deg); }
+}
+
+@keyframes leg-swing-back {
+  0%, 100% { transform: rotate(-16deg); }
+  50% { transform: rotate(16deg); }
+}
+
+@keyframes eyes-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%, 97% { transform: scaleY(0.1); }
+}
+
+@keyframes chalk-puff {
+  0% { opacity: 0.8; transform: translate(0, 0) scale(0.5); }
+  100% { opacity: 0; transform: translate(-26px, 18px) scale(1.5); }
+}
+
+@keyframes flag-wave {
+  0%, 100% { transform: skewY(-5deg) scaleX(1); }
+  50% { transform: skewY(6deg) scaleX(0.86); }
+}
+
+@keyframes halo-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pencil-tap {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(-6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-animate,
+  .scene-animate * {
+    animation: none !important;
+  }
 }
