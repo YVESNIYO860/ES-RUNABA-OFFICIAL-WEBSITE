@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft } from 'lucide-react';
+import { Navigate, Link } from 'react-router-dom';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
@@ -133,16 +133,48 @@ const TeacherDashboard = () => {
     return () => { isActive = false; };
   }, []);
 
-  if (!user || !['teacher', 'dos'].includes(user.role)) {
+  /* Signed in with the wrong role: explain instead of silently bouncing,
+     which previously looked like a blank or broken page. */
+  if (user && !['teacher', 'dos'].includes(user.role)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+        <div className="w-full max-w-md rounded-lg border border-slate-300 bg-white p-8 text-center shadow-[0_.5rem_1rem_rgba(0,0,0,.15)]">
+          <ShieldAlert size={40} className="mx-auto text-amber-500" aria-hidden="true" />
+          <h1 className="mt-4 text-2xl font-bold text-slate-900">Staff access only</h1>
+          <p className="mt-2 text-sm text-slate-600">
+            You are signed in as <strong>{user.role === 'student' ? 'a student' : user.role}</strong>. This
+            dashboard is reserved for teachers and the Director of Studies.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link
+              to={user.role === 'student' ? '/student-dashboard' : '/'}
+              className="rounded bg-school-blue px-4 py-2 text-sm font-bold text-white transition hover:bg-school-blue-dark"
+            >
+              {user.role === 'student' ? 'Go to my dashboard' : 'Back to website'}
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-school-blue hover:text-school-blue"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Navigate to="/elearning" />;
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
       <LearningPortalHeader user={user} />
-      <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row">
+      <div className="flex flex-col md:h-[calc(100vh-4rem)] md:flex-row md:overflow-hidden">
       {/* Sidebar sidebar */}
-      <aside className="z-10 flex w-full shrink-0 flex-col bg-school-blue pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
+      <aside className="z-10 flex w-full shrink-0 flex-col bg-school-blue pt-4 text-white shadow-xl md:h-full md:w-64 md:overflow-y-auto md:pt-0">
         <div className="flex items-center justify-between gap-3 p-4 sm:p-6 border-b border-white/10">
           <div className="min-w-0">
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight uppercase">{user.role === 'dos' ? 'Studies Office' : 'Management'}</h2>
@@ -178,8 +210,8 @@ const TeacherDashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-      <main className="mx-auto w-full max-w-6xl flex-1 overflow-y-auto p-4 pt-5 sm:pt-6 md:p-8">
+      <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
+      <main className="mx-auto w-full max-w-6xl flex-1 p-4 pt-5 sm:pt-6 md:overflow-y-auto md:p-8">
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 10 }}
@@ -187,7 +219,7 @@ const TeacherDashboard = () => {
           transition={{ duration: 0.2 }}
         >
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
-            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
+            {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' && headedClasses.length ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
             {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
             { activeTab === 'tools' && user.role === 'teacher' && <TeachingToolsTab onSelect={setActiveTab} /> }
             { activeTab === 'assignments' && user.role === 'teacher' && <AssignmentsTab assignments={assignments} setAssignments={setAssignments} submissions={submissions} students={students} headedClasses={headedClasses} canManage user={user} classGroups={classGroups} courses={courses} onBack={() => setActiveTab('tools')} /> }
@@ -435,6 +467,8 @@ const AttendanceTab = ({ students, user, classGroups }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
   const classStudents = students.filter((student) => student.class === selectedClass);
+  const availableGroups = classGroups.filter(group => group.options.length > 0);
+  const noClassesAvailable = availableGroups.length === 0;
 
   useEffect(() => {
     if (!selectedClass) {
@@ -529,7 +563,7 @@ const AttendanceTab = ({ students, user, classGroups }) => {
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_200px_auto] sm:items-end">
         <div className="min-w-0">
           <label htmlFor="attendance-class" className="mb-1.5 block text-sm font-semibold text-slate-700">Class</label>
-          <select id="attendance-class" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm">
+          <select id="attendance-class" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)} disabled={noClassesAvailable} className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500">
             <option value="">Choose a class</option>
             {classGroups.map((group) => (
               <optgroup key={group.label} label={group.label}>
@@ -546,7 +580,13 @@ const AttendanceTab = ({ students, user, classGroups }) => {
       </div>
 
       {message && <p role="status" className="rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
-      {!selectedClass ? (
+      {noClassesAvailable ? (
+        <p className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">
+          {user.role === 'teacher'
+            ? 'You are not a class head yet. Ask the Director of Studies to assign you a class, or choose a class from the list above.'
+            : 'No classes have been registered yet. Add classes before taking attendance.'}
+        </p>
+      ) : !selectedClass ? (
         <p className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-sm text-slate-500">Choose a class to open its register.</p>
       ) : isLoading ? (
         <p className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">Loading register...</p>
