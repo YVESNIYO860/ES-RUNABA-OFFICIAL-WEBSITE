@@ -239,7 +239,7 @@ const TeacherDashboard = () => {
                 <strong>Some portal data could not be loaded.</strong> {loadError}
               </div>
             )}
-            {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} isLoading={isLoadingData} />}
+            {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} classes={classes} headedClasses={headedClasses} isLoading={isLoadingData} />}
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' && headedClasses.length ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
             {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
             { activeTab === 'tools' && user.role === 'teacher' && <TeachingToolsTab onSelect={setActiveTab} /> }
@@ -645,7 +645,7 @@ const AttendanceTab = ({ students, user, classGroups }) => {
   );
 };
 
-const OverviewTab = ({ students, assignments, quizzes, isLoading }) => (
+const OverviewTab = ({ students, assignments, quizzes, classes, headedClasses = [], isLoading }) => (
   <div className="space-y-6">
     <h2 className="text-3xl font-bold text-school-blue mb-8">Dashboard Overview</h2>
     {isLoading && (
@@ -653,7 +653,7 @@ const OverviewTab = ({ students, assignments, quizzes, isLoading }) => (
         Loading your portal data...
       </p>
     )}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
       <div className="card border-t-4 border-t-school-blue">
         <div className="flex items-center gap-4">
           <div className="p-4 bg-school-blue/10 text-school-blue rounded-xl"><Users size={32} /></div>
@@ -681,16 +681,49 @@ const OverviewTab = ({ students, assignments, quizzes, isLoading }) => (
           </div>
         </div>
       </div>
-      {!isLoading && students.length === 0 && assignments.length === 0 && quizzes.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
-          <p className="font-semibold text-slate-700">No portal records yet</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-            Once classes, students and lessons are registered they will appear here. Use the sidebar to
-            manage classes, students and staff.
-          </p>
+      <div className="card border-t-4 border-t-slate-400">
+        <div className="flex items-center gap-4">
+          <div className="p-4 bg-slate-500/10 text-slate-600 rounded-xl"><BookOpen size={32} /></div>
+          <div>
+            <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Registered Classes</p>
+            <h3 className="text-3xl font-black text-slate-800">{classes.length}</h3>
+          </div>
         </div>
-      )}
+      </div>
     </div>
+
+    {!isLoading && students.length === 0 && assignments.length === 0 && quizzes.length === 0 && classes.length === 0 && (
+      <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+        <p className="font-semibold text-slate-700">No portal records yet</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+          Once classes, students and lessons are registered they will appear here. Use the sidebar to
+          manage classes, students and staff.
+        </p>
+      </div>
+    )}
+
+    {!isLoading && classes.length > 0 && (
+      <section className="card">
+        <h3 className="text-lg font-bold text-school-blue">Registered classes</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          {headedClasses.length
+            ? `You are the class head for ${headedClasses.length} of these classes.`
+            : 'Class head assignments are managed by the Director of Studies.'}
+        </p>
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {classes.map(name => (
+            <li key={name} className="flex items-center justify-between gap-3 rounded border border-slate-200 px-3 py-2 text-sm">
+              <span className="font-medium text-slate-700">{name}</span>
+              {headedClasses.includes(name) && (
+                <span className="rounded-full bg-school-green/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-school-green">
+                  Class head
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
   </div>
 );
 
@@ -1967,17 +2000,36 @@ const StaffTab = () => {
   useEffect(() => {
     let isActive = true;
     const loadStaff = async () => {
+      /* Staff and class heads load independently. Previously one failing
+         query aborted this whole handler before either state was set, which
+         left the tab completely blank. */
+      let staff = [];
       try {
-        const staff = isSupabaseConfigured
+        staff = isSupabaseConfigured
           ? (await Promise.all([loadProfiles('teacher'), loadProfiles('dos')])).flat()
           : JSON.parse(localStorage.getItem('staff_db') || '[]');
-        const classRecords = isSupabaseConfigured ? await loadSchoolClassesWithHeads() : [];
-        if (isActive) {
-          setStaffList(staff);
-          setSchoolClasses(classRecords);
-        }
       } catch (error) {
         console.error('Failed to load staff records', error);
+      }
+
+      let classRecords = [];
+      if (isSupabaseConfigured) {
+        try {
+          classRecords = await loadSchoolClassesWithHeads();
+        } catch (error) {
+          console.error('Failed to load class head assignments', error);
+          setHeadMessage('Class head assignments need a database update. Classes are listed below.');
+          try {
+            classRecords = (await loadSchoolClasses()).map(name => ({ name, headTeacherId: null }));
+          } catch (fallbackError) {
+            console.error('Failed to load classes', fallbackError);
+          }
+        }
+      }
+
+      if (isActive) {
+        setStaffList(staff);
+        setSchoolClasses(classRecords);
       }
     };
     loadStaff();
