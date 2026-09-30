@@ -18,7 +18,7 @@ const DosLoginView = ({ branding, username, onUsernameChange, password, onPasswo
 
     <div className="relative mx-auto w-full max-w-md lg:max-w-5xl">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
-        <LoginIllustration src="/login-dos.jpg" alt="A leadership team in an academic planning meeting" />
+        <LoginIllustration src="/login-dos.jpg" alt="A leadership team in an academic planning meeting" title="Lead the whole school" subtitle="Oversee classes, staff and academic performance." />
         <div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

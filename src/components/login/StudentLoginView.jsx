@@ -28,7 +28,7 @@ const StudentLoginView = ({
 
     <div className="relative mx-auto w-full max-w-md px-4 py-8 sm:px-6 sm:py-12 lg:max-w-5xl lg:py-14">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
-        <LoginIllustration src="/login-student.jpg" alt="Students learning together in a computer classroom" />
+        <LoginIllustration src="/login-student.jpg" alt="Students learning together in a computer classroom" title="Learn at your own pace" subtitle="Lessons, assignments and quizzes for every class." />
         <div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

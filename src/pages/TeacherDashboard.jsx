@@ -64,6 +64,8 @@ const TeacherDashboard = () => {
     return dashboardTabs.some(tab => tab.id === savedTab) ? savedTab : 'overview';
   });
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [isLoadingData, setIsLoadingData] = useState(true);
   
   // Data State
   const [students, setStudents] = useState([]);
@@ -81,52 +83,66 @@ const TeacherDashboard = () => {
 
   useEffect(() => {
     let isActive = true;
-    const loadDashboardData = async () => {
-      try {
-        if (isSupabaseConfigured) {
-          const [studentRecords, eventRecords, classRecords, courseRecords, classHeadRecords] = await Promise.all([
-            loadProfiles('student'),
-            loadSchoolEvents(),
-            loadSchoolClasses(),
-            loadSchoolCourses(),
-            user.role === 'teacher' ? loadSchoolClassesWithHeads() : Promise.resolve([])
-          ]);
-          if (!isActive) return;
-          setStudents(studentRecords);
-          setEvents(eventRecords);
-          setClasses(classRecords);
-          setCourses(courseRecords);
-          setHeadedClasses(classHeadRecords.filter(schoolClass => schoolClass.headTeacherId === user.id).map(schoolClass => schoolClass.name));
-          const [assignmentRecords, quizRecords, noteRecords, submissionRecords] = await Promise.all([
-            loadLearningRecords('assignments'),
-            loadLearningRecords('quizzes'),
-            loadLearningRecords('notes'),
-            loadLearningRecords('submissions')
-          ]);
-          if (!isActive) return;
-          setAssignments(assignmentRecords);
-          setQuizzes(quizRecords);
-          setNotes(noteRecords);
-          setSubmissions(submissionRecords);
-          return;
-        }
 
-        if (!isActive) return;
-        setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
-        setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
-        setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
-        setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]').filter(note => user.role === 'dos' || note.createdBy === user.id));
-        setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
-        setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
-        setClasses(await loadSchoolClasses());
-        setCourses(await loadSchoolCourses());
-        if (user.role === 'teacher') {
-          const classHeadRecords = await loadSchoolClassesWithHeads();
-          setHeadedClasses(classHeadRecords.filter(schoolClass => schoolClass.headTeacherId === user.id).map(schoolClass => schoolClass.name));
-        }
+    /* Each source loads independently: one failing query (for example a
+       column missing from an out-of-date database) must not blank the whole
+       dashboard, which previously left the portal showing nothing at all. */
+    const settle = async (loader, fallback) => {
+      try {
+        return await loader();
       } catch (error) {
-        console.error('Failed to load dashboard data', error);
+        console.error('Dashboard data load failed', error);
+        setLoadError((current) => current || error?.message || 'Some portal data could not be loaded.');
+        return fallback;
       }
+    };
+
+    const loadDashboardData = async () => {
+      if (isSupabaseConfigured) {
+        const [studentRecords, eventRecords, classRecords, courseRecords, classHeadRecords,
+          assignmentRecords, quizRecords, noteRecords, submissionRecords] = await Promise.all([
+          settle(() => loadProfiles('student'), []),
+          settle(() => loadSchoolEvents(), []),
+          settle(() => loadSchoolClasses(), []),
+          settle(() => loadSchoolCourses(), []),
+          settle(() => (user.role === 'teacher' ? loadSchoolClassesWithHeads() : Promise.resolve([])), []),
+          settle(() => loadLearningRecords('assignments'), []),
+          settle(() => loadLearningRecords('quizzes'), []),
+          settle(() => loadLearningRecords('notes'), []),
+          settle(() => loadLearningRecords('submissions'), [])
+        ]);
+        if (!isActive) return;
+        setStudents(studentRecords);
+        setEvents(eventRecords);
+        setClasses(classRecords);
+        setCourses(courseRecords);
+        setHeadedClasses(classHeadRecords
+          .filter(schoolClass => schoolClass.headTeacherId === user.id)
+          .map(schoolClass => schoolClass.name));
+        setAssignments(assignmentRecords);
+        setQuizzes(quizRecords);
+        setNotes(noteRecords);
+        setSubmissions(submissionRecords);
+        setIsLoadingData(false);
+        return;
+      }
+
+      if (!isActive) return;
+      setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
+      setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
+      setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
+      setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]').filter(note => user.role === 'dos' || note.createdBy === user.id));
+      setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
+      setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
+      setClasses(await settle(() => loadSchoolClasses(), []));
+      setCourses(await settle(() => loadSchoolCourses(), []));
+      if (user.role === 'teacher') {
+        const classHeadRecords = await settle(() => loadSchoolClassesWithHeads(), []);
+        setHeadedClasses(classHeadRecords
+          .filter(schoolClass => schoolClass.headTeacherId === user.id)
+          .map(schoolClass => schoolClass.name));
+      }
+      setIsLoadingData(false);
     };
 
     loadDashboardData();
@@ -218,7 +234,12 @@ const TeacherDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-            {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} />}
+            {loadError && (
+              <div role="alert" className="mb-6 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <strong>Some portal data could not be loaded.</strong> {loadError}
+              </div>
+            )}
+            {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} isLoading={isLoadingData} />}
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' && headedClasses.length ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
             {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
             { activeTab === 'tools' && user.role === 'teacher' && <TeachingToolsTab onSelect={setActiveTab} /> }
@@ -624,9 +645,14 @@ const AttendanceTab = ({ students, user, classGroups }) => {
   );
 };
 
-const OverviewTab = ({ students, assignments, quizzes }) => (
+const OverviewTab = ({ students, assignments, quizzes, isLoading }) => (
   <div className="space-y-6">
     <h2 className="text-3xl font-bold text-school-blue mb-8">Dashboard Overview</h2>
+    {isLoading && (
+      <p className="rounded-lg border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+        Loading your portal data...
+      </p>
+    )}
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="card border-t-4 border-t-school-blue">
         <div className="flex items-center gap-4">
@@ -655,6 +681,15 @@ const OverviewTab = ({ students, assignments, quizzes }) => (
           </div>
         </div>
       </div>
+      {!isLoading && students.length === 0 && assignments.length === 0 && quizzes.length === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-10 text-center">
+          <p className="font-semibold text-slate-700">No portal records yet</p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+            Once classes, students and lessons are registered they will appear here. Use the sidebar to
+            manage classes, students and staff.
+          </p>
+        </div>
+      )}
     </div>
   </div>
 );

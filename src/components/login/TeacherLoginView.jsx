@@ -16,7 +16,7 @@ const TeacherLoginView = ({ branding, username, onUsernameChange, password, onPa
 
     <div className="relative mx-auto w-full max-w-md px-4 py-8 sm:px-6 sm:py-12 lg:max-w-5xl lg:py-14">
       <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-12">
-        <LoginIllustration src="/login-teacher.jpg" alt="A teacher instructing pupils at a classroom chalkboard" />
+        <LoginIllustration src="/login-teacher.jpg" alt="A teacher instructing pupils at a classroom chalkboard" title="Teach with confidence" subtitle="Manage your classes, lessons and student progress." />
         <div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
