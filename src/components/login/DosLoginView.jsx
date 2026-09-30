@@ -5,12 +5,14 @@ import LoginError from './LoginError';
 import PasswordField from './PasswordField';
 import DosScene from './scenes/DosScene';
 import LoginIllustration from './LoginIllustration';
+import LogoWatermark from './LogoWatermark';
 import { buttonClass, buttonGreen, cardClass, fieldClass, labelClass, portalFont } from './loginTheme';
 
 const inputBase = `${fieldClass} border-slate-600 bg-slate-800 pl-10 text-white placeholder-slate-400 focus:border-school-green focus:ring-school-green/25`;
 
 const DosLoginView = ({ branding, username, onUsernameChange, password, onPasswordChange, error, isLoading, onSubmit }) => (
   <div className="relative overflow-hidden bg-slate-800 px-4 py-8 sm:px-6 sm:py-12" style={{ fontFamily: portalFont }}>
+    <LogoWatermark tone="dark" />
     <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-school-blue/30 blur-3xl" />
     <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:44px_44px]" />
 

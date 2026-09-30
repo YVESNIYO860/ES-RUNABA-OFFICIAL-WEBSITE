@@ -11,6 +11,7 @@ import StudentLoginView from '../components/login/StudentLoginView';
 import TeacherLoginView from '../components/login/TeacherLoginView';
 import DosLoginView from '../components/login/DosLoginView';
 import PortalFooter from '../components/login/PortalFooter';
+import LogoWatermark from '../components/login/LogoWatermark';
 import { portalFont } from '../components/login/loginTheme';
 
 const TeacherLogin = ({ initialRole = 'student' }) => {
@@ -122,10 +123,12 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-100" style={{ fontFamily: portalFont }}>
+    <div className="relative min-h-screen overflow-hidden bg-slate-100" style={{ fontFamily: portalFont }}>
       {isLoading && <SchoolLoader />}
 
-      <div className="flex min-h-screen flex-col">
+      <LogoWatermark />
+
+      <div className="relative z-10 flex min-h-screen flex-col">
       <div className="relative z-10 mx-auto w-full max-w-md px-4 pt-5 sm:px-6 sm:pt-6">
         <div className="mb-4 flex items-center justify-between gap-2 sm:mb-5 sm:gap-4">
           <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
