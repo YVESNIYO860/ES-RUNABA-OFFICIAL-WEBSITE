@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useSpring } from 'framer-motion';
 import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone, HandHeart, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ProfileAvatar from '../components/ProfileAvatar';
@@ -8,47 +8,35 @@ import labImage from '../assets/school-photos/school photos (6).jpeg';
 
 const teachersData = [
   {
-    name: 'Mr. HABIMANA Alphonse',
-    subjects: 'Mathematics & ICT',
-    experience: '12 Years',
-    level: 'O-Level',
-    phone: '+250 783 883 046',
-    bio: 'Dedicated to simplifying complex mathematical concepts and driving digital literacy.',
-    image: ''
+    area: 'Sciences',
+    subjects: ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Subsidiary Math'],
+    level: 'O-Level and A-Level'
   },
   {
-    name: 'Mrs. UWIMANA Diane',
-    subjects: 'Biology & Chemistry',
-    experience: '8 Years',
-    level: 'A-Level',
-    phone: '+250 783 883 112',
-    bio: 'Fostering a deep appreciation for the biological sciences and laboratory research.',
-    image: ''
+    area: 'Languages and Humanities',
+    subjects: ['Kinyarwanda', 'English', 'French', 'Geography', 'History'],
+    level: 'O-Level'
   },
   {
-    name: 'Mr. NSHIMIYIMANA Eric',
-    subjects: 'Physics & Geography',
-    experience: '15 Years',
-    level: 'A-Level',
-    phone: '+250 783 883 055',
-    bio: 'Expert in environmental science and physics methodology with over a decade of mentorship.',
-    image: ''
+    area: 'ICT and Computing',
+    subjects: ['ICT', 'Computer Science'],
+    level: 'O-Level and A-Level'
   },
   {
-    name: 'Ms. MUKAMANA Solange',
-    subjects: 'English & Entrepreneurship',
-    experience: '6 Years',
-    level: 'O-Level',
-    phone: '+250 783 883 099',
-    bio: 'Passionate about communication skills and empowering students with business mindsets.',
-    image: ''
+    area: 'Economics and Entrepreneurship',
+    subjects: ['Economics', 'Entrepreneurship', 'General Paper'],
+    level: 'A-Level'
   }
 ];
 
-const routines = [
-  { day: 'Monday', time: '07:30 AM', event: 'Morning Assembly', type: 'Community & Discipline', icon: <Users size={20} /> },
-  { day: 'Wednesday', time: '04:00 PM', event: 'Sports & PE', type: 'Physical Excellence', icon: <Target size={20} /> },
-  { day: 'Friday', time: '04:30 PM', event: 'Holy Mass', type: 'Spiritual Growth', icon: <ShieldCheck size={20} /> }
+const routineSchedule = [
+  { day: 'Monday', morning: ['07:30 AM - Morning assembly', '08:00 AM - Morning lessons'], midday: ['10:30 AM - Short break', '12:30 PM - Lunch break'], afternoon: ['02:00 PM - Afternoon session'], evening: ['No special event listed'] },
+  { day: 'Tuesday', morning: ['08:00 AM - Morning lessons'], midday: ['10:30 AM - Short break', '12:30 PM - Lunch break'], afternoon: ['02:00 PM - Afternoon session'], evening: ['No special event listed'] },
+  { day: 'Wednesday', morning: ['08:00 AM - Morning lessons'], midday: ['10:30 AM - Short break', '12:30 PM - Lunch break'], afternoon: ['02:00 PM - Afternoon session'], evening: ['04:00 PM - Sports and PE'] },
+  { day: 'Thursday', morning: ['08:00 AM - Morning lessons'], midday: ['10:30 AM - Short break', '12:30 PM - Lunch break'], afternoon: ['02:00 PM - Afternoon session'], evening: ['No special event listed'] },
+  { day: 'Friday', morning: ['08:00 AM - Morning lessons'], midday: ['10:30 AM - Short break', '12:30 PM - Lunch break'], afternoon: ['02:00 PM - Afternoon session'], evening: ['04:30 PM - Holy Mass'] },
+  { day: 'Saturday', morning: ['No school routine listed'], midday: ['No school routine listed'], afternoon: ['No school routine listed'], evening: ['No school routine listed'] },
+  { day: 'Sunday', morning: ['No school routine listed'], midday: ['No school routine listed'], afternoon: ['No school routine listed'], evening: ['No school routine listed'] }
 ];
 
 const timelineData = [
@@ -61,6 +49,19 @@ const timelineData = [
 
 const About = () => {
   const { siteContent } = useAuth();
+  const logoX = useSpring(0, { stiffness: 120, damping: 24 });
+  const logoY = useSpring(0, { stiffness: 120, damping: 24 });
+
+  const handleCoreValuesPointerMove = (event) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    logoX.set((event.clientX - bounds.left - bounds.width / 2) * 0.018);
+    logoY.set((event.clientY - bounds.top - bounds.height / 2) * 0.018);
+  };
+
+  const resetCoreValuesLogo = () => {
+    logoX.set(0);
+    logoY.set(0);
+  };
   
   if (!siteContent) return <div className="min-h-screen bg-white flex items-center justify-center text-slate-500">Loading...</div>;
 
@@ -75,6 +76,7 @@ const About = () => {
     },
     {
       role: 'Director of Studies',
+      name: 'UWIZEYIMANA Jean Dedieu',
       phone: '0783505100',
       avatarRole: 'dos',
       description: 'Coordinating teaching and learning to support strong academic progress.'
@@ -291,75 +293,44 @@ const About = () => {
       </section>
 
       {/* Core Values */}
-      <section className="py-16 px-4 max-w-7xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-12">Core Values</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { title: 'Humility', icon: <HandHeart />, description: 'We learn with open minds, serve with respect, and recognize there is always room to grow.' },
-            { title: 'Unity', icon: <Users />, description: 'We work together as one school community, valuing every person and supporting one another.' },
-            { title: "God's Love", icon: <Heart />, description: "We reflect God's love through compassion, kindness, forgiveness, and care for all." },
-          ].map((value) => (
-            <div key={value.title} className="text-center p-8 bg-slate-50 rounded-2xl shadow-sm border border-slate-100 hover:-translate-y-2 transition-transform">
-              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto text-school-blue mb-4">{value.icon}</div>
-              <h4 className="font-bold text-lg">{value.title}</h4>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">{value.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Weekly Routine Section */}
-      <section id="routine" className="py-24 bg-slate-900 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/slide_campus.png')] bg-cover bg-fixed opacity-10 blur-[2px]"></div>
-        <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-6xl font-black italic tracking-tighter">School Routine</h2>
-              <div className="w-24 h-1.5 bg-school-green shadow-[0_0_15px_rgba(34,197,94,0.6)]"></div>
-            </div>
-            <p className="max-w-md text-slate-400 font-medium italic text-right">
-              "A structured day is the foundation of a structured mind. We plan our routines to balance academics and character."
+      <section onPointerMove={handleCoreValuesPointerMove} onPointerLeave={resetCoreValuesLogo} className="relative isolate overflow-hidden bg-[#f4f8f6] py-20 dark:bg-slate-950">
+        <motion.img aria-hidden="true" src="/runaba-logo.png" alt="" style={{ x: logoX, y: logoY }} className="pointer-events-none absolute left-1/2 top-[58%] z-0 w-[min(58vw,520px)] -translate-x-1/2 -translate-y-1/2 opacity-10" />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8">
+          <div className="mb-10 max-w-2xl">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-school-green">What guides us</p>
+            <h2 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white md:text-5xl">Core Values</h2>
+            <p className="mt-4 text-base leading-relaxed text-slate-600 dark:text-slate-300">
+              The principles that shape how we learn, work together, and care for others.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {routines.map((item, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 backdrop-blur-md border border-white/10 p-10 rounded-[2.5rem] group hover:bg-school-green/10 transition-all border-l-4 border-l-school-green"
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { title: 'Humility', icon: <HandHeart />, description: 'We learn with open minds, serve with respect, and recognize there is always room to grow.' },
+              { title: 'Unity', icon: <Users />, description: 'We work together as one school community, valuing every person and supporting one another.' },
+              { title: "God's Love", icon: <Heart />, description: "We reflect God's love through compassion, kindness, forgiveness, and care for all." },
+              { title: 'Creativity', icon: <Cpu />, description: 'We encourage curiosity, imagination, and original thinking in learning and problem-solving.' },
+              { title: 'Service to Others', icon: <Briefcase />, description: 'We put care into action by helping others and contributing to our community.' },
+              { title: 'Self-Confidence', icon: <User />, description: 'We help learners trust their abilities and approach new challenges with courage.' },
+              { title: 'Competitiveness', icon: <Target />, description: 'We strive for excellence through effort, teamwork, and respect for others.' },
+              { title: 'Commitment', icon: <ShieldCheck />, description: 'We stay dedicated to learning, our responsibilities, and the goals we share.' },
+              { title: 'Honesty', icon: <Eye />, description: 'We tell the truth, act with integrity, and take responsibility for our choices.' },
+            ].map((value, index) => (
+              <motion.article
+                key={value.title}
+                whileHover={{ y: -4 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+                className="rounded-lg border border-slate-200 p-6 shadow-sm transition-shadow hover:border-school-green/50 hover:shadow-md dark:border-slate-800"
               >
-                <div className="flex justify-between items-start mb-8">
-                  <div className="p-4 bg-school-green text-white rounded-2xl shadow-[0_10px_20px_rgba(34,197,94,0.3)] group-hover:scale-110 transition-transform">
-                    {item.icon}
-                  </div>
-                  <span className="text-4xl font-black opacity-20 group-hover:opacity-40 transition-opacity uppercase tracking-tighter">{item.day}</span>
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-school-blue/10 text-school-blue dark:bg-sky-300/10 dark:text-sky-300">
+                    {React.cloneElement(value.icon, { size: 20, strokeWidth: 1.8 })}
+                  </span>
+                  <span className="font-mono text-xs font-semibold text-slate-400 dark:text-slate-500">{String(index + 1).padStart(2, '0')}</span>
                 </div>
-                <h4 className="text-2xl font-black mb-1 italic uppercase tracking-tight">{item.event}</h4>
-                <p className="text-school-green text-[10px] font-black tracking-[0.2em] uppercase mb-6">{item.type}</p>
-                <div className="pt-6 border-t border-white/10 flex items-center gap-3">
-                   <div className="bg-white/10 w-2 h-2 rounded-full animate-pulse"></div>
-                   <span className="text-xl tracking-widest">{item.time}</span>
-                </div>
-              </motion.div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{value.title}</h3>
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-600 dark:text-slate-300">{value.description}</p>
+              </motion.article>
             ))}
-          </div>
-
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4">
-             {[
-               { t: '08:00 AM', e: 'Morning Lessons' },
-               { t: '10:30 AM', e: 'Short Break' },
-               { t: '12:30 PM', e: 'Lunch Break' },
-               { t: '02:00 PM', e: 'Afternoon Session' }
-             ].map((s, i) => (
-               <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/5 text-center">
-                  <p className="text-school-green text-sm mb-1">{s.t}</p>
-                  <p className="text-sm text-slate-400">{s.e}</p>
-               </div>
-             ))}
           </div>
         </div>
       </section>
@@ -405,8 +376,11 @@ const About = () => {
       <section id="faculty" className="py-24 bg-white relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter italic">Our Distinguished Faculty</h2>
+            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter italic">Our Teachers</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
+            <p className="mx-auto mt-5 max-w-2xl text-slate-600">
+              Meet the subject areas taught at ES RUNABA. Teacher names, photos, experience, and telephone details will be added soon.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -417,53 +391,39 @@ const About = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="group bg-slate-50 rounded-[2.5rem] overflow-hidden border border-slate-100 hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] transition-all flex flex-col h-full"
+                className="group bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 hover:shadow-[0_24px_48px_rgba(0,0,0,0.1)] transition-all flex flex-col h-full"
               >
                 {/* Image Container */}
-                <div className="relative aspect-[4/5] overflow-hidden">
-                  {teacher.image ? (
-                    <img
-                      src={teacher.image}
-                      alt={teacher.name}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div role="img" aria-label={`${teacher.name} portrait placeholder`} className="flex h-full w-full flex-col items-center justify-center bg-[#eef4f1]">
-                      <div className="flex h-28 w-28 items-center justify-center rounded-full border-4 border-white bg-school-blue text-3xl font-black text-white shadow-lg ring-4 ring-school-green/20">
-                        {teacher.name.split(/\s+/).filter(part => !['Mr.', 'Mrs.', 'Ms.'].includes(part)).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
-                      </div>
-                      <span className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Portrait placeholder</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 flex items-end bg-gradient-to-t from-slate-900/90 via-slate-900/10 to-transparent p-6">
-                    <div>
-                      <p className="text-lg font-bold leading-tight text-white">{teacher.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-white/75">{teacher.level}</p>
-                    </div>
+                <div role="img" aria-label={`${teacher.area} teacher photo placeholder`} className="flex aspect-[4/3] flex-col items-center justify-center bg-[#eef4f1]">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-school-blue text-white shadow-lg ring-4 ring-school-green/20">
+                    <User size={40} aria-hidden="true" />
                   </div>
-                  <div className="absolute inset-0 flex items-end bg-slate-900/85 p-6 opacity-0 transition-opacity group-hover:opacity-100">
-                    <div>
-                      <p className="mb-2 font-bold text-white">{teacher.name}</p>
-                      <p className="text-xs font-light italic leading-relaxed text-white/90">"{teacher.bio}"</p>
-                    </div>
-                  </div>
+                  <span className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Teacher photo to be added</span>
                 </div>
 
                 {/* Content */}
-                <div className="p-8 flex flex-col flex-grow">
+                <div className="flex flex-grow flex-col p-6">
                   <div className="mb-4">
-                    <p className="mb-2 text-sm font-semibold text-school-blue">{teacher.level}</p>
-                    <p className="text-slate-600 text-sm">{teacher.subjects}</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-school-blue">{teacher.level}</p>
+                    <h3 className="text-xl font-bold text-slate-900">{teacher.area}</h3>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Lessons taught</p>
+                    <ul className="flex flex-wrap gap-2">
+                      {teacher.subjects.map((subject) => (
+                        <li key={subject} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700">{subject}</li>
+                      ))}
+                    </ul>
                   </div>
 
-                  <div className="space-y-4 pt-4 border-t border-slate-200 mt-auto">
+                  <div className="mt-auto space-y-3 border-t border-slate-200 pt-4">
                     <div className="flex items-center gap-3 text-slate-500">
                       <Briefcase size={16} className="text-school-blue" />
-                      <span className="text-xs font-bold">{teacher.experience} Experience</span>
+                      <span className="text-xs font-bold">Years of experience: To be added</span>
                     </div>
                     <div className="flex items-center gap-3 text-slate-500">
                       <Phone size={16} className="text-school-blue" />
-                      <span className="text-xs font-bold">{teacher.phone}</span>
+                      <span className="text-xs font-bold">Telephone: To be added</span>
                     </div>
                   </div>
                 </div>
@@ -531,6 +491,48 @@ const About = () => {
             <p className="text-slate-600 leading-relaxed text-lg">
               Our students are the heartbeat of ES RUNABA. They actively engage in diverse projects, extracurricular activities, and community service, making us proud through their achievements and character.
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Weekly Routine */}
+      <section id="routine" className="relative overflow-hidden bg-slate-900 py-20 text-white">
+        <div className="absolute inset-0 bg-[url('/slide_campus.png')] bg-cover bg-fixed opacity-10 blur-[2px]"></div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 md:px-8">
+          <div className="mb-10 space-y-4">
+            <h2 className="text-4xl font-black italic tracking-tight md:text-5xl">School Routine</h2>
+            <div className="h-1.5 w-24 bg-school-green"></div>
+            <p className="max-w-3xl text-sm leading-relaxed text-slate-300">
+              Weekday lesson times and listed school activities are shown below. Weekend routines have not been provided.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+            <table className="w-full min-w-[900px] border-collapse text-left">
+              <caption className="sr-only">School routine from Monday through Sunday, morning to evening</caption>
+              <thead className="bg-white/10 text-xs uppercase tracking-wide text-school-green">
+                <tr>
+                  <th scope="col" className="px-5 py-4">Day</th>
+                  <th scope="col" className="px-5 py-4">Morning</th>
+                  <th scope="col" className="px-5 py-4">Midday</th>
+                  <th scope="col" className="px-5 py-4">Afternoon</th>
+                  <th scope="col" className="px-5 py-4">Evening</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 text-sm text-slate-200">
+                {routineSchedule.map((day) => (
+                  <tr key={day.day} className="align-top transition-colors hover:bg-white/5">
+                    <th scope="row" className="whitespace-nowrap px-5 py-4 font-bold text-white">{day.day}</th>
+                    {['morning', 'midday', 'afternoon', 'evening'].map((period) => (
+                      <td key={period} className="min-w-48 px-5 py-4">
+                        {day[period].map((activity) => (
+                          <p key={activity} className="mb-1 last:mb-0">{activity}</p>
+                        ))}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
