@@ -294,26 +294,26 @@ const Home = () => {
       </section>
 
       {/* Head Teacher Message */}
-      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-[#f4f8f6] px-6 py-14 md:px-12 md:py-16">
+      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-[#f4f8f6] px-6 py-14 md:px-12 md:py-16 dark:border-slate-800 dark:bg-slate-900">
         <img aria-hidden="true" src="/runaba-logo.png" alt="" className="pointer-events-none absolute left-1/2 top-1/2 z-0 w-[min(48vw,380px)] -translate-x-1/2 -translate-y-1/2 opacity-[0.18] dark:opacity-[0.23]" />
         <div className="relative z-10 mx-auto grid max-w-7xl gap-8 md:grid-cols-[minmax(0,1fr)_280px] md:items-center md:gap-14">
           <div className="border-l-4 border-school-green pl-6 md:pl-8">
-            <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-school-blue">A word from our Head Teacher</p>
+            <p className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-school-blue dark:text-sky-300">A word from our Head Teacher</p>
             <Quote size={28} className="mb-3 text-school-green" />
-            <blockquote className="max-w-4xl text-xl leading-relaxed text-slate-800 md:text-2xl">
+            <blockquote className="max-w-4xl text-xl leading-relaxed text-slate-800 md:text-2xl dark:text-slate-100">
               “{siteContent.about?.headTeacher?.message}”
             </blockquote>
-            <Link to="/about#headteacher" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-school-blue hover:text-school-green">
+            <Link to="/about#headteacher" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-school-blue hover:text-school-green dark:text-sky-300 dark:hover:text-school-green">
               Read more about our school <ArrowRight size={17} />
             </Link>
           </div>
-          <div className="flex items-center gap-4 border-t border-slate-300 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0">
+          <div className="flex items-center gap-4 border-t border-slate-300 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0 dark:border-slate-700">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-school-blue text-xl font-black text-white ring-4 ring-school-green/20">
               {(siteContent.about?.headTeacher?.name || 'Head Teacher').split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-lg font-bold text-slate-900">{siteContent.about?.headTeacher?.name}</p>
-              <p className="mt-1 text-sm text-slate-600">{siteContent.about?.headTeacher?.role}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">{siteContent.about?.headTeacher?.name}</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{siteContent.about?.headTeacher?.role}</p>
             </div>
           </div>
         </div>

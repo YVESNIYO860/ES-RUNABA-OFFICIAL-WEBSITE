@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone } from 'lucide-react';
+import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone, HandHeart, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 import labImage from '../assets/school-photos/school photos (6).jpeg'; 
@@ -235,17 +235,17 @@ const About = () => {
       </section>
 
       {/* Mission & Vision */}
-      <section className="bg-white py-20">
+      <section className="bg-white py-20 dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="card border-l-4 border-school-blue shadow-xl">
             <div className="flex items-center gap-4 mb-4">
               <div className="p-3 bg-school-blue/10 text-school-blue rounded-full">
                 <Target size={28} />
               </div>
-              <h3 className="text-2xl font-bold">Our Mission</h3>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Our Mission</h3>
             </div>
-            <p className="text-slate-600 italic">
-              "To provide a holistic learning experience that encourages creativity, critical thinking, and innovation, empowering students to become leaders who influence positive change."
+            <p className="text-slate-600 italic dark:text-slate-300">
+              "To educate each person in their full humanity and integrity."
             </p>
           </div>
 
@@ -254,10 +254,10 @@ const About = () => {
               <div className="p-3 bg-school-green/10 text-school-green rounded-full">
                 <Eye size={28} />
               </div>
-              <h3 className="text-2xl font-bold">Our Vision</h3>
+              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Our Vision</h3>
             </div>
-            <p className="text-slate-600 italic">
-              "To be a premier educational institution recognized for shaping well-rounded individuals capable of contributing meaningfully to society and global development."
+            <p className="text-slate-600 italic dark:text-slate-300">
+              "Vision for Excellence: to become a classic school."
             </p>
           </div>
         </div>
@@ -266,16 +266,16 @@ const About = () => {
       {/* Core Values */}
       <section className="py-16 px-4 max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold text-center mb-12">Core Values</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { title: 'Discipline', icon: <ShieldCheck /> },
-            { title: 'Excellence', icon: <Target /> },
-            { title: 'Integrity', icon: <Eye /> },
-            { title: 'Service', icon: <Target /> },
-          ].map((v, i) => (
-            <div key={i} className="text-center p-8 bg-slate-50 rounded-2xl shadow-sm border border-slate-100 hover:-translate-y-2 transition-transform">
-              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto text-school-blue mb-4">{v.icon}</div>
-              <h4 className="font-bold text-lg">{v.title}</h4>
+            { title: 'Humility', icon: <HandHeart />, description: 'We learn with open minds, serve with respect, and recognize there is always room to grow.' },
+            { title: 'Unity', icon: <Users />, description: 'We work together as one school community, valuing every person and supporting one another.' },
+            { title: "God's Love", icon: <Heart />, description: "We reflect God's love through compassion, kindness, forgiveness, and care for all." },
+          ].map((value) => (
+            <div key={value.title} className="text-center p-8 bg-slate-50 rounded-2xl shadow-sm border border-slate-100 hover:-translate-y-2 transition-transform">
+              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mx-auto text-school-blue mb-4">{value.icon}</div>
+              <h4 className="font-bold text-lg">{value.title}</h4>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">{value.description}</p>
             </div>
           ))}
         </div>
