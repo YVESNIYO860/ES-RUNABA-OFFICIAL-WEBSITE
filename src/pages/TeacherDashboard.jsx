@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
