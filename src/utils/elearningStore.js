@@ -212,7 +212,13 @@ export const loadSchoolClasses = async () => {
 export const loadSchoolClassesWithHeads = async () => {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase.from('school_classes').select('name, head_teacher_id').order('name');
-    if (error) throw error;
+    if (error) {
+      const missingHeadColumn = ['42703', 'PGRST204'].includes(error.code)
+        && /head_teacher_id/i.test(error.message || '');
+      if (!missingHeadColumn) throw error;
+      console.warn('Class-head assignments are unavailable until the school_classes.head_teacher_id migration is applied.', error.message);
+      return (await loadSchoolClasses()).map(name => ({ name, headTeacherId: null }));
+    }
     return data.map(row => ({ name: row.name, headTeacherId: row.head_teacher_id }));
   }
   const classes = await loadSchoolClasses();
