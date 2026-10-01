@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Eye, ShieldCheck, Quote, Cpu, Users, CalendarDays, ArrowDown, User, Briefcase, MapPin, Phone, HandHeart, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 import labImage from '../assets/school-photos/school photos (6).jpeg'; 
 
@@ -64,6 +65,32 @@ const About = () => {
   if (!siteContent) return <div className="min-h-screen bg-white flex items-center justify-center text-slate-500">Loading...</div>;
 
   const { about, general } = siteContent;
+  const schoolLeaders = [
+    {
+      role: 'Head Teacher',
+      name: about?.headTeacher?.name,
+      phone: '0788 859 152',
+      avatarRole: 'teacher',
+      description: 'Guiding the school community and supporting every learner’s growth.'
+    },
+    {
+      role: 'Director of Studies',
+      phone: '0783505100',
+      avatarRole: 'dos',
+      description: 'Coordinating teaching and learning to support strong academic progress.'
+    },
+    {
+      role: 'Secretary',
+      avatarRole: 'teacher',
+      description: 'Supporting school communication and day-to-day administration.'
+    },
+    {
+      role: 'Bursar',
+      phone: '0788424660',
+      avatarRole: 'dos',
+      description: 'Managing school finances and supporting responsible use of resources.'
+    }
+  ];
 
   return (
     <div className="pb-16 bg-white">
@@ -333,6 +360,43 @@ const About = () => {
                   <p className="text-sm text-slate-400">{s.e}</p>
                </div>
              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* School Leadership */}
+      <section id="leadership" aria-labelledby="school-leadership-heading" className="bg-slate-50 py-20 dark:bg-slate-950">
+        <div className="mx-auto max-w-7xl px-4 md:px-8">
+          <div className="mb-12 text-center">
+            <h2 id="school-leadership-heading" className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">School Leadership</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-slate-600 dark:text-slate-300">Meet the team guiding learning and supporting our school community.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {schoolLeaders.map((leader) => (
+              <article key={leader.role} className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <ProfileAvatar
+                  user={{ role: leader.avatarRole, fullName: leader.name || leader.role }}
+                  size={88}
+                  ringClassName="ring-4 ring-slate-100 dark:ring-slate-800"
+                  title={`${leader.role} avatar`}
+                />
+                <div className="mt-5">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">{leader.role}</h3>
+                  {leader.name && <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">{leader.name}</p>}
+                  <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{leader.description}</p>
+                </div>
+                <div className="mt-auto border-t border-slate-200 pt-4 dark:border-slate-700">
+                  {leader.phone ? (
+                    <a href={`tel:${leader.phone.replace(/\s/g, '')}`} className="inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green dark:text-sky-300">
+                      <Phone size={16} aria-hidden="true" />
+                      {leader.phone}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Phone number to be added</p>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
