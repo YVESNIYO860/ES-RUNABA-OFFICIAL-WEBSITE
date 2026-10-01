@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { normalizeSchoolName } from '../utils/translate';
 import { isSupabaseConfigured, supabase } from '../supabase';
 import { studentAuthEmail } from '../utils/studentAuth';
@@ -6,9 +6,18 @@ import { studentAuthEmail } from '../utils/studentAuth';
 const AuthContext = createContext(null);
 const AUTH_PROFILE_STORAGE_KEY = 'es_runaba_authenticated_profile';
 
-/* Idle sign-out window and the point at which the user is warned. */
+/* Idle sign-out window, the point at which the user is warned, and how often
+   the idle countdown is checked. */
 const INACTIVITY_LIMIT_MS = 20 * 60 * 1000;
 const INACTIVITY_WARNING_MS = 19 * 60 * 1000;
+const ACTIVITY_CHECK_INTERVAL_MS = 15 * 1000;
+/* A session recovery attempt gets this long before the portal moves on, so a
+   slow network can never trap the app on the loading screen. */
+const SESSION_RECOVERY_TIMEOUT_MS = 5 * 1000;
+/* Where the reason for an automatic sign-out is kept so the sign-in screen
+   can explain why the user must log in again. */
+const SESSION_END_STORAGE_KEY = 'es_runaba_session_end';
+const LAST_ACTIVITY_STORAGE_KEY = 'es_runaba_last_activity_at';
 
 const getCachedAuthenticatedProfile = (userId) => {
   try {
@@ -24,6 +33,16 @@ const persistAuthenticatedProfile = (profile) => {
     localStorage.setItem(AUTH_PROFILE_STORAGE_KEY, JSON.stringify(profile));
   } catch (error) {
     console.warn('Could not cache the signed-in profile for page refresh.', error);
+  }
+};
+
+/* Used to try one session recovery after a page refresh, before decision that
+   the session really is over. */
+const hasCachedAuthenticatedProfile = () => {
+  try {
+    return Boolean(JSON.parse(localStorage.getItem(AUTH_PROFILE_STORAGE_KEY) || 'null'));
+  } catch {
+    return false;
   }
 };
 
@@ -48,7 +67,8 @@ const mapProfileToUser = (profile) => {
   regNumber: profile.reg_number,
   class: profile.class,
   startYear: profile.start_year,
-  subject: profile.subject
+  subject: profile.subject,
+  photoUrl: profile.photo_url || profile.photoUrl || ''
   };
 };
 
@@ -72,6 +92,24 @@ export const AuthProvider = ({ children }) => {
   const [isAuthInitialized, setIsAuthInitialized] = useState(!isSupabaseConfigured);
   const [siteContent, setSiteContent] = useState(null);
   const [sessionWarning, setSessionWarning] = useState(false);
+  const [sessionDeadline, setSessionDeadline] = useState(null);
+  const [sessionEnded, setSessionEnded] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(SESSION_END_STORAGE_KEY) || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const userRef = useRef(null);
+  const endReasonRef = useRef(null);
+  const recoveryAttemptedRef = useRef(false);
+  const lastActivityAtRef = useRef(Date.now());
+
+  /* The idle tracker and the Supabase auth listener need the current user
+     without re-subscribing on every profile refresh, so mirror it in a ref. */
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const updateSiteContent = async (newContent) => {
     if (isSupabaseConfigured) {
@@ -221,6 +259,48 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  /* Forgets the "session ended" note once the user is back on the sign-in
+     screen or signed in again. */
+  const clearSessionEnded = useCallback(() => {
+    setSessionEnded(null);
+    try {
+      sessionStorage.removeItem(SESSION_END_STORAGE_KEY);
+    } catch {
+      /* Storage can be unavailable in private modes; the in-memory state still works. */
+    }
+  }, []);
+
+  /* Single exit point for signing out. A manual sign-out stays silent, while
+     an automatic one (20 minutes idle, or a session that expired) records the
+     reason so the sign-in screen can tell the user to log in again. */
+  const endSession = useCallback(async (reason = 'manual') => {
+    endReasonRef.current = reason;
+    recoveryAttemptedRef.current = false;
+    const previousUser = userRef.current;
+    userRef.current = null;
+    setUser(null);
+    setSessionWarning(false);
+    setSessionDeadline(null);
+    localStorage.removeItem('es_runaba_user');
+    localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_STORAGE_KEY);
+    if (reason !== 'manual' && previousUser) {
+      const ended = {
+        reason,
+        role: previousUser.role,
+        name: previousUser.name || previousUser.fullName || '',
+        at: Date.now()
+      };
+      setSessionEnded(ended);
+      try {
+        sessionStorage.setItem(SESSION_END_STORAGE_KEY, JSON.stringify(ended));
+      } catch {
+        /* Keep signing out even when session storage is blocked. */
+      }
+    }
+    if (isSupabaseConfigured) await supabase.auth.signOut();
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return undefined;
 
@@ -228,16 +308,64 @@ export const AuthProvider = ({ children }) => {
     let isSessionLoaded = false;
     let queuedSession;
     let latestSyncId = 0;
+
+    /* A refresh hiccup must not log a teacher out mid-lesson, but a slow
+       network must not freeze the portal either: the recovery attempt below
+       gets a short window, then the session is treated as over. */
+    const recoverSessionOnce = async () => {
+      try {
+        const recoveryAttempt = supabase.auth.refreshSession()
+          .then(({ data, error }) => (!error && data?.session?.user ? data.session : null))
+          .catch((recoveryError) => {
+            console.warn('Could not recover the portal session', recoveryError);
+            return null;
+          });
+        const recoveryTimeout = new Promise((resolve) => {
+          window.setTimeout(() => resolve(null), SESSION_RECOVERY_TIMEOUT_MS);
+        });
+        return await Promise.race([recoveryAttempt, recoveryTimeout]);
+      } catch (recoveryError) {
+        console.warn('Could not recover the portal session', recoveryError);
+        return null;
+      }
+    };
+
     const syncUser = async (session) => {
       const syncId = ++latestSyncId;
       if (!session?.user) {
-        if (isMounted) {
-          setUser(null);
-          localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
-          setIsAuthInitialized(true);
+        const shouldTryRecovery = isMounted
+          && endReasonRef.current === null
+          && !recoveryAttemptedRef.current
+          && (userRef.current || hasCachedAuthenticatedProfile());
+        if (shouldTryRecovery) {
+          recoveryAttemptedRef.current = true;
+          const recoveredSession = await recoverSessionOnce();
+          if (recoveredSession?.user) {
+            await syncUser(recoveredSession);
+            return;
+          }
         }
+        if (syncId !== latestSyncId) return;
+        if (isMounted) {
+          if (userRef.current) {
+            /* The session vanished while the portal was open (expired or
+               closed elsewhere): explain that on the sign-in screen instead
+               of leaving the dashboard blank. */
+            void endSession('expired');
+          } else {
+            setUser(null);
+            localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
+          }
+        }
+        /* The auth gate is always released, so the portal can never remain
+           stuck on the loading screen. */
+        if (isMounted) setIsAuthInitialized(true);
         return;
       }
+
+      endReasonRef.current = null;
+      recoveryAttemptedRef.current = false;
+      clearSessionEnded();
 
       const cachedProfile = getCachedAuthenticatedProfile(session.user.id);
       if (isMounted && cachedProfile) {
@@ -291,7 +419,7 @@ export const AuthProvider = ({ children }) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [clearSessionEnded, endSession]);
 
   const loginTeacher = async (username, password) => {
     if (!isSupabaseConfigured) return { success: false, error: 'Supabase sign-in is not configured for this deployment.' };
@@ -312,6 +440,9 @@ export const AuthProvider = ({ children }) => {
     const authenticatedProfile = mapProfileToUser(profile);
     setUser(authenticatedProfile);
     persistAuthenticatedProfile(authenticatedProfile);
+    endReasonRef.current = null;
+    clearSessionEnded();
+    markActivityNow();
     return { success: true };
   };
 
@@ -334,6 +465,9 @@ export const AuthProvider = ({ children }) => {
     const authenticatedProfile = mapProfileToUser(profile);
     setUser(authenticatedProfile);
     persistAuthenticatedProfile(authenticatedProfile);
+    endReasonRef.current = null;
+    clearSessionEnded();
+    markActivityNow();
     return { success: true };
   };
 
@@ -363,56 +497,106 @@ export const AuthProvider = ({ children }) => {
     const authenticatedProfile = mapProfileToUser(profile);
     setUser(authenticatedProfile);
     persistAuthenticatedProfile(authenticatedProfile);
+    endReasonRef.current = null;
+    clearSessionEnded();
+    markActivityNow();
     return { success: true };
   };
 
-  const logout = async () => {
-    setUser(null);
-    localStorage.removeItem('es_runaba_user');
-    localStorage.removeItem(AUTH_PROFILE_STORAGE_KEY);
-    if (isSupabaseConfigured) await supabase.auth.signOut();
-  };
+  const logout = useCallback(() => endSession('manual'), [endSession]);
 
-  /* Sign the user out after 20 minutes without any activity, so an
-     unattended device cannot keep a portal session open. Any real
-     interaction (typing, clicking, scrolling, key presses, touch) resets
-     the countdown. */
+  /* Applies a new profile photo everywhere straight away (header, lists and
+     the cached profile used after a refresh), without a reload. */
+  const updateUserPhoto = useCallback((photoUrl) => {
+    setUser((current) => {
+      if (!current) return current;
+      const next = { ...current, photoUrl: photoUrl || '' };
+      persistAuthenticatedProfile(next);
+      return next;
+    });
+  }, []);
+
+  /* Restarts the idle countdown. Fresh sign-ins and "stay signed in" taps use
+     this so they can never inherit a stale timestamp from a previous visit
+     (which could otherwise cause an instant sign-out right after logging in). */
+  const markActivityNow = useCallback(() => {
+    const now = Date.now();
+    lastActivityAtRef.current = now;
+    try {
+      localStorage.setItem(LAST_ACTIVITY_STORAGE_KEY, String(now));
+    } catch {
+      /* Ignore storage failures; the in-memory timestamp still counts. */
+    }
+  }, []);
+
+  /* Called by the warning banner: any real interaction counts as activity and
+     clears the idle warning, restarting the 20 minute countdown. */
+  const staySignedIn = useCallback(() => {
+    markActivityNow();
+    setSessionWarning(false);
+    setSessionDeadline(null);
+  }, [markActivityNow]);
+
+  /* Sign the user out after 20 minutes without any activity, so an unattended
+     device cannot keep a portal session open. The countdown is checked on an
+     interval against a persisted timestamp, so it also stays correct after a
+     suspended background tab or a sleeping laptop. Any real interaction
+     (typing, clicking, scrolling, key presses, touch) restarts the countdown. */
   useEffect(() => {
     if (!user) return undefined;
 
-    let timeoutId;
-    let warningTimeoutId;
-    const resetTimer = () => {
-      window.clearTimeout(timeoutId);
-      window.clearTimeout(warningTimeoutId);
-      timeoutId = window.setTimeout(() => {
-        void logout();
-      }, INACTIVITY_LIMIT_MS);
-      warningTimeoutId = window.setTimeout(() => {
+    const storedActivity = Number(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY));
+    lastActivityAtRef.current = Number.isFinite(storedActivity) && storedActivity > 0 && storedActivity <= Date.now()
+      ? storedActivity
+      : Date.now();
+
+    const markActivity = () => {
+      lastActivityAtRef.current = Date.now();
+      setSessionWarning((current) => (current ? false : current));
+      setSessionDeadline((current) => (current ? null : current));
+    };
+
+    const checkIdleTime = () => {
+      const idleFor = Date.now() - lastActivityAtRef.current;
+      if (idleFor >= INACTIVITY_LIMIT_MS) {
+        window.clearInterval(intervalId);
+        void endSession('inactivity');
+        return;
+      }
+      try {
+        localStorage.setItem(LAST_ACTIVITY_STORAGE_KEY, String(lastActivityAtRef.current));
+      } catch {
+        /* Ignore storage failures; the countdown keeps working in memory. */
+      }
+      if (idleFor >= INACTIVITY_WARNING_MS) {
         setSessionWarning(true);
-      }, INACTIVITY_WARNING_MS);
+        setSessionDeadline(lastActivityAtRef.current + INACTIVITY_LIMIT_MS);
+      } else {
+        setSessionWarning((current) => (current ? false : current));
+        setSessionDeadline((current) => (current ? null : current));
+      }
     };
 
     const handleVisibility = () => {
-      // Coming back to a tab counts as returning to the portal.
-      if (document.visibilityState === 'visible') resetTimer();
+      // Returning to the tab re-checks the countdown without counting as activity.
+      if (document.visibilityState === 'visible') checkIdleTime();
     };
 
-    const events = ['mousedown', 'keydown', 'wheel', 'touchstart', 'mousemove', 'focus'];
-    events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
+    const events = ['mousedown', 'mousemove', 'keydown', 'wheel', 'touchstart', 'pointerdown', 'focus'];
+    events.forEach(event => window.addEventListener(event, markActivity, { passive: true }));
     document.addEventListener('visibilitychange', handleVisibility);
-    resetTimer();
+    const intervalId = window.setInterval(checkIdleTime, ACTIVITY_CHECK_INTERVAL_MS);
+    checkIdleTime();
 
     return () => {
-      window.clearTimeout(timeoutId);
-      window.clearTimeout(warningTimeoutId);
-      events.forEach(event => window.removeEventListener(event, resetTimer));
+      window.clearInterval(intervalId);
+      events.forEach(event => window.removeEventListener(event, markActivity));
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [user]);
+  }, [user, endSession]);
 
   return (
-    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, isInitialized: isInitialized && isAuthInitialized, siteContent, updateSiteContent, sessionWarning, dismissSessionWarning: () => setSessionWarning(false) }}>
+    <AuthContext.Provider value={{ user, loginTeacher, loginDos, loginStudent, logout, updateUserPhoto, isInitialized: isInitialized && isAuthInitialized, siteContent, updateSiteContent, sessionWarning, sessionDeadline, sessionEnded, staySignedIn, clearSessionEnded, dismissSessionWarning: staySignedIn }}>
       {children}
     </AuthContext.Provider>
   );

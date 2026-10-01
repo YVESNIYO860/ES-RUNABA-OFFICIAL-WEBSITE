@@ -59,6 +59,7 @@ const toAppRecord = (type, row) => {
     filePath: row.file_path,
     targetClasses: row.target_classes || [],
     targetStudentIds: row.target_student_ids || [],
+    accessKeyHash: row.access_key_hash || '',
     datePosted: row.date_posted
   };
   if (type === 'submissions') return {
@@ -110,6 +111,7 @@ const toDatabaseRecord = (type, record, user) => {
       file_path: record.filePath,
       target_classes: record.targetClasses || [],
       target_student_ids: record.targetStudentIds || [],
+      access_key_hash: record.accessKeyHash || '',
       date_posted: record.datePosted || '',
       created_by: createdBy
     };
@@ -158,7 +160,8 @@ export const mapSupabaseProfile = (profile) => {
   class: profile.class,
   startYear: profile.start_year,
   module: profile.subject,
-  subject: profile.subject
+  subject: profile.subject,
+  photoUrl: profile.photo_url || ''
   };
 };
 
@@ -434,12 +437,90 @@ export const removeStudentWorkFile = async (filePath) => {
   if (error) throw error;
 };
 
+/* --- Profile photos ------------------------------------------------------ */
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('The photo could not be read. Choose a different image.'));
+  reader.readAsDataURL(file);
+});
+
+const PHOTO_SETUP_HINT = 'Photo storage is not set up yet. Ask the Director of Studies to run supabase/2026-09-profile-photos.sql in Supabase.';
+
+/* Uploads a profile photo to the public profile-photos bucket. Each account
+   has one stable file, so replacing a photo also replaces what everyone sees. */
+export const uploadProfilePhoto = async (file, userId) => {
+  if (!isSupabaseConfigured) return readFileAsDataUrl(file);
+
+  const filePath = `${userId}/photo`;
+  const { error } = await supabase.storage
+    .from('profile-photos')
+    .upload(filePath, file, { upsert: true, contentType: file.type || 'image/jpeg' });
+  if (error) {
+    const message = String(error.message || '');
+    throw new Error(/bucket/i.test(message) ? PHOTO_SETUP_HINT : message || 'The photo could not be uploaded. Please try again.');
+  }
+
+  const { data } = supabase.storage.from('profile-photos').getPublicUrl(filePath);
+  if (!data?.publicUrl) throw new Error('The photo was uploaded, but its address could not be created.');
+  // The version marker makes browsers show the new photo immediately.
+  return `${data.publicUrl}?v=${Date.now()}`;
+};
+
+/* Saves the photo address on the signed-in user's own profile row. */
+export const saveMyProfilePhoto = async (photoUrl) => {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.rpc('set_my_profile_photo', { new_photo_url: photoUrl || '' });
+  if (error) {
+    const message = String(error.message || '');
+    throw new Error(/set_my_profile_photo/i.test(message) ? PHOTO_SETUP_HINT : message || 'The photo could not be saved on your profile.');
+  }
+};
+
+/* Removes the stored photo file; a missing file is not an error. */
+export const removeProfilePhotoFile = async (userId) => {
+  if (!isSupabaseConfigured || !userId) return;
+  const { error } = await supabase.storage.from('profile-photos').remove([`${userId}/photo`]);
+  if (error && !/not[ _]?found/i.test(String(error.message || ''))) throw error;
+};
+
 export const getLearningNoteUrl = async (filePath) => {
   const { data, error } = await supabase.storage
     .from('elearning-notes')
     .createSignedUrl(filePath, 60);
   if (error) throw error;
   return data.signedUrl;
+};
+
+export const loadStudentQuizIndex = async () => {
+  const { data, error } = await supabase.rpc('list_student_quizzes');
+  if (error) throw error;
+  return data || [];
+};
+
+export const openStudentQuiz = async (quizId, keyHash = '') => {
+  const { data, error } = await supabase.rpc('open_student_quiz', {
+    p_quiz_id: quizId,
+    p_key_hash: keyHash
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const loadStudentNoteIndex = async () => {
+  const { data, error } = await supabase.rpc('list_student_notes');
+  if (error) throw error;
+  return data || [];
+};
+
+export const openStudentNote = async (noteId, keyHash = '') => {
+  const { data, error } = await supabase.rpc('open_student_note', {
+    p_note_id: noteId,
+    p_key_hash: keyHash
+  });
+  if (error) throw error;
+  return getLearningNoteUrl(data.filePath);
 };
 
 export const removeLearningNoteFile = async (filePath) => {

@@ -5,7 +5,7 @@
 -- deleted - this only reports what the dashboard depends on. Run it any time
 -- you want to confirm the integration is intact.
 --
--- Anything reported as MISSING is fixed by running 2026-09-add-class-heads.sql.
+-- Missing dashboard columns are fixed by 2026-10-dashboard-columns.sql.
 -- ---------------------------------------------------------------------------
 
 with required_column (tbl, col) as (
@@ -17,6 +17,7 @@ with required_column (tbl, col) as (
     ('profiles', 'username'),
     ('profiles', 'subject'),
     ('profiles', 'is_admin'),
+    ('elearning_quizzes', 'deadline'),
     ('school_classes', 'name'),
     ('school_classes', 'head_teacher_id')
 ),

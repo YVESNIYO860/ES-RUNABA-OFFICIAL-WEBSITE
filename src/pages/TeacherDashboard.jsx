@@ -1,15 +1,19 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound, ChevronRight } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound, ChevronRight, Eye } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
+import ProfileAvatar from '../components/ProfileAvatar';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
+import PortalErrorBoundary from '../components/PortalErrorBoundary';
 import { examPaperFormats, printQuiz } from '../utils/printQuiz';
+import { assignmentTemplates, lessonTemplates, quizTemplates } from '../utils/teacherTemplates';
+import { createResourceAccessKey } from '../utils/resourceAccess';
 import {
   deleteLearningRecord,
   createSchoolClass,
@@ -39,6 +43,8 @@ import {
   uploadLearningNote
 } from '../utils/elearningStore';
 
+const DATA_LOAD_TIMEOUT_MS = 15 * 1000;
+
 const getStaffDashboardTabs = (user) => [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
@@ -57,7 +63,7 @@ const getStaffDashboardTabs = (user) => [
 ];
 
 const TeacherDashboard = () => {
-  const { user, logout, siteContent, updateSiteContent } = useAuth();
+  const { user, logout, siteContent, updateSiteContent, sessionEnded } = useAuth();
   const dashboardTabs = getStaffDashboardTabs(user);
   const [activeTab, setActiveTab] = useState(() => {
     const savedTab = localStorage.getItem(`es_runaba_learning_home_${user?.id}`);
@@ -66,6 +72,7 @@ const TeacherDashboard = () => {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   
   // Data State
   const [students, setStudents] = useState([]);
@@ -82,7 +89,15 @@ const TeacherDashboard = () => {
     : [];
 
   useEffect(() => {
+    // Wait for the signed-in staff profile; reload when a different account
+    // arrives or when the user asks for a retry after a failed load.
+    if (!user) return undefined;
+
     let isActive = true;
+    let loadTimedOut = false;
+    let sourceError = '';
+    setIsLoadingData(true);
+    setLoadError('');
 
     /* Each source loads independently: one failing query (for example a
        column missing from an out-of-date database) must not blank the whole
@@ -92,62 +107,95 @@ const TeacherDashboard = () => {
         return await loader();
       } catch (error) {
         console.error('Dashboard data load failed', error);
-        setLoadError((current) => current || error?.message || 'Some portal data could not be loaded.');
+        sourceError ||= error?.message || 'Some portal data could not be loaded.';
+        if (isActive) setLoadError((current) => current || error?.message || 'Some portal data could not be loaded.');
         return fallback;
       }
     };
 
-    const loadDashboardData = async () => {
-      if (isSupabaseConfigured) {
-        const [studentRecords, eventRecords, classRecords, courseRecords, classHeadRecords,
-          assignmentRecords, quizRecords, noteRecords, submissionRecords] = await Promise.all([
-          settle(() => loadProfiles('student'), []),
-          settle(() => loadSchoolEvents(), []),
-          settle(() => loadSchoolClasses(), []),
-          settle(() => loadSchoolCourses(), []),
-          settle(() => (user.role === 'teacher' ? loadSchoolClassesWithHeads() : Promise.resolve([])), []),
-          settle(() => loadLearningRecords('assignments'), []),
-          settle(() => loadLearningRecords('quizzes'), []),
-          settle(() => loadLearningRecords('notes'), []),
-          settle(() => loadLearningRecords('submissions'), [])
-        ]);
-        if (!isActive) return;
-        setStudents(studentRecords);
-        setEvents(eventRecords);
-        setClasses(classRecords);
-        setCourses(courseRecords);
-        setHeadedClasses(classHeadRecords
-          .filter(schoolClass => schoolClass.headTeacherId === user.id)
-          .map(schoolClass => schoolClass.name));
-        setAssignments(assignmentRecords);
-        setQuizzes(quizRecords);
-        setNotes(noteRecords);
-        setSubmissions(submissionRecords);
-        setIsLoadingData(false);
-        return;
-      }
-
+    const applyDashboardRecords = (records) => {
       if (!isActive) return;
-      setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
-      setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
-      setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
-      setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]').filter(note => user.role === 'dos' || note.createdBy === user.id));
-      setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
-      setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
-      setClasses(await settle(() => loadSchoolClasses(), []));
-      setCourses(await settle(() => loadSchoolCourses(), []));
-      if (user.role === 'teacher') {
-        const classHeadRecords = await settle(() => loadSchoolClassesWithHeads(), []);
-        setHeadedClasses(classHeadRecords
-          .filter(schoolClass => schoolClass.headTeacherId === user.id)
-          .map(schoolClass => schoolClass.name));
+      const [studentRecords, eventRecords, classRecords, courseRecords, classHeadRecords,
+        assignmentRecords, quizRecords, noteRecords, submissionRecords] = records;
+      setStudents(studentRecords);
+      setEvents(eventRecords);
+      setClasses(classRecords);
+      setCourses(courseRecords);
+      setHeadedClasses(classHeadRecords
+        .filter(schoolClass => schoolClass.headTeacherId === user.id)
+        .map(schoolClass => schoolClass.name));
+      setAssignments(assignmentRecords);
+      setQuizzes(quizRecords);
+      setNotes(noteRecords);
+      setSubmissions(submissionRecords);
+      if (loadTimedOut) {
+        const timeoutMessage = 'The portal data is taking too long to load. Check your connection and use "Reload portal data".';
+        setLoadError((current) => current === timeoutMessage ? sourceError : current);
       }
-      setIsLoadingData(false);
+    };
+
+    const loadDashboardData = async () => {
+      try {
+        if (isSupabaseConfigured) {
+          const loadAll = Promise.all([
+            settle(() => loadProfiles('student'), []),
+            settle(() => loadSchoolEvents(), []),
+            settle(() => loadSchoolClasses(), []),
+            settle(() => loadSchoolCourses(), []),
+            settle(() => (user.role === 'teacher' ? loadSchoolClassesWithHeads() : Promise.resolve([])), []),
+            settle(() => loadLearningRecords('assignments'), []),
+            settle(() => loadLearningRecords('quizzes'), []),
+            settle(() => loadLearningRecords('notes'), []),
+            settle(() => loadLearningRecords('submissions'), [])
+          ]);
+          /* A hung request must not leave the portal showing nothing but a
+             loading line: after this window the page shows its structure and
+             the retry control while the request finishes quietly in the
+             background. */
+          const records = await Promise.race([
+            loadAll,
+            new Promise((resolve) => window.setTimeout(() => resolve(null), DATA_LOAD_TIMEOUT_MS))
+          ]);
+          if (records === null) {
+            loadTimedOut = true;
+            if (isActive) setLoadError((current) => current || 'The portal data is taking too long to load. Check your connection and use "Reload portal data".');
+            void loadAll.then(applyDashboardRecords, () => {});
+            return;
+          }
+          applyDashboardRecords(records);
+          return;
+        }
+
+        if (!isActive) return;
+        setStudents(JSON.parse(localStorage.getItem('students_db') || '[]'));
+        setAssignments(JSON.parse(localStorage.getItem('assignments_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id));
+        setQuizzes(JSON.parse(localStorage.getItem('quizzes_db') || '[]').filter(record => user.role === 'dos' || record.createdBy === user.id || (record.paperSettings?.assessmentType === 'exam' && record.paperSettings?.allowTeacherPreview)));
+        setNotes(JSON.parse(localStorage.getItem('notes_db') || '[]').filter(note => user.role === 'dos' || note.createdBy === user.id));
+        setSubmissions(JSON.parse(localStorage.getItem('submissions_db') || '[]'));
+        setEvents(JSON.parse(localStorage.getItem('events_db') || '[]'));
+        setClasses(await settle(() => loadSchoolClasses(), []));
+        setCourses(await settle(() => loadSchoolCourses(), []));
+        if (user.role === 'teacher') {
+          const classHeadRecords = await settle(() => loadSchoolClassesWithHeads(), []);
+          setHeadedClasses(classHeadRecords
+            .filter(schoolClass => schoolClass.headTeacherId === user.id)
+            .map(schoolClass => schoolClass.name));
+        }
+      } catch (error) {
+        console.error('Dashboard data load failed', error);
+        if (isActive) setLoadError((current) => current || error?.message || 'Some portal data could not be loaded.');
+      } finally {
+        // The loading state always clears, so the portal can never stay blank.
+        if (isActive) setIsLoadingData(false);
+      }
     };
 
     loadDashboardData();
     return () => { isActive = false; };
-  }, []);
+    // The staff id and the retry counter are the only reload triggers; the
+    // profile object itself changes on every token refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, reloadKey]);
 
   /* Signed in with the wrong role: explain instead of silently bouncing,
      which previously looked like a blank or broken page. */
@@ -182,7 +230,12 @@ const TeacherDashboard = () => {
   }
 
   if (!user) {
-    return <Navigate to="/elearning" />;
+    /* The session ended (20 minutes idle, expired, or closed elsewhere).
+       Staff must land on the staff sign-in screen that explains the reason,
+       never on a blank page or the student login. */
+    const endedRole = sessionEnded?.role;
+    const loginPath = endedRole === 'dos' ? '/dos-login' : endedRole === 'student' ? '/student-login' : '/teacher-login';
+    return <Navigate to={loginPath} replace />;
   }
 
   return (
@@ -235,10 +288,20 @@ const TeacherDashboard = () => {
           transition={{ duration: 0.2 }}
         >
             {loadError && (
-              <div role="alert" className="mb-6 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <strong>Some portal data could not be loaded.</strong> {loadError}
+              <div role="alert" className="mb-6 flex flex-col gap-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  <strong>Some portal data could not be loaded.</strong> {loadError}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReloadKey(key => key + 1)}
+                  className="shrink-0 rounded border border-amber-400 bg-white px-3 py-1.5 font-bold text-amber-800 transition hover:bg-amber-100"
+                >
+                  Reload portal data
+                </button>
               </div>
             )}
+            <PortalErrorBoundary key={activeTab} compact>
             {activeTab === 'overview' && <OverviewTab students={students} assignments={assignments} quizzes={quizzes} classes={classes} headedClasses={headedClasses} isLoading={isLoadingData} />}
             {activeTab === 'attendance' && <AttendanceTab students={students} user={user} classGroups={user.role === 'teacher' && headedClasses.length ? [{ label: 'My headed classes', options: headedClasses.map(name => ({ value: name, label: name })) }] : classGroups} />}
             {activeTab === 'students' && user.role === 'dos' && <StudentsTab students={students} setStudents={setStudents} classGroups={classGroups} courses={courses} />}
@@ -269,6 +332,7 @@ const TeacherDashboard = () => {
             { activeTab === 'analytics' && user.role === 'dos' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
             { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
             { activeTab === 'contact' && <LearningContact /> }
+            </PortalErrorBoundary>
         </motion.div>
       </main>
       <LearningDashboardFooter user={user} onLogout={logout} onContact={() => setActiveTab('contact')} />
@@ -282,10 +346,10 @@ const TeacherDashboard = () => {
 
 const TeachingToolsTab = ({ onSelect }) => {
   const tools = [
-    { id: 'exam-prep', label: 'Exam Preparator', description: 'Build a formal paper, choose one of 15 formats, and prepare its print header.', icon: Printer },
-    { id: 'quizzes', label: 'Quizzes', description: 'Create timed quizzes for students to complete in the e-learning portal.', icon: CheckSquare },
-    { id: 'assignments', label: 'Assignments', description: 'Post class work, add deadlines, and review submissions from your headed classes.', icon: FileText },
-    { id: 'notes', label: 'Lessons & Resources', description: 'Upload and update your own teaching resources for selected classes or students.', icon: FileUp }
+    { id: 'exam-prep', label: 'Exam Preparation', description: 'Build, format, and print formal papers from 16 exam templates.', icon: Printer },
+    { id: 'quizzes', label: 'Quiz Preparation', description: 'Create timed online quizzes from 16 assessment templates.', icon: CheckSquare },
+    { id: 'assignments', label: 'Assignments', description: 'Post template-based class work, review submissions, and manage due dates.', icon: FileText },
+    { id: 'notes', label: 'Notes & Resources', description: 'Share lesson resources, worksheets, and study guides with your classes.', icon: FileUp }
   ];
 
   return (
@@ -297,7 +361,7 @@ const TeachingToolsTab = ({ onSelect }) => {
       </header>
       <div className="divide-y divide-slate-200 border-y border-slate-200 bg-white">
         {tools.map(({ id, label, description, icon: Icon }) => (
-          <button key={id} type="button" onClick={() => onSelect(id)} className="flex w-full items-center gap-4 px-4 py-5 text-left hover:bg-slate-50">
+          <button key={id} type="button" onClick={() => onSelect(id)} className="flex w-full cursor-pointer items-center gap-4 px-4 py-5 text-left hover:bg-slate-50">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-school-blue/5 text-school-blue"><Icon size={20} /></span>
             <span className="min-w-0 flex-1">
               <span className="block font-semibold text-slate-900">{label}</span>
@@ -310,7 +374,6 @@ const TeachingToolsTab = ({ onSelect }) => {
     </div>
   );
 };
-
 
 const ClassesTab = ({ classes, setClasses, onClassRenamed }) => {
   const [newName, setNewName] = useState('');
@@ -621,7 +684,11 @@ const AttendanceTab = ({ students, user, classGroups }) => {
           <ul className="divide-y divide-slate-100">
             {classStudents.map((student) => (
               <li key={student.id} className="grid grid-cols-1 gap-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_180px] sm:items-center sm:gap-4">
-                <span className="font-semibold text-slate-900">{student.fullName || student.name}</span>
+                <span className="flex min-w-0 items-center gap-3">
+                  {/* Fetches the photo the student uploaded to their own Profile tab. */}
+                  <ProfileAvatar user={student} size={32} />
+                  <span className="truncate font-semibold text-slate-900">{student.fullName || student.name}</span>
+                </span>
                 <span className="text-sm text-slate-500">{student.regNumber}</span>
                 <select aria-label={`Attendance status for ${student.fullName || student.name}`} value={statusByStudent[student.id] || ''} onChange={(event) => setStatusByStudent((current) => ({ ...current, [student.id]: event.target.value }))} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm">
                   <option value="">Not marked</option>
@@ -839,6 +906,7 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
         <table className="w-full min-w-[640px] text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 text-slate-500 font-medium text-sm border-b border-slate-200">
+              <th className="p-4">Photo</th>
               <th className="p-4">Reg Number</th>
               <th className="p-4">Name</th>
               <th className="p-4">Class</th>
@@ -847,9 +915,11 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
             </tr>
           </thead>
           <tbody>
-            {students.length === 0 ? (<tr><td colSpan="5" className="p-8 text-center text-slate-500">No students registered yet.</td></tr>) : null}
+            {students.length === 0 ? (<tr><td colSpan="6" className="p-8 text-center text-slate-500">No students registered yet.</td></tr>) : null}
             {students.map(s => (
               <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                {/* Fetches the photo the student uploaded to their own Profile tab. */}
+                <td className="p-4"><ProfileAvatar user={s} size={36} /></td>
                 <td className="p-4 text-sm font-bold text-school-blue">{s.regNumber}</td>
                 <td className="p-4 font-medium text-slate-800">{s.fullName}</td>
                 <td className="p-4 text-slate-600">{s.class}</td>
@@ -869,6 +939,8 @@ const StudentsTab = ({ students, setStudents, classGroups, courses }) => {
 const AssignmentsTab = ({ assignments, setAssignments, submissions, students, headedClasses, canManage, user, classGroups, courses, onBack }) => {
    const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [editingAssignment, setEditingAssignment] = useState(null);
   const [downloadingSubmission, setDownloadingSubmission] = useState('');
 
   const openStudentWork = async (submission) => {
@@ -885,23 +957,45 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
 
    const handleAdd = async (e) => {
     e.preventDefault();
-    const newAssignment = { ...formData, id: Date.now().toString(), createdBy: user.id };
+    const newAssignment = { ...formData, id: editingAssignment?.id || Date.now().toString(), createdBy: editingAssignment?.createdBy || user.id };
     if (isSupabaseConfigured) {
       try {
         const savedAssignment = await saveLearningRecord('assignments', newAssignment, user);
-        setAssignments(current => [...current, savedAssignment]);
+        setAssignments(current => editingAssignment
+          ? current.map(assignment => assignment.id === editingAssignment.id ? savedAssignment : assignment)
+          : [...current, savedAssignment]);
         setShowAdd(false);
         setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
+        setSelectedTemplate('');
+        setEditingAssignment(null);
       } catch (error) {
         alert(error.message || 'Could not save the assignment.');
       }
       return;
     }
 
-    const updated = [...assignments, newAssignment];
+    const updated = editingAssignment
+      ? assignments.map(assignment => assignment.id === editingAssignment.id ? newAssignment : assignment)
+      : [...assignments, newAssignment];
     setAssignments(updated);
     localStorage.setItem('assignments_db', JSON.stringify(updated));
     setShowAdd(false);
+    setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
+    setSelectedTemplate('');
+    setEditingAssignment(null);
+   };
+
+   const openAssignmentEditor = (assignment) => {
+    setEditingAssignment(assignment);
+    setFormData({ title: assignment.title || '', class: assignment.class || '', subject: assignment.subject || '', description: assignment.description || '', dueDate: assignment.dueDate || '' });
+    setSelectedTemplate('');
+    setShowAdd(true);
+   };
+
+   const closeAssignmentEditor = () => {
+    setShowAdd(false);
+    setEditingAssignment(null);
+    setSelectedTemplate('');
     setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', dueDate: '' });
    };
 
@@ -928,14 +1022,24 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
           {onBack && <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green"><ArrowLeft size={16} /> Back to Tools</button>}
           <h2 className="text-3xl font-bold text-school-blue">Assignments</h2>
         </div>
-        {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
+        {canManage && <button onClick={showAdd ? closeAssignmentEditor : () => setShowAdd(true)} className="btn-secondary flex items-center gap-2">
           {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : 'Create Assignment'}
         </button>}
       </div>
 
        {showAdd && canManage && (
         <form onSubmit={handleAdd} className="card bg-white p-6 mb-8 border-2 border-school-blue/20">
-          <h3 className="text-xl font-bold mb-4">New Assignment</h3>
+          <h3 className="text-xl font-bold mb-4">{editingAssignment ? 'Edit Assignment' : 'New Assignment'}</h3>
+          <label className="mb-4 block text-sm font-semibold text-slate-700">Start from a template
+            <select value={selectedTemplate} onChange={event => {
+              const template = assignmentTemplates.find(item => item.id === event.target.value);
+              setSelectedTemplate(event.target.value);
+              if (template) setFormData(current => ({ ...current, title: template.title, description: template.description }));
+            }} className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2.5">
+              <option value="">Choose one of 16 assignment templates</option>
+              {assignmentTemplates.map(template => <option key={template.id} value={template.id}>{template.title}</option>)}
+            </select>
+          </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -969,15 +1073,15 @@ const AssignmentsTab = ({ assignments, setAssignments, submissions, students, he
                  <textarea required rows="3" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-slate-300 rounded-md p-2"></textarea>
             </div>
           </div>
-          <button type="submit" className="btn-primary mt-4 flex items-center gap-2"><Save size={18} /> Post Assignment</button>
+          <button type="submit" className="btn-primary mt-4 flex items-center gap-2"><Save size={18} /> {editingAssignment ? 'Save Assignment' : 'Post Assignment'}</button>
         </form>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {assignments.length === 0 && <p className="text-slate-500">No assignments created yet.</p>}
           {assignments.map(a => (
-              <div key={a.id} className="card relative border-l-4 border-l-school-blue">
-                  {canManage && <button onClick={() => handleDelete(a.id)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>}
+                <div key={a.id} className="card relative border-l-4 border-l-school-blue">
+                  {canManage && <div className="absolute right-4 top-4 flex gap-3"><button type="button" onClick={() => openAssignmentEditor(a)} aria-label={`Edit ${a.title}`} className="text-school-blue hover:text-school-green"><Edit3 size={17} /></button><button type="button" onClick={() => handleDelete(a.id)} aria-label={`Delete ${a.title}`} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button></div>}
                   <h3 className="font-bold text-lg">{a.title}</h3>
                   <div className="flex gap-2 text-xs font-semibold mt-2 mb-3">
                       <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{a.subject}</span>
@@ -1024,6 +1128,10 @@ const createQuizDraft = (schoolName = 'ES RUNABA', assessmentType = 'exam') => (
   deadline: '',
   paperSettings: {
     assessmentType,
+    headerHeading: assessmentType === 'exam' ? 'EXAMINATION' : 'QUIZ',
+    headerNote: '',
+    allowTeacherPreview: false,
+    requireAccessKey: false,
     ministry: 'MINISTRY OF EDUCATION',
     district: 'BURERA DISTRICT',
     schoolName: schoolName || 'ES RUNABA',
@@ -1032,14 +1140,24 @@ const createQuizDraft = (schoolName = 'ES RUNABA', assessmentType = 'exam') => (
     term: '',
     venue: '',
     instructions: 'Answer all questions. Read each section carefully and show your work where needed.',
+    showSchoolCrest: true,
+    coverPageEnabled: false,
+    coverPageTitle: '',
+    coverPageSubtitle: '',
+    coverPageInstructions: '',
   }
 });
 
 const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, classGroups, courses, schoolName, onBack }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [formData, setFormData] = useState(() => createQuizDraft(schoolName, mode));
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [editingQuiz, setEditingQuiz] = useState(null);
   const [question, setQuestion] = useState({ type: 'radio', section: 'Section A - General', duration: 60, q: '', opt1: '', opt2: '', opt3: '', opt4: '', correct: 'opt1', points: 1 });
   const [questions, setQuestions] = useState([]);
+  const [previewAssessment, setPreviewAssessment] = useState(null);
+    const [newAccessKey, setNewAccessKey] = useState(null);
+    const [keyMessage, setKeyMessage] = useState('');
   const visibleAssessments = quizzes.filter(quiz => (quiz.paperSettings?.assessmentType || 'quiz') === mode);
 
   const updatePaperSetting = (field, value) => setFormData(current => ({
@@ -1051,12 +1169,58 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
     const format = examPaperFormats.find(item => item.id === formatId) || examPaperFormats[0];
     setFormData(current => ({
       ...current,
+      title: current.title || format.label,
       paperSettings: {
         ...current.paperSettings,
         examFormat: format.id,
+        headerHeading: format.label.toUpperCase(),
         instructions: format.instructions
       }
     }));
+  };
+
+  const applyQuizTemplate = (templateId) => {
+    const template = quizTemplates.find(item => item.id === templateId);
+    setSelectedTemplate(templateId);
+    if (!template) return;
+    setFormData(current => ({
+      ...current,
+      title: template.title,
+      paperSettings: { ...current.paperSettings, templateId: template.id, instructions: template.instructions }
+    }));
+    setQuestion(current => ({
+      ...current,
+      type: template.type,
+      section: template.section,
+      duration: template.duration,
+      points: template.points,
+      correct: template.type === 'radio' ? 'opt1' : ''
+    }));
+  };
+
+  const openQuizEditor = (quiz) => {
+    const defaults = createQuizDraft(schoolName, mode);
+    setEditingQuiz(quiz);
+    setFormData({
+      ...defaults,
+      ...quiz,
+      paperSettings: {
+        ...defaults.paperSettings,
+        ...(quiz.paperSettings || {}),
+        requireAccessKey: Boolean(quiz.paperSettings?.accessKeyHash)
+      }
+    });
+    setQuestions(quiz.questions || []);
+    setSelectedTemplate(quiz.paperSettings?.templateId || '');
+    setShowAdd(true);
+  };
+
+  const closeQuizEditor = () => {
+    setShowAdd(false);
+    setEditingQuiz(null);
+    setFormData(createQuizDraft(schoolName, mode));
+    setSelectedTemplate('');
+    setQuestions([]);
   };
 
   const addQuestion = (e) => {
@@ -1071,23 +1235,50 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
 
   const handleCreateQuiz = async () => {
       if(questions.length === 0) return alert("Add at least one question.");
-      const newQuiz = { ...formData, paperSettings: { ...formData.paperSettings, assessmentType: mode }, questions, id: Date.now().toString(), createdBy: user.id };
+      let accessKey = null;
+      try {
+        if (formData.paperSettings.requireAccessKey) accessKey = await createResourceAccessKey();
+      } catch (error) {
+        alert(error.message || 'Could not generate the assessment access key.');
+        return;
+      }
+      const { requireAccessKey, ...paperSettings } = formData.paperSettings;
+      const newQuiz = {
+        ...formData,
+        paperSettings: { ...paperSettings, assessmentType: mode, accessKeyHash: accessKey?.hash || '' },
+        questions,
+        id: editingQuiz?.id || Date.now().toString(),
+        createdBy: editingQuiz?.createdBy || user.id
+      };
       if (isSupabaseConfigured) {
         try {
           const savedQuiz = await saveLearningRecord('quizzes', newQuiz, user);
-          setQuizzes(current => [...current, savedQuiz]);
+          setQuizzes(current => editingQuiz
+            ? current.map(quiz => quiz.id === editingQuiz.id ? savedQuiz : quiz)
+            : [...current, savedQuiz]);
         } catch (error) {
           alert(error.message || 'Could not save the quiz.');
           return;
         }
       } else {
-      const updated = [...quizzes, newQuiz];
+      const updated = editingQuiz
+        ? quizzes.map(quiz => quiz.id === editingQuiz.id ? newQuiz : quiz)
+        : [...quizzes, newQuiz];
       setQuizzes(updated);
       localStorage.setItem('quizzes_db', JSON.stringify(updated));
       }
-      setShowAdd(false);
-      setFormData(createQuizDraft(schoolName, mode));
-      setQuestions([]);
+      setNewAccessKey(accessKey ? { code: accessKey.code, title: newQuiz.title } : null);
+      setKeyMessage('');
+      closeQuizEditor();
+  };
+
+  const copyNewAccessKey = async () => {
+    try {
+      await navigator.clipboard.writeText(newAccessKey.code);
+      setKeyMessage('Access key copied.');
+    } catch {
+      setKeyMessage('Select the key and copy it manually.');
+    }
   };
 
   const handleDelete = async (id) => {
@@ -1109,19 +1300,29 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
 
   return (
       <div className="space-y-6">
+        {previewAssessment && <ExamPreviewModal quiz={previewAssessment} schoolName={schoolName} onClose={() => setPreviewAssessment(null)} onPrint={() => printQuiz(previewAssessment, schoolName || 'ES RUNABA', { paperSettings: previewAssessment.paperSettings || {} })} canPrint={previewAssessment.createdBy === user.id} />}
         <div className="flex justify-between items-center mb-6">
           <div>
             {onBack && <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-school-blue hover:text-school-green"><ArrowLeft size={16} /> Back to Tools</button>}
             <h2 className="text-3xl font-bold text-school-blue">{mode === 'exam' ? 'Exam Preparator' : 'Quizzes'}</h2>
           </div>
-          {canManage && <button onClick={() => setShowAdd(!showAdd)} className="btn-secondary flex items-center gap-2">
+          {canManage && <button onClick={showAdd ? closeQuizEditor : () => setShowAdd(true)} className="btn-secondary flex items-center gap-2">
             {showAdd ? <X size={20} /> : <Plus size={20} />} {showAdd ? 'Cancel' : mode === 'exam' ? 'Prepare Exam' : 'Create Quiz'}
           </button>}
         </div>
 
+        {newAccessKey && <section className="rounded-md border border-school-green/30 bg-school-green/5 p-4" aria-live="polite">
+          <p className="text-sm font-semibold text-slate-800">Copy this enrollment key now and share it with students who need to open {newAccessKey.title}. It is shown once; saving another protected version replaces it.</p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <code className="min-w-0 flex-1 select-all break-all rounded border border-slate-300 bg-white px-3 py-2 font-mono text-sm font-bold tracking-wider text-school-blue">{newAccessKey.code}</code>
+            <button type="button" onClick={copyNewAccessKey} className="inline-flex items-center justify-center gap-2 rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"><Copy size={16} /> Copy key</button>
+          </div>
+          {keyMessage && <p role="status" className="mt-2 text-xs text-slate-600">{keyMessage}</p>}
+        </section>}
+
         {showAdd && canManage && (
             <div className="card bg-white p-6 mb-8 border-2 border-purple-500/20">
-          <h3 className="text-xl font-bold mb-4 text-purple-700">{mode === 'exam' ? 'Exam Paper Builder' : 'Quiz Builder'}</h3>
+          <h3 className="text-xl font-bold mb-4 text-purple-700">{editingQuiz ? `Edit ${mode === 'exam' ? 'Exam Paper' : 'Quiz'}` : mode === 'exam' ? 'Exam Paper Builder' : 'Quiz Builder'}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <input type="text" placeholder="Exam Title" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} className="border p-2 rounded" />
                     <select required value={formData.subject} onChange={e=>setFormData({...formData, subject: e.target.value})} className="border p-2 rounded">
@@ -1142,25 +1343,44 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
                     </label>
                 </div>
 
-                {mode === 'exam' && <details open className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-                  <summary className="cursor-pointer font-bold text-slate-800">Exam header and paper format</summary>
-                  <p className="mt-2 text-xs text-slate-500">Choose a paper format and review the official header before publishing. The logo prints as a watermark; no separate cover page is added.</p>
+                <details open className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+                  <summary className="cursor-pointer font-bold text-slate-800">Templates, header & cover page</summary>
+                  <p className="mt-2 text-xs text-slate-500">Start with a preset, then customize the printed assessment. These settings are saved with the quiz or exam.</p>
                   <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Exam format
-                      <select value={formData.paperSettings.examFormat} onChange={event => handleExamFormatChange(event.target.value)} className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
-                        {examPaperFormats.map(format => <option key={format.id} value={format.id}>{format.label}</option>)}
-                      </select>
-                    </label>
+                    {mode === 'exam' ? (
+                      <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Exam paper template
+                        <select value={formData.paperSettings.examFormat} onChange={event => handleExamFormatChange(event.target.value)} className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                          {examPaperFormats.map(format => <option key={format.id} value={format.id}>{format.label}</option>)}
+                        </select>
+                      </label>
+                    ) : (
+                      <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Quiz template
+                        <select value={selectedTemplate} onChange={event => applyQuizTemplate(event.target.value)} className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                          <option value="">Choose one of 16 quiz templates</option>
+                          {quizTemplates.map(template => <option key={template.id} value={template.id}>{template.title}</option>)}
+                        </select>
+                      </label>
+                    )}
+                    <label className="text-xs font-semibold text-slate-600">Printed header title<input value={formData.paperSettings.headerHeading} onChange={event => updatePaperSetting('headerHeading', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Header note<input value={formData.paperSettings.headerNote} onChange={event => updatePaperSetting('headerNote', event.target.value)} placeholder="Optional department or school motto" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">Ministry header<input value={formData.paperSettings.ministry} onChange={event => updatePaperSetting('ministry', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">District<input value={formData.paperSettings.district} onChange={event => updatePaperSetting('district', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">School name<input value={formData.paperSettings.schoolName} onChange={event => updatePaperSetting('schoolName', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">Academic year<input value={formData.paperSettings.academicYear} onChange={event => updatePaperSetting('academicYear', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600">Term<input value={formData.paperSettings.term} onChange={event => updatePaperSetting('term', event.target.value)} placeholder="e.g. Term I" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs font-semibold text-slate-600">Examination venue<input value={formData.paperSettings.venue} onChange={event => updatePaperSetting('venue', event.target.value)} placeholder="e.g. ES RUNABA Examination Hall" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs font-semibold text-slate-600">Assessment venue<input value={formData.paperSettings.venue} onChange={event => updatePaperSetting('venue', event.target.value)} placeholder="e.g. ES RUNABA Examination Hall" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
                     <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Instructions<textarea rows="2" value={formData.paperSettings.instructions} onChange={event => updatePaperSetting('instructions', event.target.value)} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={formData.paperSettings.showSchoolCrest} onChange={event => updatePaperSetting('showSchoolCrest', event.target.checked)} />Print school crest and watermark</label>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={formData.paperSettings.coverPageEnabled} onChange={event => updatePaperSetting('coverPageEnabled', event.target.checked)} />Add a separate cover page</label>
+                    <label className="flex items-center gap-2 text-sm font-semibold text-school-blue sm:col-span-2"><input type="checkbox" checked={formData.paperSettings.requireAccessKey} onChange={event => updatePaperSetting('requireAccessKey', event.target.checked)} /><KeyRound size={16} />Require an enrollment key before students can open this assessment</label>
+                    {mode === 'exam' && <label className="flex items-center gap-2 text-sm font-semibold text-school-blue sm:col-span-2"><input type="checkbox" checked={Boolean(formData.paperSettings.allowTeacherPreview)} onChange={event => updatePaperSetting('allowTeacherPreview', event.target.checked)} /><Eye size={16} />Allow other teachers to preview this exam (read-only)</label>}
+                    {formData.paperSettings.coverPageEnabled && <>
+                      <label className="text-xs font-semibold text-slate-600">Cover title<input value={formData.paperSettings.coverPageTitle} onChange={event => updatePaperSetting('coverPageTitle', event.target.value)} placeholder={formData.title || 'Assessment title'} className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                      <label className="text-xs font-semibold text-slate-600">Cover subtitle<input value={formData.paperSettings.coverPageSubtitle} onChange={event => updatePaperSetting('coverPageSubtitle', event.target.value)} placeholder="Optional subject or term" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                      <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Cover instructions<textarea rows="2" value={formData.paperSettings.coverPageInstructions} onChange={event => updatePaperSetting('coverPageInstructions', event.target.value)} placeholder="Optional candidate instructions or school details" className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm" /></label>
+                    </>}
                   </div>
-                  <p className="mt-4 text-xs font-semibold text-school-green">The ES RUNABA logo will be printed as a watermark.</p>
-                </details>}
+                </details>
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="flex justify-between items-center mb-3">
@@ -1211,7 +1431,7 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
 
                 <div className="mt-4">
                     <p className="text-sm font-bold text-slate-500 mb-2">{questions.length} Questions Added</p>
-                    <button onClick={handleCreateQuiz} disabled={!formData.title || questions.length===0} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">{mode === 'exam' ? 'Publish Exam Paper' : 'Save & Publish Quiz'}</button>
+                    <button onClick={handleCreateQuiz} disabled={!formData.title || questions.length===0} className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl disabled:opacity-50">{editingQuiz ? 'Save Changes' : mode === 'exam' ? 'Publish Exam Paper' : 'Save & Publish Quiz'}</button>
                 </div>
             </div>
         )}
@@ -1221,14 +1441,17 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
             {visibleAssessments.map(q => (
                 <div key={q.id} className="card relative border-t-4 border-t-purple-500">
                     <div className="absolute top-4 right-4 flex items-center gap-3">
-                      <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true', preparationPlace: localStorage.getItem(`es_runaba_exam_preparation_place_${user.id}`) || '', paperSettings: q.paperSettings || {} })} aria-label={`Print ${q.title}`} title="Print or save exam as PDF" className="text-school-blue hover:text-school-green"><Printer size={18} /></button>
-                      {canManage && <button type="button" onClick={() => handleDelete(q.id)} aria-label={`Delete ${q.title}`} className="text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>}
+                      {mode === 'exam' && (q.createdBy === user.id || q.paperSettings?.allowTeacherPreview) && <button type="button" onClick={() => setPreviewAssessment(q)} aria-label={`Preview ${q.title}`} title="Preview exam" className="cursor-pointer text-school-blue hover:text-school-green"><Eye size={18} /></button>}
+                      {q.createdBy === user.id && <button type="button" onClick={() => printQuiz(q, schoolName || 'ES RUNABA', { includeAnswerKey: localStorage.getItem(`es_runaba_include_answer_key_${user.id}`) === 'true', preparationPlace: localStorage.getItem(`es_runaba_exam_preparation_place_${user.id}`) || '', paperSettings: q.paperSettings || {} })} aria-label={`Print ${q.title}`} title="Print or save exam as PDF" className="cursor-pointer text-school-blue hover:text-school-green"><Printer size={18} /></button>}
+                      {canManage && q.createdBy === user.id && <button type="button" onClick={() => openQuizEditor(q)} aria-label={`Edit ${q.title}`} title="Edit questions and print layout" className="cursor-pointer text-school-blue hover:text-school-green"><Edit3 size={17} /></button>}
+                      {canManage && q.createdBy === user.id && <button type="button" onClick={() => handleDelete(q.id)} aria-label={`Delete ${q.title}`} className="cursor-pointer text-slate-400 hover:text-red-500"><Trash2 size={18}/></button>}
                     </div>
                     <h3 className="font-bold text-lg">{q.title}</h3>
                     <div className="flex gap-2 text-xs font-semibold mt-2 mb-3">
                         <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{q.subject}</span>
                         <span className="bg-purple-500/10 text-purple-600 px-2 py-1 rounded">{q.class}</span>
                         <span className="bg-slate-800 text-white px-2 py-1 rounded">{q.questions.length} Qs</span>
+                                                {q.paperSettings?.accessKeyHash && <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-amber-800"><KeyRound size={12} />Key required</span>}
                         {q.deadline && <span className="bg-red-50 text-red-700 px-2 py-1 rounded">Until {q.deadline}</span>}
                         <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">Strict Paging</span>
                     </div>
@@ -1239,10 +1462,95 @@ const QuizzesTab = ({ mode = 'quiz', quizzes, setQuizzes, canManage, user, class
   );
 }
 
+const ExamPreviewModal = ({ quiz, schoolName, onClose, onPrint, canPrint }) => {
+  const paper = quiz.paperSettings || {};
+  const questions = quiz.questions || [];
+  const crestUrl = '/runaba-logo.png';
+
+  return (
+    <div className="fixed inset-0 z-[240] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="exam-preview-title" className="flex max-h-[94vh] w-full max-w-4xl flex-col overflow-hidden bg-slate-100 shadow-2xl">
+        <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-3 sm:px-6">
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wider text-school-green">Read-only preview</p>
+            <h2 id="exam-preview-title" className="truncate text-lg font-bold text-slate-900">{quiz.title}</h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {canPrint && <button type="button" onClick={onPrint} className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-school-blue hover:bg-slate-50"><Printer size={16} /> Print</button>}
+            <button type="button" onClick={onClose} aria-label="Close exam preview" className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100"><X size={18} /></button>
+          </div>
+        </header>
+
+        <div className="overflow-y-auto p-3 sm:p-6">
+          <article className="relative mx-auto max-w-[760px] bg-white p-5 text-slate-800 shadow-sm sm:p-10">
+            {paper.coverPageEnabled && <section className="mb-8 flex min-h-[460px] flex-col items-center justify-center border-b-2 border-slate-200 px-2 pb-10 text-center sm:min-h-[650px]">
+              {paper.showSchoolCrest !== false && <img src={crestUrl} alt="School crest" className="mb-5 h-20 w-20 object-contain" />}
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-school-blue">{paper.schoolName || schoolName || 'ES RUNABA'}</p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-widest text-slate-500">{paper.headerHeading || 'EXAMINATION'}</p>
+              <h3 className="mt-4 text-2xl font-black text-slate-900 sm:text-3xl">{paper.coverPageTitle || quiz.title}</h3>
+              {paper.coverPageSubtitle && <p className="mt-2 text-sm text-slate-600">{paper.coverPageSubtitle}</p>}
+              <div className="mt-8 grid w-full max-w-md grid-cols-2 gap-x-5 gap-y-3 text-left text-sm">
+                <p className="border-b border-slate-300 pb-2"><strong>Subject:</strong> {quiz.subject}</p>
+                <p className="border-b border-slate-300 pb-2"><strong>Class:</strong> {quiz.class}</p>
+                <p className="border-b border-slate-300 pb-2"><strong>Academic year:</strong> {paper.academicYear || '—'}</p>
+                <p className="border-b border-slate-300 pb-2"><strong>Term:</strong> {paper.term || '—'}</p>
+              </div>
+              {paper.coverPageInstructions && <p className="mt-8 max-w-lg text-sm text-slate-600">{paper.coverPageInstructions}</p>}
+            </section>}
+
+            <header className="grid grid-cols-[56px_minmax(0,1fr)_68px] items-center gap-3 border-b-2 border-school-blue pb-4 text-center sm:grid-cols-[72px_minmax(0,1fr)_84px] sm:gap-4">
+              {paper.showSchoolCrest !== false ? <img src={crestUrl} alt="School crest" className="h-14 w-14 object-contain sm:h-[68px] sm:w-[68px]" /> : <span />}
+              <div className="text-[10px] font-bold leading-relaxed sm:text-xs">
+                <p>REPUBLIC OF RWANDA</p>
+                <p>{paper.ministry || 'MINISTRY OF EDUCATION'}</p>
+                <p>{paper.district || 'BURERA DISTRICT'}</p>
+                <p className="mt-1 text-sm font-black uppercase tracking-wider text-school-blue">{paper.schoolName || schoolName || 'ES RUNABA'}</p>
+                {paper.headerNote && <p>{paper.headerNote}</p>}
+                {paper.term && <p>{paper.term}</p>}
+                {paper.academicYear && <p>{paper.academicYear}</p>}
+              </div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">{paper.headerHeading || 'EXAMINATION'}</span>
+            </header>
+
+            <h3 className="mt-5 text-xl font-bold sm:text-2xl">{quiz.title}</h3>
+            <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">{examPaperFormats.find(format => format.id === paper.examFormat)?.label || 'Examination'}</p>
+            <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-2 border-y border-slate-200 py-4 text-sm sm:grid-cols-2">
+              <p><strong>Subject:</strong> {quiz.subject}</p>
+              <p><strong>Class:</strong> {quiz.class}</p>
+              <p><strong>Venue:</strong> {paper.venue || 'Not specified'}</p>
+              <p><strong>Questions:</strong> {questions.length}</p>
+              <p><strong>Student name:</strong> ____________________</p>
+              <p><strong>Registration number:</strong> ____________________</p>
+            </div>
+            {paper.instructions && <p className="mt-4 bg-slate-50 p-3 text-sm"><strong>Instructions:</strong> {paper.instructions}</p>}
+
+            <div className="mt-6 space-y-5">
+              {questions.map((question, index) => <section key={question.id || index} className="break-inside-avoid">
+                {question.section && (index === 0 || question.section !== questions[index - 1]?.section) && <h4 className="mb-3 border-b border-slate-300 pb-1 font-bold">{question.section}</h4>}
+                <div className="flex items-start justify-between gap-4 text-sm font-semibold">
+                  <p>{index + 1}. {question.q}</p>
+                  <span className="shrink-0 font-normal">{Number(question.points) || 1} pt</span>
+                </div>
+                {question.type === 'radio' ? <div className="mt-2 grid grid-cols-1 gap-2 pl-4 text-sm sm:grid-cols-2">
+                  {['opt1', 'opt2', 'opt3', 'opt4'].map((option, optionIndex) => <p key={option}><strong>{String.fromCharCode(65 + optionIndex)}.</strong> {question[option]}</p>)}
+                </div> : <div className="ml-4 mt-3 space-y-6 border-b border-slate-300 pb-4" aria-hidden="true"><div className="border-b border-slate-200" /><div className="border-b border-slate-200" /><div className="border-b border-slate-200" /></div>}
+              </section>)}
+            </div>
+            <footer className="mt-8 border-t border-slate-300 pt-3 text-center text-xs text-slate-500">{paper.schoolName || schoolName || 'ES RUNABA'} · E-Learning</footer>
+          </article>
+        </div>
+      </section>
+    </div>
+  );
+};
+
 const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, courses, onBack }) => {
     const [showAdd, setShowAdd] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
-    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
+    const [formData, setFormData] = useState({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [], requireAccessKey: false });
+    const [selectedTemplate, setSelectedTemplate] = useState('');
+    const [newAccessKey, setNewAccessKey] = useState(null);
+    const [keyMessage, setKeyMessage] = useState('');
     const [fileData, setFileData] = useState(null);
     const [fileName, setFileName] = useState('');
     const [error, setError] = useState('');
@@ -1277,7 +1585,8 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
     const resetEditor = () => {
         setShowAdd(false);
         setEditingNote(null);
-        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
+        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [], requireAccessKey: false });
+        setSelectedTemplate('');
         setFileData(null);
         setFileName('');
         setStudentSearch('');
@@ -1286,6 +1595,7 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
 
     const handleEdit = (note) => {
         setEditingNote(note);
+        setSelectedTemplate('');
         setShowAdd(true);
         setFormData({
             title: note.title || '',
@@ -1293,7 +1603,8 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
             subject: note.subject || '',
             description: note.description || '',
             targetClasses: note.targetClasses?.length ? note.targetClasses : (note.targetStudentIds?.length ? [] : [note.class]),
-            targetStudentIds: note.targetStudentIds || []
+            targetStudentIds: note.targetStudentIds || [],
+            requireAccessKey: Boolean(note.accessKeyHash)
         });
         setFileData(null);
         setFileName(note.fileName || '');
@@ -1303,7 +1614,8 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
 
       const openNewNote = () => {
         setEditingNote(null);
-        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [] });
+        setSelectedTemplate('');
+        setFormData({ title: '', class: 'Senior 4 Stream 1', subject: '', description: '', targetClasses: ['Senior 4 Stream 1'], targetStudentIds: [], requireAccessKey: false });
         setFileData(null);
         setFileName('');
         setStudentSearch('');
@@ -1314,6 +1626,14 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
     const handleAdd = async (e) => {
         e.preventDefault();
         if (!fileData && !editingNote) return alert("Please select a valid file under 1.5MB");
+
+      let accessKey = null;
+      try {
+        if (formData.requireAccessKey) accessKey = await createResourceAccessKey();
+      } catch (keyError) {
+        alert(keyError.message || 'Could not generate the resource access key.');
+        return;
+      }
 
       if (isSupabaseConfigured) {
         const noteId = editingNote?.id || Date.now().toString();
@@ -1329,6 +1649,7 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
           const savedNote = await saveLearningRecord('notes', {
             ...formData,
             class: formData.targetClasses[0] || 'Selected students',
+            accessKeyHash: accessKey?.hash || '',
             id: noteId,
             fileName: fileData ? fileName : editingNote.fileName,
             filePath: uploadedFilePath,
@@ -1340,6 +1661,8 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
           if (newUploadPath && editingNote?.filePath && editingNote.filePath !== newUploadPath) {
             await removeLearningNoteFile(editingNote.filePath).catch(() => {});
           }
+          setNewAccessKey(accessKey ? { code: accessKey.code, title: formData.title } : null);
+          setKeyMessage('');
           resetEditor();
         } catch (uploadError) {
           if (newUploadPath) await removeLearningNoteFile(newUploadPath).catch(() => {});
@@ -1357,6 +1680,7 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
             description: formData.description,
             targetClasses: formData.targetClasses,
             targetStudentIds: formData.targetStudentIds,
+            accessKeyHash: accessKey?.hash || '',
             fileName: fileData ? fileName : editingNote?.fileName || fileName,
             fileData: fileData || editingNote?.fileData,
             createdBy: editingNote?.createdBy || user.id,
@@ -1369,10 +1693,21 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
         try {
             localStorage.setItem('notes_db', JSON.stringify(updated));
             setNotes(updated);
+            setNewAccessKey(accessKey ? { code: accessKey.code, title: formData.title } : null);
+            setKeyMessage('');
             resetEditor();
         } catch (err) {
             alert("Storage quota exceeded! The file might be too large for local storage.");
         }
+    };
+
+    const copyNewAccessKey = async () => {
+      try {
+        await navigator.clipboard.writeText(newAccessKey.code);
+        setKeyMessage('Access key copied.');
+      } catch {
+        setKeyMessage('Select the key and copy it manually.');
+      }
     };
 
     const handleDelete = async (id) => {
@@ -1408,6 +1743,16 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
             {showAdd && canManage && (
                 <form onSubmit={handleAdd} className="card bg-white p-6 mb-8 border-2 border-school-blue/20">
                     <h3 className="text-xl font-bold mb-4">{editingNote ? 'Update Lesson' : user.role === 'dos' ? 'Add Lesson' : 'Upload New Material'}</h3>
+                    {!editingNote && <label className="mb-4 block text-sm font-semibold text-slate-700">Start from a template
+                      <select value={selectedTemplate} onChange={event => {
+                        const template = lessonTemplates.find(item => item.id === event.target.value);
+                        setSelectedTemplate(event.target.value);
+                        if (template) setFormData(current => ({ ...current, title: template.title, description: template.description }));
+                      }} className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2.5">
+                        <option value="">Choose one of 16 lesson-resource templates</option>
+                        {lessonTemplates.map(template => <option key={template.id} value={template.id}>{template.title}</option>)}
+                      </select>
+                    </label>}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
@@ -1497,9 +1842,19 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
                              <textarea rows="2" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full border border-slate-300 rounded-md p-2"></textarea>
                         </div>
                     </div>
+                    <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-school-blue"><input type="checkbox" checked={formData.requireAccessKey} onChange={event => setFormData(current => ({ ...current, requireAccessKey: event.target.checked }))} /><KeyRound size={16} />Require an enrollment key before students can open this resource</label>
                     <button type="submit" disabled={(!fileData && !editingNote) || error || (!formData.targetClasses.length && !formData.targetStudentIds.length)} className="btn-primary mt-4 flex items-center gap-2 disabled:opacity-50"><FileUp size={18} /> {editingNote ? 'Save Changes' : user.role === 'dos' ? 'Add Lesson' : 'Upload Resource'}</button>
                 </form>
             )}
+
+            {newAccessKey && <section className="rounded-md border border-school-green/30 bg-school-green/5 p-4" aria-live="polite">
+              <p className="text-sm font-semibold text-slate-800">Copy this enrollment key now and share it with students who need to open {newAccessKey.title}. It is shown once; saving another protected version replaces it.</p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <code className="min-w-0 flex-1 select-all break-all rounded border border-slate-300 bg-white px-3 py-2 font-mono text-sm font-bold tracking-wider text-school-blue">{newAccessKey.code}</code>
+                <button type="button" onClick={copyNewAccessKey} className="inline-flex items-center justify-center gap-2 rounded border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-white"><Copy size={16} /> Copy key</button>
+              </div>
+              {keyMessage && <p role="status" className="mt-2 text-xs text-slate-600">{keyMessage}</p>}
+            </section>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {notes.length === 0 && <p className="text-slate-500">No notes uploaded yet.</p>}
@@ -1512,6 +1867,7 @@ const NotesTab = ({ notes, setNotes, canManage, user, students, classGroups, cou
                         <h3 className="font-bold text-lg mb-1">{n.title}</h3>
                         <div className="flex gap-2 text-xs font-semibold mb-3">
                             <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded">{n.subject}</span>
+                          {n.accessKeyHash && <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-1 text-amber-800"><KeyRound size={12} />Key required</span>}
                             <span title={n.targetClasses?.join(', ')} className="max-w-full truncate bg-blue-500/10 px-2 py-1 text-blue-600 rounded">{n.targetClasses?.length ? `${n.targetClasses.join(', ')}${n.targetStudentIds?.length ? ` + ${n.targetStudentIds.length} students` : ''}` : n.targetStudentIds?.length ? `${n.targetStudentIds.length} selected students` : n.class}</span>
                         </div>
                         <p className="text-slate-600 text-sm mb-4 line-clamp-2">{n.description}</p>

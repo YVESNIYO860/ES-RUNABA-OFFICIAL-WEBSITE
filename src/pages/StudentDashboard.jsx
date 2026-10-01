@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Settings } from 'lucide-react';
+import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Settings, Camera, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
-import { getLearningNoteUrl, isSupabaseConfigured, loadLearningRecords, removeStudentWorkFile, saveLearningRecord, uploadStudentWork } from '../utils/elearningStore';
+import { isSupabaseConfigured, loadLearningRecords, loadStudentNoteIndex, loadStudentQuizIndex, openStudentNote, openStudentQuiz, removeProfilePhotoFile, removeStudentWorkFile, saveLearningRecord, saveMyProfilePhoto, uploadProfilePhoto, uploadStudentWork } from '../utils/elearningStore';
 import LearningDashboardFooter from '../components/LearningDashboardFooter';
+import ProfileAvatar from '../components/ProfileAvatar';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
+import ResourceKeyPrompt from '../components/ResourceKeyPrompt';
+import { hashResourceAccessKey, verifyResourceAccessKey } from '../utils/resourceAccess';
 
 const isQuizAvailable = (quiz) => {
     if (!quiz.deadline) return true;
@@ -44,7 +47,7 @@ const studentTabs = [
 ];
 
 const StudentDashboard = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, sessionEnded } = useAuth();
     const [activeTab, setActiveTab] = useState(() => {
         const savedTab = localStorage.getItem(`es_runaba_learning_home_${user?.id}`);
         return studentTabs.some(tab => tab.id === savedTab) ? savedTab : 'assignments';
@@ -67,8 +70,8 @@ const StudentDashboard = () => {
                 if (isSupabaseConfigured) {
                     const [classAssignments, classQuizzes, classNotes, studentSubmissions, studentQuizResults] = await Promise.all([
                         loadLearningRecords('assignments'),
-                        loadLearningRecords('quizzes'),
-                        loadLearningRecords('notes'),
+                        loadStudentQuizIndex(),
+                        loadStudentNoteIndex(),
                         loadLearningRecords('submissions'),
                         loadLearningRecords('quizResults')
                     ]);
@@ -106,7 +109,15 @@ const StudentDashboard = () => {
         return () => { isActive = false; };
     }, [user]);
 
-    if (!user || user.role !== 'student') {
+    if (!user) {
+        /* The session ended (20 minutes idle, expired, or closed elsewhere):
+           go to the matching sign-in screen so the reason is explained. */
+        const endedRole = sessionEnded?.role;
+        const loginPath = endedRole === 'teacher' ? '/teacher-login' : endedRole === 'dos' ? '/dos-login' : '/student-login';
+        return <Navigate to={loginPath} replace />;
+    }
+
+    if (user.role !== 'student') {
         return <Navigate to="/elearning" />;
     }
 
@@ -117,8 +128,9 @@ const StudentDashboard = () => {
             {/* Sidebar */}
             <aside className="z-10 flex w-full shrink-0 flex-col bg-slate-900 pt-4 text-white shadow-xl md:sticky md:top-0 md:min-h-screen md:w-64 md:pt-0">
                 <div className="flex items-center justify-between gap-3 border-b border-white/10 p-4 text-left sm:p-6 md:flex-col md:text-center">
-                    <div className="hidden h-20 w-20 bg-slate-800 rounded-full items-center justify-center mx-auto mb-4 border-2 border-school-green md:flex">
-                        <UserCircle size={48} className="text-slate-400" />
+                    <div className="mx-auto mb-0 hidden md:mb-4 md:block">
+                        {/* Fetches the photo the student uploaded to their own Profile tab. */}
+                        <ProfileAvatar user={user} size={80} ringClassName="ring-2 ring-school-green" />
                     </div>
                     <div className="min-w-0 md:w-full">
                         <h2 className="truncate text-lg font-bold md:text-xl">{user.fullName}</h2>
@@ -282,6 +294,11 @@ const AssignmentsTab = ({ assignments, submissions, setSubmissions, user }) => {
 
 const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
     const [activeQuiz, setActiveQuiz] = useState(null);
+    const [pendingQuiz, setPendingQuiz] = useState(null);
+    const [accessKeyError, setAccessKeyError] = useState('');
+    const [isCheckingAccessKey, setIsCheckingAccessKey] = useState(false);
+    const [loadingQuizId, setLoadingQuizId] = useState('');
+    const [quizOpenError, setQuizOpenError] = useState('');
     const [answers, setAnswers] = useState({});
     const [timeLeft, setTimeLeft] = useState(null);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -290,12 +307,43 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
         return quizResults.find(r => r.quizId === quizId && r.studentId === user.regNumber);
     };
 
-    const handleStart = (quiz) => {
+    const startQuiz = (quiz) => {
         setActiveQuiz(quiz);
         setAnswers({});
         setCurrentIndex(0);
         setTimeLeft(quiz.questions[0]?.duration || 60);
     };
+
+    const handleStart = async (quiz, code = '') => {
+        const requiresKey = quiz.requiresAccessKey || Boolean(quiz.paperSettings?.accessKeyHash);
+        if (requiresKey && !code) {
+            setPendingQuiz(quiz);
+            setAccessKeyError('');
+            return;
+        }
+        setLoadingQuizId(quiz.id);
+        setQuizOpenError('');
+        if (code) setIsCheckingAccessKey(true);
+        try {
+            let fullQuiz = quiz;
+            if (isSupabaseConfigured) {
+                const keyHash = code ? await hashResourceAccessKey(code) : '';
+                fullQuiz = await openStudentQuiz(quiz.id, keyHash);
+            } else if (requiresKey && !await verifyResourceAccessKey(quiz, code)) {
+                throw new Error('That key does not match this assessment. Check it with your teacher.');
+            }
+            setPendingQuiz(null);
+            startQuiz(fullQuiz);
+        } catch (error) {
+            if (requiresKey) setAccessKeyError(error.message || 'That key does not match this assessment.');
+            else setQuizOpenError(error.message || 'Could not open this assessment.');
+        } finally {
+            setLoadingQuizId('');
+            setIsCheckingAccessKey(false);
+        }
+    };
+
+    const verifyQuizAccess = (code) => pendingQuiz && handleStart(pendingQuiz, code);
 
     const handleSubmitQuiz = async () => {
         let score = 0;
@@ -438,7 +486,9 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
 
     return (
         <div className="space-y-6">
+            {pendingQuiz && <ResourceKeyPrompt title={pendingQuiz.title} error={accessKeyError} isVerifying={isCheckingAccessKey} onCancel={() => setPendingQuiz(null)} onSubmit={verifyQuizAccess} />}
             <h2 className="text-3xl font-bold text-school-blue mb-8">My Exams & Quizzes</h2>
+            {quizOpenError && <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">{quizOpenError}</p>}
              {quizzes.length === 0 && <p className="text-slate-500 bg-white p-8 rounded-xl text-center shadow-sm">No quizzes available for your class.</p>}
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -455,7 +505,7 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
                                                                         </div>
                                 </div>
                                 <div className="text-right flex flex-col items-end gap-1">
-                                    <span className="bg-purple-50 text-purple-600 text-xs font-bold px-2 py-1 rounded block">{q.questions.length} Qs</span>
+                                    <span className="bg-purple-50 text-purple-600 text-xs font-bold px-2 py-1 rounded block">{q.questionCount ?? q.questions?.length ?? 0} Qs</span>
                                     <span className="bg-orange-50 text-orange-600 text-xs font-bold px-2 py-1 rounded flex items-center gap-1 block uppercase tracking-wider">Timed paging</span>
                                 </div>
                             </div>
@@ -467,8 +517,8 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
                                         <p className="text-2xl font-black text-purple-600">{result.score} <span className="text-lg text-slate-400">/ {result.total}</span></p>
                                     </div>
                                 ) : (
-                                    <button onClick={() => handleStart(q)} className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-purple-600 transition-colors flex justify-center items-center gap-2">
-                                        Start Quiz <ChevronRight size={20}/>
+                                    <button onClick={() => handleStart(q)} disabled={loadingQuizId === q.id} className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-purple-600 transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
+                                        {loadingQuizId === q.id ? 'Opening...' : q.requiresAccessKey ? 'Enter key to start' : 'Start Quiz'} <ChevronRight size={20}/>
                                     </button>
                                 )}
                             </div>
@@ -480,13 +530,81 @@ const QuizzesTab = ({ quizzes, quizResults, setQuizResults, user }) => {
     );
 };
 
-const ProfileTab = ({ user }) => (
+const ProfileTab = ({ user }) => {
+    const { updateUserPhoto } = useAuth();
+    const fileInputRef = useRef(null);
+    const [photoMessage, setPhotoMessage] = useState('');
+    const [isPhotoBusy, setIsPhotoBusy] = useState(false);
+    const [photoVersion, setPhotoVersion] = useState(0);
+
+    const handlePhotoSelected = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            setPhotoMessage('Only image files can be used as a profile photo.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setPhotoMessage('The photo must be 5 MB or smaller.');
+            return;
+        }
+        setIsPhotoBusy(true);
+        setPhotoMessage('Uploading your profile photo...');
+        try {
+            const photoUrl = await uploadProfilePhoto(file, user.id);
+            await saveMyProfilePhoto(photoUrl);
+            updateUserPhoto(photoUrl);
+            setPhotoVersion(Date.now());
+            setPhotoMessage('Your profile photo has been updated.');
+        } catch (error) {
+            setPhotoMessage(error.message || 'Could not upload this photo.');
+        } finally {
+            setIsPhotoBusy(false);
+        }
+    };
+
+    const handleRemovePhoto = async () => {
+        setIsPhotoBusy(true);
+        setPhotoMessage('Removing your profile photo...');
+        try {
+            await removeProfilePhotoFile(user.id);
+            await saveMyProfilePhoto('');
+            updateUserPhoto('');
+            setPhotoVersion(Date.now());
+            setPhotoMessage('Your profile photo has been removed.');
+        } catch (error) {
+            setPhotoMessage(error.message || 'Could not remove this photo.');
+        } finally {
+            setIsPhotoBusy(false);
+        }
+    };
+
+    const storedRaw = String(user?.photoUrl || '').trim();
+    const storedPhoto = storedRaw && photoVersion
+        ? `${storedRaw.split('?')[0]}?v=${photoVersion}`
+        : storedRaw;
+
+    return (
     <div className="max-w-2xl mx-auto space-y-6">
         <h2 className="text-3xl font-bold text-school-blue mb-8">My Profile</h2>
         <div className="card text-center py-12">
-             <div className="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-school-green/20">
-                <UserCircle size={80} className="text-slate-300" />
+            <div className="relative mx-auto mb-6 h-32 w-32">
+                {storedPhoto ? (
+                    <img src={storedPhoto} alt={`Profile photo of ${user.fullName}`}
+                        className="h-32 w-32 rounded-full border-4 border-school-green/20 object-cover" />
+                ) : (
+                    <div className="w-32 h-32 bg-slate-100 rounded-full flex items-center justify-center mx-auto border-4 border-school-green/20">
+                        <UserCircle size={80} className="text-slate-300" />
+                    </div>
+                )}
+                <button type="button" onClick={() => fileInputRef.current?.click()}
+                    disabled={isPhotoBusy} aria-label="Change profile photo"
+                    className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-school-blue text-white shadow-lg hover:bg-school-green disabled:opacity-60">
+                    <Camera size={18} />
+                </button>
             </div>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelected} />
             <h3 className="text-3xl font-bold mb-2">{user.fullName}</h3>
             <p className="text-xl text-slate-500 mb-6">{user.class}</p>
 
@@ -494,27 +612,79 @@ const ProfileTab = ({ user }) => (
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-1">Registration Number</p>
                 <p className="text-xl font-bold text-school-blue">{user.regNumber}</p>
             </div>
+            {photoMessage && (
+                <p role="status" className="mx-auto mt-4 max-w-md rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">{photoMessage}</p>
+            )}
+            {storedPhoto && (
+                <div className="mt-4">
+                    <button type="button" onClick={handleRemovePhoto}
+                        disabled={isPhotoBusy}
+                        className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100 disabled:opacity-60">
+                        <Trash2 size={16} /> Remove photo
+                    </button>
+                </div>
+            )}
         </div>
     </div>
-);
+    );
+};
 
 const NotesTab = ({ notes }) => {
-    const [signedUrls, setSignedUrls] = useState({});
+    const [openedUrls, setOpenedUrls] = useState({});
+    const [pendingNote, setPendingNote] = useState(null);
+    const [accessKeyError, setAccessKeyError] = useState('');
+    const [isCheckingAccessKey, setIsCheckingAccessKey] = useState(false);
+    const [loadingNoteId, setLoadingNoteId] = useState('');
+    const [noteError, setNoteError] = useState('');
 
-    useEffect(() => {
-        if (!isSupabaseConfigured) return undefined;
-        let isActive = true;
-        Promise.all(notes.filter(note => note.filePath).map(async note => [note.id, await getLearningNoteUrl(note.filePath)]))
-            .then(entries => {
-                if (isActive) setSignedUrls(Object.fromEntries(entries));
-            })
-            .catch(error => console.error('Failed to create note download links', error));
-        return () => { isActive = false; };
-    }, [notes]);
+    const openNoteResource = async (note, keyHash = '', propagateError = false) => {
+        setLoadingNoteId(note.id);
+        setNoteError('');
+        try {
+            const url = isSupabaseConfigured ? await openStudentNote(note.id, keyHash) : note.fileData;
+            if (!url) throw new Error('This resource has no downloadable file.');
+            setOpenedUrls(current => ({ ...current, [note.id]: url }));
+        } catch (error) {
+            if (propagateError) throw error;
+            setNoteError(error.message || 'Could not open this resource.');
+        } finally {
+            setLoadingNoteId('');
+        }
+    };
+
+    const requestNoteAccess = (note) => {
+        if (note.requiresAccessKey || note.accessKeyHash) {
+            setPendingNote(note);
+            setAccessKeyError('');
+            return;
+        }
+        void openNoteResource(note);
+    };
+
+    const verifyNoteAccess = async (code) => {
+        if (!pendingNote) return;
+        setIsCheckingAccessKey(true);
+        try {
+            if (!isSupabaseConfigured && !await verifyResourceAccessKey(pendingNote, code)) {
+                setAccessKeyError('That key does not match this resource. Check it with your teacher.');
+                return;
+            }
+            const note = pendingNote;
+            const keyHash = isSupabaseConfigured ? await hashResourceAccessKey(code) : '';
+            await openNoteResource(note, keyHash, true);
+            setPendingNote(null);
+        } catch (error) {
+            setAccessKeyError(error.message || 'Could not verify this key.');
+        } finally {
+            setIsCheckingAccessKey(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
+            {pendingNote && <ResourceKeyPrompt title={pendingNote.title} error={accessKeyError} isVerifying={isCheckingAccessKey} onCancel={() => setPendingNote(null)} onSubmit={verifyNoteAccess} />}
             <h2 className="text-3xl font-bold text-school-blue mb-8">My Lessons & Resources</h2>
+            {noteError && <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">{noteError}</p>}
             {notes.length === 0 && <p className="text-slate-500 bg-white p-8 rounded-xl text-center shadow-sm">No lessons available for your class.</p>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -529,9 +699,15 @@ const NotesTab = ({ notes }) => {
                         
                         <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                             <span className="text-xs text-slate-400">Posted: {n.datePosted}</span>
-                            <a href={signedUrls[n.id] || n.fileData || '#'} target={n.filePath ? '_blank' : undefined} rel={n.filePath ? 'noreferrer' : undefined} download={n.filePath ? undefined : n.fileName} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors" title="Download">
-                                Download <Download size={18} />
-                            </a>
+                            {openedUrls[n.id] ? (
+                                <a href={openedUrls[n.id]} target={isSupabaseConfigured ? '_blank' : undefined} rel={isSupabaseConfigured ? 'noreferrer' : undefined} download={isSupabaseConfigured ? undefined : n.fileName} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors" title="Open or download resource">
+                                    Open resource <Download size={18} />
+                                </a>
+                            ) : (
+                                <button type="button" onClick={() => requestNoteAccess(n)} disabled={loadingNoteId === n.id} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors disabled:opacity-50">
+                                    {loadingNoteId === n.id ? 'Preparing...' : n.requiresAccessKey || n.accessKeyHash ? 'Enter key to open' : 'Open resource'} <Download size={18} />
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}

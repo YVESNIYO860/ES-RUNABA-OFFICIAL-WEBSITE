@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
+import ProfileAvatar from './ProfileAvatar';
 
 const roleLabels = {
   student: 'Student portal',
@@ -16,9 +17,12 @@ const LearningPortalHeader = ({ user }) => (
         <span className="mt-0.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-school-green sm:text-xs"><BookOpen size={12} /> E-Learning System</span>
       </span>
     </a>
-    <div className="shrink-0 text-right">
-      <p className="text-xs font-semibold text-slate-800 sm:text-sm">{user.fullName || user.name}</p>
-      <p className="mt-0.5 text-[10px] font-semibold text-slate-500 sm:text-xs">{roleLabels[user.role] || 'Portal user'}</p>
+    <div className="flex shrink-0 items-center gap-3">
+      <div className="text-right">
+        <p className="text-xs font-semibold text-slate-800 sm:text-sm">{user.fullName || user.name}</p>
+        <p className="mt-0.5 text-[10px] font-semibold text-slate-500 sm:text-xs">{roleLabels[user.role] || 'Portal user'}</p>
+      </div>
+      <ProfileAvatar user={user} size={40} ringClassName="ring-2 ring-school-green/25" />
     </div>
   </header>
 );

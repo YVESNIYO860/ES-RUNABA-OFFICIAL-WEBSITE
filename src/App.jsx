@@ -17,6 +17,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import NewsAndNotices from './pages/NewsAndNotices';
 import LearningActivityOverlay from './components/LearningActivityOverlay';
 import SessionTimeoutNotice from './components/SessionTimeoutNotice';
+import PortalErrorBoundary from './components/PortalErrorBoundary';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import SchoolLoader from './components/SchoolLoader';
@@ -41,10 +42,11 @@ function AppContent() {
 
   return (
     <Router>
-      <ScrollToTop />
-      <LearningActivityOverlay />
-      <SessionTimeoutNotice />
-      <Routes>
+      <PortalErrorBoundary>
+        <ScrollToTop />
+        <LearningActivityOverlay />
+        <SessionTimeoutNotice />
+        <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="about" element={<About />} />
@@ -65,7 +67,7 @@ function AppContent() {
         <Route path="teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="student-dashboard" element={<StudentDashboard />} />
       </Routes>
-
+      </PortalErrorBoundary>
     </Router>
   );
 }

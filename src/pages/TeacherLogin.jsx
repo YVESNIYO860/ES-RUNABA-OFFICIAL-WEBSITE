@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Clock, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SchoolLoader from '../components/SchoolLoader';
@@ -17,7 +18,11 @@ import { portalFont } from '../components/login/loginTheme';
 const TeacherLogin = ({ initialRole = 'student' }) => {
   const location = useLocation();
   const initialClass = location.state?.selectedClass || '';
-  const [role, setRole] = useState(initialRole);
+  const { loginTeacher, loginDos, loginStudent, siteContent, sessionEnded, clearSessionEnded } = useAuth();
+  const [role, setRole] = useState(() => {
+    const endedRole = sessionEnded?.role;
+    return ['student', 'teacher', 'dos'].includes(endedRole) ? endedRole : initialRole;
+  });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [selectedClass, setSelectedClass] = useState(initialClass);
@@ -26,7 +31,6 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
   const [isLoading, setIsLoading] = useState(false);
   const errorSoundContext = useRef(null);
 
-  const { loginTeacher, loginDos, loginStudent, siteContent } = useAuth();
   const classGroups = [{ label: 'Classes', options: classNames.map(name => ({ value: name, label: name })) }];
   const navigate = useNavigate();
   const branding = siteContent?.general || { schoolName: 'ES RUNABA', motto: "HUMILITY, UNITY, GOD'S LOVE" };
@@ -154,6 +158,31 @@ const TeacherLogin = ({ initialRole = 'student' }) => {
         </div>
 
         <RoleSwitcher role={role} onChange={handleRoleChange} />
+
+        {sessionEnded && (
+          <div role="alert" className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left shadow-sm">
+            <Clock size={20} className="mt-0.5 shrink-0 text-amber-600" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-amber-900">
+                {sessionEnded.reason === 'inactivity'
+                  ? 'Your session ended after 20 minutes of inactivity'
+                  : 'Your session ended for security reasons'}
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                Please log in again to return to your dashboard.
+                {sessionEnded.name ? ` The last signed-in account was ${sessionEnded.name}.` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={clearSessionEnded}
+              aria-label="Dismiss this message"
+              className="shrink-0 rounded p-1 text-amber-700 transition hover:bg-amber-100"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">

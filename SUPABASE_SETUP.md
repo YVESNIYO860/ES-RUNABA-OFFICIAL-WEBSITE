@@ -8,6 +8,9 @@ Create a Supabase project for ES RUNABA and save its database password in your p
 
 In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, e-learning records, attendance, public site content/events, row-level security policies, and the private `elearning-notes` Storage bucket.
 In the Supabase dashboard, open **SQL Editor**, create a query, paste the complete contents of `supabase/schema.sql`, and run it. The script creates Auth profiles, separate Classes and Courses registries, e-learning records, attendance, public site content/events/news, row-level security policies, and the private `elearning-notes` Storage bucket. It seeds the new registries from current records and preserves existing student and learning data.
+After the schema, run `supabase/2026-10-resource-access-keys.sql` in the SQL Editor. It adds a hash-only access-key column for protected lesson resources, private per-student grants, and RPCs/RLS policies that withhold protected questions and file paths until the key is verified. Assessment key hashes are stored with the existing quiz settings; plaintext keys are shown once to the teacher when saved.
+For existing projects reporting missing `elearning_quizzes.deadline` or `school_classes.head_teacher_id`, run `supabase/2026-10-dashboard-columns.sql` in the SQL Editor. It adds both columns if needed and reloads the PostgREST schema cache.
+To enable explicitly shared read-only teacher previews for exams, run `supabase/2026-10-exam-preview-sharing.sql` in the SQL Editor. Exam owners control sharing from the exam editor; other teachers cannot edit, delete, or print shared exams.
 What Uses Supabase
 
 The SQL Editor path does not require a database password or CLI login.
@@ -56,11 +59,11 @@ In Vercel, also add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under **Pro
 
 ## 5. Run and deploy
 
-Use `npx vercel dev` to test locally. It runs both the Vite app and the `/api/elearning/users` server function; plain `npm run dev` does not serve that API route. Deploy to Vercel after adding the server-side environment variables.
+Use `npx vercel dev` to test locally. It runs the Vite app and the `/api/elearning/*` server functions; plain `npm run dev` does not serve API routes. Deploy to Vercel after applying the resource access-key SQL and adding the server-side environment variables.
 
 ## What Uses Supabase
 
-Student, teacher, and DOS Auth; student profiles; Classes; Courses; assignments; quizzes; submissions; quiz results; lessons and private lesson files; attendance; public site content; school events; and news, notices, and announcements use Supabase when the environment variables are configured. DOS can add, rename, and remove classes and courses separately. A class or course still used by records cannot be removed until those records are reassigned. The content manager supports adding, editing, activating, and deleting public updates. All teachers and DOS can mark attendance for any registered class. Site design, class management, and news management are restricted to the system administrator.
+Student, teacher, and DOS Auth; student profiles; Classes; Courses; assignments; quizzes; submissions; quiz results; lessons and private lesson files; attendance; per-resource access-key hashes; public site content; school events; and news, notices, and announcements use Supabase when the environment variables are configured. Teachers can require an access key for an individual quiz, exam, or lesson resource; students enter it after sign-in when opening that item. Plaintext keys are never stored. DOS can add, rename, and remove classes and courses separately. A class or course still used by records cannot be removed until those records are reassigned. The content manager supports adding, editing, activating, and deleting public updates. All teachers and DOS can mark attendance for any registered class. Site design, class management, and news management are restricted to the system administrator.
 
 The student sign-in URL is `/student-login`, teacher sign-in is `/teacher-login`, and DOS sign-in is `/dos-login`. These routes and the dashboards are outside the public website layout, so e-learning acts as a separate portal experience.
 
