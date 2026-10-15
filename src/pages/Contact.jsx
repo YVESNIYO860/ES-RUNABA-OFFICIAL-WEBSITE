@@ -7,6 +7,8 @@ import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 const Contact = () => {
   const { siteContent } = useAuth();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -14,16 +16,25 @@ const Contact = () => {
     message: ''
   });
 
-  if (!siteContent) return <div className="min-h-screen bg-slate-50"></div>;
-  const branding = siteContent.general;
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const response = await fetch('/api/site-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Your message could not be sent. Please try again.');
+      setIsSubmitted(true);
       setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 5000);
+    } catch (error) {
+      setSubmitError(error.message || 'Your message could not be sent. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Ensure scroll to form if hash is present
@@ -33,6 +44,9 @@ const Contact = () => {
       if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
+
+  if (!siteContent) return <div className="min-h-screen bg-slate-50"></div>;
+  const branding = siteContent.general;
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -134,7 +148,7 @@ const Contact = () => {
                   <p className="text-slate-500 max-w-sm mx-auto text-lg leading-relaxed">
                     Thank you for reaching out to {branding.schoolName}. We have received your message and will get back to you shortly.
                   </p>
-                  <div className="pt-6">
+                    <div className="pt-6">
                       <button onClick={() => setIsSubmitted(false)} className="text-school-blue font-bold hover:underline">Send another message</button>
                   </div>
                 </div>
@@ -192,8 +206,9 @@ const Contact = () => {
                       className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-school-blue focus:ring-4 focus:ring-school-blue/10 outline-none transition-all resize-none"
                     ></textarea>
                   </div>
-                  <button type="submit" className="w-full btn-primary py-4 text-lg flex items-center justify-center gap-2 mt-4 group">
-                    Send Message <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                  {submitError && <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{submitError}</p>}
+                  <button type="submit" disabled={isSubmitting} className="w-full btn-primary py-4 text-lg flex items-center justify-center gap-2 mt-4 group disabled:cursor-wait disabled:opacity-60">
+                    {isSubmitting ? 'Sending...' : 'Send Message'} <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </button>
                 </form>
               )}

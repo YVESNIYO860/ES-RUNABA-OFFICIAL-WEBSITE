@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound, ChevronRight, Eye } from 'lucide-react';
+import { Users, FileText, CheckSquare, LayoutDashboard, Plus, Trash2, Save, X, Menu, FileUp, Download, CalendarDays, Globe, Edit3, Heart, Shield, BarChart3, Laptop, MessageSquare, BookOpen, Printer, Settings, UserCheck, ArrowLeft, ShieldAlert, Copy, KeyRound, ChevronRight, Eye, Inbox } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { generateStudentRegistrationNumber } from '../utils/studentRegistration';
@@ -11,6 +11,7 @@ import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
 import PortalErrorBoundary from '../components/PortalErrorBoundary';
+import WebsiteMessagesTab from '../components/WebsiteMessagesTab';
 import { examPaperFormats, printQuiz } from '../utils/printQuiz';
 import { assignmentTemplates, lessonTemplates, quizTemplates } from '../utils/teacherTemplates';
 import { createResourceAccessKey } from '../utils/resourceAccess';
@@ -50,6 +51,7 @@ const getStaffDashboardTabs = (user) => [
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   ...(user?.role === 'teacher' ? [{ id: 'tools', label: 'Tools', icon: Laptop }] : []),
   ...(user?.role === 'dos' ? [
+    { id: 'website-messages', label: 'Website Messages', icon: Inbox },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
     { id: 'classes', label: 'Classes', icon: Users },
@@ -331,6 +333,7 @@ const TeacherDashboard = () => {
             { activeTab === 'site-editor' && user.role === 'dos' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
             { activeTab === 'analytics' && user.role === 'dos' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
             { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
+            { activeTab === 'website-messages' && user.role === 'dos' && <WebsiteMessagesTab /> }
             { activeTab === 'contact' && <LearningContact /> }
             </PortalErrorBoundary>
         </motion.div>

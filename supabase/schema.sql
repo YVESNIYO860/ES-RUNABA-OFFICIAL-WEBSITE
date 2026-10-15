@@ -145,6 +145,16 @@ create table if not exists public.school_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.site_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_name text not null,
+  sender_email text not null,
+  subject text not null,
+  message text not null,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.school_classes (
   name text primary key check (name = btrim(name) and name <> ''),
   head_teacher_id uuid references public.profiles (id) on delete set null,
@@ -608,6 +618,7 @@ alter table public.attendance_records enable row level security;
 alter table public.site_content enable row level security;
 alter table public.school_events enable row level security;
 alter table public.school_updates enable row level security;
+alter table public.site_messages enable row level security;
 alter table public.school_classes enable row level security;
 alter table public.school_courses enable row level security;
 
@@ -623,6 +634,7 @@ grant insert, update, delete on public.site_content to authenticated;
 grant select on public.school_events to anon, authenticated;
 grant insert, update, delete on public.school_events to authenticated;
 grant select on public.school_updates to anon, authenticated;
+revoke all on public.site_messages from public, anon, authenticated;
 grant insert, update, delete on public.school_updates to authenticated;
 grant select on public.school_classes to anon, authenticated;
 grant insert, update, delete on public.school_classes to authenticated;
