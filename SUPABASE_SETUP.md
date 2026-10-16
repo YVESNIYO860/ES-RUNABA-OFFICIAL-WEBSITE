@@ -13,6 +13,7 @@ For existing projects reporting missing `elearning_quizzes.deadline` or `school_
 To enable explicitly shared read-only teacher previews for exams, run `supabase/2026-10-exam-preview-sharing.sql` in the SQL Editor. Exam owners control sharing from the exam editor; other teachers cannot edit, delete, or print shared exams.
 For an existing project, run or rerun `supabase/2026-10-school-media.sql` in the SQL Editor to enable DOS-managed Gallery and Student Life photo/video uploads, add album records, and seed the eight built-in Student Life albums. These are public website files up to 100 MB; only DOS and school admins can upload or delete them. New installations receive the same setup from `supabase/schema.sql`.
 For existing projects, run `supabase/2026-10-site-messages.sql` in the SQL Editor to add the optional sender phone field to the DOS website inbox. New installations receive this table from `supabase/schema.sql`.
+For private school inboxes, run `supabase/2026-10-school-messaging.sql` in the SQL Editor. Students can message a teacher or DOS, teachers can message students or DOS, and DOS/admin can message students or teachers and oversee all conversations. Direct client table access is revoked; inbox requests go through the authenticated API.
 What Uses Supabase
 
 The SQL Editor path does not require a database password or CLI login.

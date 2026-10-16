@@ -12,6 +12,7 @@ import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
 import PortalErrorBoundary from '../components/PortalErrorBoundary';
 import WebsiteMessagesTab from '../components/WebsiteMessagesTab';
+import SchoolMessagesTab from '../components/SchoolMessagesTab';
 import { examPaperFormats, printQuiz } from '../utils/printQuiz';
 import { assignmentTemplates, lessonTemplates, quizTemplates } from '../utils/teacherTemplates';
 import { createResourceAccessKey } from '../utils/resourceAccess';
@@ -50,6 +51,7 @@ const getStaffDashboardTabs = (user) => [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   ...(user?.role === 'teacher' ? [{ id: 'tools', label: 'Tools', icon: Laptop }] : []),
+  ...(user?.role === 'teacher' || user?.role === 'dos' || user?.isAdmin ? [{ id: 'school-messages', label: 'Messages', icon: MessageSquare }] : []),
   ...(user?.role === 'dos' || user?.isAdmin ? [{ id: 'website-messages', label: 'Website Messages', icon: Inbox }] : []),
   ...(user?.role === 'dos' ? [
     { id: 'students', label: 'Students', icon: Users },
@@ -334,6 +336,7 @@ const TeacherDashboard = () => {
             { activeTab === 'analytics' && user.role === 'dos' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
             { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
             { activeTab === 'website-messages' && (user.role === 'dos' || user.isAdmin) && <WebsiteMessagesTab /> }
+            { activeTab === 'school-messages' && (user.role === 'teacher' || user.role === 'dos' || user.isAdmin) && <SchoolMessagesTab /> }
             { activeTab === 'contact' && <LearningContact /> }
             </PortalErrorBoundary>
         </motion.div>

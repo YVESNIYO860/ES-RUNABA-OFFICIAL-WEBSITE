@@ -4,6 +4,7 @@ import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X, Upload, ImagePlus, F
 import { useAuth } from '../context/AuthContext';
 import { createSchoolUpdate, deleteSchoolMedia, deleteSchoolUpdate, isSupabaseConfigured, loadSchoolMedia, loadSchoolUpdates, setSchoolUpdateActive, updateSchoolUpdate, uploadSchoolMedia } from '../utils/elearningStore';
 import WebsiteMessagesTab from '../components/WebsiteMessagesTab';
+import SchoolMessagesTab from '../components/SchoolMessagesTab';
 
 const SuperAdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -195,6 +196,15 @@ const SuperAdminDashboard = () => {
           <button
             type="button"
             role="tab"
+            aria-selected={activeView === 'school-messages'}
+            onClick={() => setActiveView('school-messages')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'school-messages' ? 'border-school-green text-school-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          >
+            <Inbox size={17} /> School Messages
+          </button>
+          <button
+            type="button"
+            role="tab"
             aria-selected={activeView === 'messages'}
             onClick={() => setActiveView('messages')}
             className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'messages' ? 'border-school-green text-school-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
@@ -203,7 +213,7 @@ const SuperAdminDashboard = () => {
           </button>
         </div>
 
-        {activeView === 'messages' ? <WebsiteMessagesTab /> : <>
+        {activeView === 'school-messages' ? <SchoolMessagesTab /> : activeView === 'messages' ? <WebsiteMessagesTab /> : <>
         <form onSubmit={handleAdd} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
           <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Content' : 'Add New Content'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

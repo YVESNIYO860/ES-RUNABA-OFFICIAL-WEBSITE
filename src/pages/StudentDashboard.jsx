@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Settings, Camera, Trash2 } from 'lucide-react';
+import { BookOpen, CheckSquare, UserCircle, LogOut, CheckCircle2, ChevronRight, Send, FileText, Download, Timer, Menu, X, MessageSquare, Inbox, Settings, Camera, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { saveFirestoreDocument } from '../firebase';
 import { isSupabaseConfigured, loadLearningRecords, loadStudentNoteIndex, loadStudentQuizIndex, openStudentNote, openStudentQuiz, removeProfilePhotoFile, removeStudentWorkFile, saveLearningRecord, saveMyProfilePhoto, uploadProfilePhoto, uploadStudentWork } from '../utils/elearningStore';
@@ -10,6 +10,7 @@ import ProfileAvatar from '../components/ProfileAvatar';
 import LearningContact from '../components/LearningContact';
 import LearningSettings from '../components/LearningSettings';
 import LearningPortalHeader from '../components/LearningPortalHeader';
+import SchoolMessagesTab from '../components/SchoolMessagesTab';
 import ResourceKeyPrompt from '../components/ResourceKeyPrompt';
 import { hashResourceAccessKey, verifyResourceAccessKey } from '../utils/resourceAccess';
 
@@ -41,6 +42,7 @@ const studentTabs = [
     { id: 'assignments', label: 'My Assignments', icon: BookOpen },
     { id: 'quizzes', label: 'My Quizzes', icon: CheckSquare },
     { id: 'notes', label: 'My Lessons', icon: BookOpen },
+    { id: 'messages', label: 'Messages', icon: Inbox },
     { id: 'profile', label: 'Profile', icon: UserCircle },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'contact', label: 'Contact', icon: MessageSquare },
@@ -178,6 +180,7 @@ const StudentDashboard = () => {
                          {activeTab === 'assignments' && <AssignmentsTab assignments={assignments} submissions={submissions} setSubmissions={setSubmissions} user={user} />}
                          {activeTab === 'quizzes' && <QuizzesTab quizzes={quizzes} quizResults={quizResults} setQuizResults={setQuizResults} user={user} />}
                          {activeTab === 'notes' && <NotesTab notes={notes} />}
+                         {activeTab === 'messages' && <SchoolMessagesTab />}
                          {activeTab === 'profile' && <ProfileTab user={user} />}
                          {activeTab === 'settings' && <LearningSettings user={user} views={studentTabs} />}
                          {activeTab === 'contact' && <LearningContact />}

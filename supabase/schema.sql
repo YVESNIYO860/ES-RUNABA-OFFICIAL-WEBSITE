@@ -215,6 +215,37 @@ create table if not exists public.site_messages (
 alter table public.site_messages
   add column if not exists sender_phone text not null default '';
 
+create table if not exists public.school_message_threads (
+  id uuid primary key default gen_random_uuid(),
+  user_a_id uuid not null references public.profiles (id) on delete cascade,
+  user_b_id uuid not null references public.profiles (id) on delete cascade,
+  subject text not null check (btrim(subject) <> ''),
+  last_message text not null default '',
+  last_sender_id uuid references public.profiles (id) on delete set null,
+  last_message_at timestamptz not null default now(),
+  created_by uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now(),
+  check (user_a_id <> user_b_id)
+);
+
+create table if not exists public.school_messages (
+  id uuid primary key default gen_random_uuid(),
+  thread_id uuid not null references public.school_message_threads (id) on delete cascade,
+  sender_id uuid not null references public.profiles (id) on delete cascade,
+  body text not null check (btrim(body) <> ''),
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists school_message_threads_user_a_recent_idx
+  on public.school_message_threads (user_a_id, last_message_at desc);
+create index if not exists school_message_threads_user_b_recent_idx
+  on public.school_message_threads (user_b_id, last_message_at desc);
+create index if not exists school_messages_thread_created_idx
+  on public.school_messages (thread_id, created_at);
+create index if not exists school_messages_unread_thread_idx
+  on public.school_messages (thread_id, sender_id) where read_at is null;
+
 create table if not exists public.school_classes (
   name text primary key check (name = btrim(name) and name <> ''),
   head_teacher_id uuid references public.profiles (id) on delete set null,
@@ -683,6 +714,8 @@ alter table public.school_updates enable row level security;
 alter table public.school_media enable row level security;
 alter table public.school_media_albums enable row level security;
 alter table public.site_messages enable row level security;
+alter table public.school_message_threads enable row level security;
+alter table public.school_messages enable row level security;
 alter table public.school_classes enable row level security;
 alter table public.school_courses enable row level security;
 
@@ -699,6 +732,8 @@ grant select on public.school_events to anon, authenticated;
 grant insert, update, delete on public.school_events to authenticated;
 grant select on public.school_updates to anon, authenticated;
 revoke all on public.site_messages from public, anon, authenticated;
+revoke all on public.school_message_threads, public.school_messages from public, anon, authenticated;
+grant all privileges on public.school_message_threads, public.school_messages to service_role;
 grant insert, update, delete on public.school_updates to authenticated;
 grant select on public.school_media to anon, authenticated;
 grant insert, update, delete on public.school_media to authenticated;
