@@ -50,8 +50,8 @@ const getStaffDashboardTabs = (user) => [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   ...(user?.role === 'teacher' ? [{ id: 'tools', label: 'Tools', icon: Laptop }] : []),
+  ...(user?.role === 'dos' || user?.isAdmin ? [{ id: 'website-messages', label: 'Website Messages', icon: Inbox }] : []),
   ...(user?.role === 'dos' ? [
-    { id: 'website-messages', label: 'Website Messages', icon: Inbox },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'events', label: 'Upcoming Events', icon: CalendarDays },
     { id: 'classes', label: 'Classes', icon: Users },
@@ -333,7 +333,7 @@ const TeacherDashboard = () => {
             { activeTab === 'site-editor' && user.role === 'dos' && <SiteEditorTab siteContent={siteContent} updateSiteContent={updateSiteContent} /> }
             { activeTab === 'analytics' && user.role === 'dos' && <AnalyticsTab students={students} assignments={assignments} quizzes={quizzes} notes={notes} /> }
             { activeTab === 'settings' && <LearningSettings user={user} views={dashboardTabs} /> }
-            { activeTab === 'website-messages' && user.role === 'dos' && <WebsiteMessagesTab /> }
+            { activeTab === 'website-messages' && (user.role === 'dos' || user.isAdmin) && <WebsiteMessagesTab /> }
             { activeTab === 'contact' && <LearningContact /> }
             </PortalErrorBoundary>
         </motion.div>

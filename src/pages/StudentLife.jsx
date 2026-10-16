@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Trees, Mic2, Users2, BookHeart, X, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 import { isSupabaseConfigured, loadSchoolEvents, loadSchoolMedia } from '../utils/elearningStore';
 import SchoolMediaUploader from '../components/SchoolMediaUploader';
 
@@ -11,89 +10,41 @@ const activities = [
     name: 'Debate Club', icon: <Mic2 size={28} />, category: 'Club',
     desc: 'Sharpen public speaking and critical thinking skills in a competitive environment.',
     color: 'bg-blue-600',
-    photos: [
-      '/slide_classroom.png',
-      '/slide_campus.png',
-      '/slide_lab.png',
-      '/slide_graduation.png',
-    ]
   },
   {
     name: 'Environmental Club', icon: <Trees size={28} />, category: 'Club',
     desc: 'Join tree planting and sustainability initiatives to protect our local ecosystem.',
     color: 'bg-green-700',
-    photos: [
-      '/slide_campus.png',
-      '/slide_sports.png',
-      '/slide_classroom.png',
-      '/slide_lab.png',
-    ]
   },
   {
     name: 'Science Club', icon: <BookHeart size={28} />, category: 'Club',
     desc: 'Discover biology, chemistry, and physics through exciting hands-on experiments.',
     color: 'bg-purple-700',
-    photos: [
-      '/slide_lab.png',
-      '/slide_campus.png',
-      '/slide_classroom.png',
-      '/slide_graduation.png',
-    ]
   },
   {
     name: 'Traditional Dance', icon: <Users2 size={28} />, category: 'Culture',
     desc: 'Celebrate and preserve our Rwandan culture through high-energy performances.',
     color: 'bg-amber-700',
-    photos: [
-      '/slide_sports.png',
-      '/slide_campus.png',
-      '/slide_classroom.png',
-      '/slide_graduation.png',
-    ]
   },
   {
     name: 'Football', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Compete in inter-school tournaments and build incredible teamwork on the pitch.',
     color: 'bg-school-blue',
-    photos: [
-      '/slide_sports.png',
-      '/slide_campus.png',
-      '/slide_graduation.png',
-      '/slide_classroom.png',
-    ]
   },
   {
     name: 'Basketball', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Improve cardiovascular endurance and court strategy with our varsity team.',
     color: 'bg-orange-600',
-    photos: [
-      '/slide_sports.png',
-      '/slide_graduation.png',
-      '/slide_classroom.png',
-      '/slide_lab.png',
-    ]
   },
   {
     name: 'Volleyball', icon: <Trophy size={28} />, category: 'Sports',
     desc: 'Master the spike, improve reflexes, and build team synchrony on the court.',
     color: 'bg-red-600',
-    photos: [
-      '/slide_sports.png',
-      '/slide_graduation.png',
-      '/slide_campus.png',
-      '/slide_classroom.png',
-    ]
   },
   {
     name: "Girls' Empowerment", icon: <Users2 size={28} />, category: 'Society',
     desc: 'A safe space to build leadership skills, confidence, and career readiness.',
     color: 'bg-pink-600',
-    photos: [
-      '/slide_campus.png',
-      '/slide_classroom.png',
-      '/slide_graduation.png',
-      '/slide_lab.png',
-    ]
   },
 ];
 
@@ -160,10 +111,7 @@ const StudentLife = () => {
     const matchingMedia = mediaItems.filter((media) => normalizeTitle(media.title) === normalizeTitle(activity.name));
     return {
       ...activity,
-      items: [
-        ...activity.photos.map((url) => ({ url, mediaType: 'image' })),
-        ...matchingMedia.map((media) => ({ ...media, caption: media.caption || media.title }))
-      ]
+      items: matchingMedia.map((media) => ({ ...media, caption: media.caption || media.title }))
     };
   });
   const knownTitles = new Set(activities.map((activity) => normalizeTitle(activity.name)));
@@ -285,13 +233,8 @@ const StudentLife = () => {
 
       {/* Hero Section */}
       <section className="relative h-[55vh] min-h-[400px] flex items-center justify-center overflow-hidden">
-         {/* Fixed Background Image */}
-         <div 
-           className="absolute inset-x-0 inset-y-0 bg-cover bg-center bg-fixed"
-           style={{ backgroundImage: `url('${schoolPhotoUrls[2] ?? '/slide_campus.png'}')` }}
-         />
-         {/* Minimal Clarity Overlay */}
-         <div className="absolute inset-0 bg-black/40" />
+         <div className="absolute inset-0 bg-[linear-gradient(125deg,#0c2522_0%,#174b3e_55%,#0d2925_100%)]" />
+         <div aria-hidden="true" className="absolute inset-y-0 right-0 hidden w-1/3 border-l border-white/10 md:block" />
          
          <div className="relative z-10 text-center text-white px-4">
              <motion.div
@@ -332,7 +275,7 @@ const StudentLife = () => {
         )}
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-slate-800">Clubs & Activities</h2>
-          <p className="text-slate-500 mt-2">Click on any card to open a full photo gallery</p>
+          <p className="text-slate-500 mt-2">Photos and videos will appear here as they are added.</p>
           <div className="w-16 h-1 bg-school-green mx-auto mt-4"></div>
         </div>
 
@@ -340,27 +283,35 @@ const StudentLife = () => {
           {allActivities.map((act) => (
             <motion.button
               key={act.name}
-              whileHover={{ y: -4, scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
+              disabled={!act.items.length}
+              whileHover={act.items.length ? { y: -4, scale: 1.02 } : undefined}
+              whileTap={act.items.length ? { scale: 0.97 } : undefined}
               onClick={() => openGallery(act)}
-              className="group relative overflow-hidden rounded-2xl shadow-md cursor-pointer text-left h-44 md:h-52 border-2 border-transparent hover:border-school-green transition-all"
-              style={act.items[0]?.mediaType !== 'video' ? { backgroundImage: `url(${act.items[0]?.url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+              className={`group relative h-44 overflow-hidden rounded-xl border text-left shadow-sm transition-all md:h-52 ${act.items.length ? 'cursor-pointer border-transparent hover:border-school-green hover:shadow-md' : 'cursor-default border-slate-200'}`}
+              style={act.items[0]?.mediaType === 'image' ? { backgroundImage: `url(${act.items[0].url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
             >
               {act.items[0]?.mediaType === 'video' && <video src={act.items[0].url} muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover" />}
-              {/* Dark overlay */}
-              <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-all"></div>
-              {/* Bottom label */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
+              {!act.items.length && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(145deg,#f8faf9,#e8efec)] text-slate-400">
+                  <div className="flex flex-col items-center gap-2">
+                    {act.icon}
+                    <span className="text-xs font-semibold">Photos coming soon</span>
+                  </div>
+                </div>
+              )}
+              {act.items.length > 0 && <div className="absolute inset-0 bg-black/40 transition-colors group-hover:bg-black/25" />}
+              <div className={`absolute inset-x-0 bottom-0 p-4 ${act.items.length ? 'bg-gradient-to-t from-black/85 to-transparent' : 'bg-white/90'}`}>
                 <div className={`inline-flex items-center justify-center p-1.5 rounded-lg ${act.color} text-white mb-2`}>
                   {act.icon}
                 </div>
-                <h4 className="text-white font-bold text-sm leading-tight">{act.name}</h4>
-                <p className="text-white/60 text-xs uppercase tracking-wider mt-0.5">{act.category}</p>
+                <h4 className={`font-bold text-sm leading-tight ${act.items.length ? 'text-white' : 'text-slate-800'}`}>{act.name}</h4>
+                <p className={`text-xs uppercase tracking-wider mt-0.5 ${act.items.length ? 'text-white/65' : 'text-slate-500'}`}>{act.category}</p>
               </div>
-              {/* Hover cue */}
-              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-full font-bold">
-                {act.items.some((item) => item.mediaType === 'video') ? <><Play size={12} className="inline mr-1" />View Media</> : 'View Photos'}
-              </div>
+              {act.items.length > 0 && (
+                <div className="absolute right-3 top-3 rounded-full bg-black/65 px-2 py-1 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  {act.items.some((item) => item.mediaType === 'video') ? <><Play size={12} className="mr-1 inline" />View Media</> : 'View Photos'}
+                </div>
+              )}
             </motion.button>
           ))}
         </div>
@@ -377,32 +328,14 @@ const StudentLife = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-7xl mx-auto relative z-10">
-          <div className="group relative overflow-hidden rounded-[2rem] h-96 shadow-2xl">
-            <img 
-              src="/slide_sports.png" 
-              alt="Basketball" 
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end p-8 md:p-12">
-              <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                <h3 className="text-3xl font-bold mb-2">Inter-School Competitions</h3>
-                <p className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">Our teams represent Burera district in provincial championships every year.</p>
-              </div>
-            </div>
+        <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-8 border-t border-white/15 pt-8 md:grid-cols-2 md:gap-12">
+          <div className="border-l-2 border-school-green pl-5">
+            <h3 className="text-xl font-bold text-white">Inter-School Competitions</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">Our teams represent Burera district in provincial championships every year.</p>
           </div>
-          <div className="group relative overflow-hidden rounded-[2rem] h-96 shadow-2xl">
-            <img 
-              src="/slide_campus.png" 
-              alt="Football" 
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end p-8 md:p-12">
-              <div className="text-white transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                <h3 className="text-3xl font-bold mb-2">Modern Playing Grounds</h3>
-                <p className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">We provide well-maintained facilities for football, volleyball, and basketball.</p>
-              </div>
-            </div>
+          <div className="border-l-2 border-school-green pl-5">
+            <h3 className="text-xl font-bold text-white">Modern Playing Grounds</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-300">Students have access to facilities for football, volleyball, and basketball.</p>
           </div>
         </div>
       </section>

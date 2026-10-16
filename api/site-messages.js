@@ -2,6 +2,12 @@ import { createSupabaseAdmin, getRequestProfile } from './_lib/supabaseAdmin.js'
 
 const sendError = (response, status, message) => response.status(status).json({ error: message });
 const canManageMessages = (profile) => profile?.role === 'dos' || profile?.is_admin;
+const isMissingSiteMessagesTable = (error) =>
+  ['42P01', 'PGRST205'].includes(error?.code)
+  || (/site_messages/i.test(error?.message || '') && /does not exist|could not find|schema cache/i.test(error?.message || ''));
+const isMissingSenderPhoneColumn = (error) =>
+  /sender_phone/i.test(error?.message || '')
+  && (['42703', 'PGRST204'].includes(error?.code) || /column|schema cache|does not exist/i.test(error?.message || ''));
 
 export default async function handler(request, response) {
   if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(request.method)) {
@@ -30,15 +36,26 @@ export default async function handler(request, response) {
       if (!subject || subject.length > 200) return sendError(response, 400, 'Enter a subject with no more than 200 characters.');
       if (!message || message.length > 5000) return sendError(response, 400, 'Enter a message with no more than 5,000 characters.');
 
-      const { error } = await admin.from('site_messages').insert({
+      let { error } = await admin.from('site_messages').insert({
         sender_name: senderName,
         sender_email: senderEmail,
         sender_phone: senderPhone,
         subject,
         message
       });
+      if (isMissingSenderPhoneColumn(error)) {
+        ({ error } = await admin.from('site_messages').insert({
+          sender_name: senderName,
+          sender_email: senderEmail,
+          subject,
+          message
+        }));
+      }
       if (error) {
         console.error('Website message submission failed:', error);
+        if (isMissingSiteMessagesTable(error)) {
+          return sendError(response, 503, 'The website inbox is not configured. Apply supabase/2026-10-site-messages.sql in Supabase SQL Editor.');
+        }
         return sendError(response, 500, 'Your message could not be saved. Please try again later.');
       }
       return response.status(201).json({ success: true });
@@ -49,12 +66,29 @@ export default async function handler(request, response) {
     if (!canManageMessages(requester)) return sendError(response, 403, 'Only the Director of Studies can manage website messages.');
 
     if (request.method === 'GET') {
-      const { data, error } = await admin
+      let { data, error } = await admin
         .from('site_messages')
         .select('id, sender_name, sender_email, sender_phone, subject, message, is_read, created_at')
         .order('created_at', { ascending: false })
         .limit(200);
-      if (error) return sendError(response, 500, 'Could not load website messages.');
+      if (isMissingSenderPhoneColumn(error)) {
+        ({ data, error } = await admin
+          .from('site_messages')
+          .select('id, sender_name, sender_email, subject, message, is_read, created_at')
+          .order('created_at', { ascending: false })
+          .limit(200));
+        if (!error) data = (data || []).map(message => ({ ...message, sender_phone: '' }));
+      }
+      if (error) {
+        console.error('Website messages could not be loaded:', error);
+        if (isMissingSiteMessagesTable(error)) {
+          return sendError(response, 503, 'The website inbox is not configured. Apply supabase/2026-10-site-messages.sql in Supabase SQL Editor.');
+        }
+        const migrationHint = isMissingSenderPhoneColumn(error)
+          ? ' Apply supabase/2026-10-site-messages.sql in Supabase SQL Editor, then retry.'
+          : '';
+        return sendError(response, 500, `Could not load website messages.${migrationHint}`);
+      }
       return response.status(200).json({ messages: data || [] });
     }
 

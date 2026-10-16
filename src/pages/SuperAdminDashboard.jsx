@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X, Upload, ImagePlus, Film } from 'lucide-react';
+import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X, Upload, ImagePlus, Film, Inbox, Newspaper } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { createSchoolUpdate, deleteSchoolMedia, deleteSchoolUpdate, isSupabaseConfigured, loadSchoolMedia, loadSchoolUpdates, setSchoolUpdateActive, updateSchoolUpdate, uploadSchoolMedia } from '../utils/elearningStore';
+import WebsiteMessagesTab from '../components/WebsiteMessagesTab';
 
 const SuperAdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -15,6 +16,8 @@ const SuperAdminDashboard = () => {
   const [mediaCategory, setMediaCategory] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaBusy, setMediaBusy] = useState(false);
+  const [deletingMediaId, setDeletingMediaId] = useState('');
+  const [activeView, setActiveView] = useState('content');
   const [type, setType] = useState('news');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -123,11 +126,18 @@ const SuperAdminDashboard = () => {
   };
 
   const handleMediaDelete = async (media) => {
+    const confirmed = window.confirm(`Delete "${media.title}" from ${media.section === 'gallery' ? 'School Gallery' : 'Student Life'}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingMediaId(media.id);
+    setError('');
     try {
       await deleteSchoolMedia(media);
       setMediaItems(current => current.filter(item => item.id !== media.id));
     } catch (deleteError) {
       setError(deleteError.message || 'Could not delete this media.');
+    } finally {
+      setDeletingMediaId('');
     }
   };
 
@@ -161,7 +171,7 @@ const SuperAdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 pt-5 sm:p-6 md:p-8 md:pt-24">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-slate-200">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-school-blue">Super Admin Portal</h1>
@@ -172,6 +182,28 @@ const SuperAdminDashboard = () => {
           </button>
         </div>
 
+        <div className="mb-6 flex gap-1 border-b border-slate-200" role="tablist" aria-label="Admin portal sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === 'content'}
+            onClick={() => setActiveView('content')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'content' ? 'border-school-green text-school-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          >
+            <Newspaper size={17} /> Content & Media
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === 'messages'}
+            onClick={() => setActiveView('messages')}
+            className={`inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold ${activeView === 'messages' ? 'border-school-green text-school-blue' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+          >
+            <Inbox size={17} /> Website Inbox
+          </button>
+        </div>
+
+        {activeView === 'messages' ? <WebsiteMessagesTab /> : <>
         <form onSubmit={handleAdd} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
           <h2 className="text-xl font-bold mb-4">{editingId ? 'Edit Content' : 'Add New Content'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -307,13 +339,14 @@ const SuperAdminDashboard = () => {
                   <p className="text-xs text-slate-500">{media.section === 'gallery' ? 'School Gallery' : `Student Life${media.category ? ` · ${media.category}` : ''}`} · {media.mediaType}</p>
                   <p className="mt-1 text-xs font-bold text-green-700">Published</p>
                 </div>
-                <button type="button" onClick={() => handleMediaDelete(media)} className="rounded-md p-2 text-red-600 hover:bg-red-50" title="Delete media" aria-label={`Delete ${media.title}`}>
+                <button type="button" onClick={() => handleMediaDelete(media)} disabled={deletingMediaId === media.id} className="rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-wait disabled:opacity-50" title="Delete media" aria-label={`Delete ${media.title}`}>
                   <Trash2 size={19} />
                 </button>
               </div>
             ))}
           </div>
         </section>
+        </>}
       </div>
     </div>
   );

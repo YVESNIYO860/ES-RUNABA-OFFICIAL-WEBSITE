@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import ProfileAvatar from '../components/ProfileAvatar';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
 import labImage from '../assets/school-photos/school photos (6).jpeg'; 
+import teacherTeamImage from '../assets/photos folder/WhatsApp_Image_2026-10-16_at_05.53.56__1_-removebg-preview.png';
 
 const teachersData = [
   {
@@ -379,8 +380,25 @@ const About = () => {
             <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter italic">Our Teachers</h2>
             <div className="w-24 h-1.5 bg-school-green mx-auto mt-6 shadow-[0_0_15px_rgba(34,197,94,0.4)]"></div>
             <p className="mx-auto mt-5 max-w-2xl text-slate-600">
-              Meet the subject areas taught at ES RUNABA. Teacher names, photos, experience, and telephone details will be added soon.
+              Meet our teaching team and explore the subject areas taught at ES RUNABA. Individual teacher profiles will be added as they become available.
             </p>
+          </div>
+
+          <div className="relative isolate mb-14 grid overflow-hidden rounded-2xl bg-[linear-gradient(115deg,#071a17_0%,#10372f_56%,#10231f_100%)] px-6 pt-6 text-white sm:px-10 md:min-h-[320px] md:grid-cols-[0.8fr_1.2fr] md:items-center md:pt-0">
+            <div className="relative z-10 max-w-md py-4 md:py-8">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-school-green">Our teaching team</p>
+              <h3 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">The people behind every lesson</h3>
+              <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/75 sm:text-base">
+                Dedicated educators working together to help every learner grow in knowledge, confidence, and character.
+              </p>
+            </div>
+            <div className="relative min-h-[210px] sm:min-h-[290px] md:min-h-[320px]">
+              <img
+                src={teacherTeamImage}
+                alt="ES RUNABA teachers standing together as a team"
+                className="absolute bottom-0 left-1/2 h-full w-full max-w-[620px] -translate-x-1/2 object-contain object-bottom drop-shadow-[0_16px_30px_rgba(0,0,0,0.3)] md:left-0 md:max-w-none md:translate-x-0"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -394,11 +412,11 @@ const About = () => {
                 className="group bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 hover:shadow-[0_24px_48px_rgba(0,0,0,0.1)] transition-all flex flex-col h-full"
               >
                 {/* Image Container */}
-                <div role="img" aria-label={`${teacher.area} teacher photo placeholder`} className="flex aspect-[4/3] flex-col items-center justify-center bg-[#eef4f1]">
+                <div className="flex aspect-[4/3] flex-col items-center justify-center bg-[#eef4f1]">
                   <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-school-blue text-white shadow-lg ring-4 ring-school-green/20">
-                    <User size={40} aria-hidden="true" />
+                    <Users size={36} aria-hidden="true" />
                   </div>
-                  <span className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Teacher photo to be added</span>
+                  <span className="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Teaching department</span>
                 </div>
 
                 {/* Content */}

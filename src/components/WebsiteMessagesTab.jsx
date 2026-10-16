@@ -8,13 +8,30 @@ const requestMessages = async (method = 'GET', payload = null) => {
 
   const response = await fetch('/api/site-messages', {
     method,
+    cache: 'no-store',
     headers: {
       Authorization: `Bearer ${session.access_token}`,
       ...(payload ? { 'Content-Type': 'application/json' } : {})
     },
     ...(payload ? { body: JSON.stringify(payload) } : {})
   });
-  const result = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  const contentType = response.headers.get('content-type') || '';
+  const isHtmlResponse = contentType.includes('text/html') || responseText.trimStart().startsWith('<');
+  let result = {};
+  if (responseText.trim() && !isHtmlResponse) {
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      throw new Error('The messages service returned an invalid response. Please refresh and try again.');
+    }
+  }
+  if (isHtmlResponse) {
+    const localApiHint = import.meta.env.DEV
+      ? ' Run `npx vercel dev` locally; `npm run dev` does not serve API routes.'
+      : ' Check that the messages API is deployed.';
+    throw new Error(`The website messages API returned a web page instead of JSON.${localApiHint}`);
+  }
   if (!response.ok) throw new Error(result.error || 'Could not connect to the messages inbox.');
   return result;
 };
@@ -36,7 +53,7 @@ const WebsiteMessagesTab = () => {
 
   useEffect(() => {
     let isActive = true;
-    const load = async () => {
+    const load = async (isBackgroundRefresh = false) => {
       try {
         const result = await requestMessages();
         if (!isActive) return;
@@ -46,14 +63,16 @@ const WebsiteMessagesTab = () => {
           : result.messages?.[0]?.id || '');
         setError('');
       } catch (loadError) {
-        if (isActive) setError(loadError.message || 'Could not load website messages.');
+        if (isActive && !isBackgroundRefresh) setError(loadError.message || 'Could not load website messages.');
       } finally {
         if (isActive) setIsLoading(false);
       }
     };
 
     void load();
-    const intervalId = window.setInterval(load, 30_000);
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, 60_000);
     return () => {
       isActive = false;
       window.clearInterval(intervalId);
