@@ -110,7 +110,6 @@ const Gallery = () => {
         <SchoolMediaUploader
           section="gallery"
           user={user}
-          recentAlbums={[...new Set(uploadedMedia.map(media => media.albumName).filter(Boolean))]}
           onUploaded={(media) => setUploadedMedia(current => [media, ...current])}
         />
       )}

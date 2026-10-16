@@ -145,9 +145,33 @@ create table if not exists public.school_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.school_media_albums (
+  id uuid primary key default gen_random_uuid(),
+  section text not null check (section in ('gallery', 'student-life')),
+  name text not null,
+  category text not null default '',
+  created_by uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists school_media_albums_section_name_ci_idx
+  on public.school_media_albums (section, lower(name));
+
+insert into public.school_media_albums (section, name, category) values
+  ('student-life', 'Debate Club', 'Club'),
+  ('student-life', 'Environmental Club', 'Club'),
+  ('student-life', 'Science Club', 'Club'),
+  ('student-life', 'Traditional Dance', 'Culture'),
+  ('student-life', 'Football', 'Sports'),
+  ('student-life', 'Basketball', 'Sports'),
+  ('student-life', 'Volleyball', 'Sports'),
+  ('student-life', 'Girls'' Empowerment', 'Society')
+on conflict do nothing;
+
 create table if not exists public.school_media (
   id uuid primary key default gen_random_uuid(),
   section text not null check (section in ('gallery', 'student-life')),
+  album_id uuid references public.school_media_albums (id) on delete set null,
   album_name text not null default '',
   title text not null,
   caption text not null default '',
@@ -158,6 +182,24 @@ create table if not exists public.school_media (
   created_by uuid references public.profiles (id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+alter table public.school_media
+  add column if not exists album_name text not null default '',
+  add column if not exists album_id uuid references public.school_media_albums (id) on delete set null;
+
+insert into public.school_media_albums (section, name, category)
+select section, min(btrim(album_name)), coalesce(max(category), '')
+from public.school_media
+where btrim(album_name) <> ''
+group by section, lower(btrim(album_name))
+on conflict do nothing;
+
+update public.school_media as media
+set album_id = album.id
+from public.school_media_albums as album
+where media.album_id is null
+  and media.section = album.section
+  and lower(btrim(media.album_name)) = lower(album.name);
 
 create table if not exists public.site_messages (
   id uuid primary key default gen_random_uuid(),
@@ -238,6 +280,7 @@ create index if not exists attendance_records_class_date_idx on public.attendanc
 create index if not exists school_updates_created_at_idx on public.school_updates (created_at desc);
 create index if not exists school_updates_active_announcement_idx on public.school_updates (type, is_active) where type = 'announcement';
 create index if not exists school_media_section_created_at_idx on public.school_media (section, created_at desc);
+create index if not exists school_media_album_id_idx on public.school_media (album_id);
 
 create or replace function public.current_user_role()
 returns text
@@ -634,6 +677,7 @@ alter table public.site_content enable row level security;
 alter table public.school_events enable row level security;
 alter table public.school_updates enable row level security;
 alter table public.school_media enable row level security;
+alter table public.school_media_albums enable row level security;
 alter table public.site_messages enable row level security;
 alter table public.school_classes enable row level security;
 alter table public.school_courses enable row level security;
@@ -654,6 +698,8 @@ revoke all on public.site_messages from public, anon, authenticated;
 grant insert, update, delete on public.school_updates to authenticated;
 grant select on public.school_media to anon, authenticated;
 grant insert, update, delete on public.school_media to authenticated;
+grant select on public.school_media_albums to anon, authenticated;
+grant insert, update, delete on public.school_media_albums to authenticated;
 grant select on public.school_classes to anon, authenticated;
 grant insert, update, delete on public.school_classes to authenticated;
 grant select, insert, update, delete on public.school_courses to authenticated;
@@ -886,6 +932,17 @@ create policy "school_media_public_read" on public.school_media
 
 drop policy if exists "school_media_admin_manage" on public.school_media;
 create policy "school_media_admin_manage" on public.school_media
+  for all to authenticated
+  using (public.current_user_role() = 'dos' or public.is_school_admin())
+  with check (public.current_user_role() = 'dos' or public.is_school_admin());
+
+drop policy if exists "school_media_albums_public_read" on public.school_media_albums;
+create policy "school_media_albums_public_read" on public.school_media_albums
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "school_media_albums_admin_manage" on public.school_media_albums;
+create policy "school_media_albums_admin_manage" on public.school_media_albums
   for all to authenticated
   using (public.current_user_role() = 'dos' or public.is_school_admin())
   with check (public.current_user_role() = 'dos' or public.is_school_admin());

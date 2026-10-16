@@ -686,6 +686,7 @@ const mapSchoolMedia = (row) => {
   return {
     id: row.id,
     section: row.section,
+    albumId: row.album_id || '',
     albumName: row.album_name || '',
     title: row.title,
     caption: row.caption || '',
@@ -696,6 +697,50 @@ const mapSchoolMedia = (row) => {
     isPublished: row.is_published,
     createdAt: row.created_at
   };
+};
+
+const mapSchoolMediaAlbum = (row) => ({
+  id: row.id,
+  section: row.section,
+  name: row.name,
+  category: row.category || '',
+  createdAt: row.created_at
+});
+
+export const loadSchoolMediaAlbums = async (section) => {
+  let query = supabase.from('school_media_albums').select('*').order('created_at', { ascending: false });
+  if (section) query = query.eq('section', section);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.map(mapSchoolMediaAlbum);
+};
+
+export const createSchoolMediaAlbum = async (album, user) => {
+  if (!user?.isAdmin && user?.role !== 'dos') throw new Error('Only the Director of Studies can create albums.');
+  const name = album.name.trim();
+  const albums = await loadSchoolMediaAlbums(album.section);
+  const existingAlbum = albums.find((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+  if (existingAlbum) return existingAlbum;
+
+  const { data, error } = await supabase
+    .from('school_media_albums')
+    .insert({
+      section: album.section,
+      name,
+      category: album.category?.trim() || '',
+      created_by: user.id
+    })
+    .select('*')
+    .single();
+  if (error) {
+    if (error.code === '23505') {
+      const refreshedAlbums = await loadSchoolMediaAlbums(album.section);
+      const duplicate = refreshedAlbums.find((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+      if (duplicate) return duplicate;
+    }
+    throw error;
+  }
+  return mapSchoolMediaAlbum(data);
 };
 
 export const loadSchoolMedia = async ({ section } = {}) => {
@@ -714,8 +759,13 @@ export const uploadSchoolMedia = async (file, media, user) => {
   }
   if (file.size > 100 * 1024 * 1024) throw new Error('Media files must be 100 MB or smaller.');
 
+  const albumName = String(media.albumName || media.title || '').trim();
+  const album = media.albumId
+    ? { id: media.albumId, name: albumName }
+    : await createSchoolMediaAlbum({ section: media.section, name: albumName, category: media.category }, user);
+
   const safeName = file.name.replace(/[^\w.-]/g, '_');
-  const filePath = `${media.section}/${Date.now()}-${safeName}`;
+  const filePath = `${media.section}/${album.id}/${Date.now()}-${safeName}`;
   const { error: uploadError } = await supabase.storage
     .from('school-media')
     .upload(filePath, file, { upsert: false, contentType: file.type });
@@ -725,10 +775,11 @@ export const uploadSchoolMedia = async (file, media, user) => {
     .from('school_media')
     .insert({
       section: media.section,
-      album_name: media.albumName.trim(),
+      album_id: album.id,
+      album_name: album.name,
       title: media.title.trim(),
-      caption: media.caption.trim(),
-      category: media.category.trim(),
+      caption: String(media.caption || '').trim(),
+      category: String(media.category || '').trim(),
       media_type: file.type.startsWith('video/') ? 'video' : 'image',
       file_path: filePath,
       is_published: true,
