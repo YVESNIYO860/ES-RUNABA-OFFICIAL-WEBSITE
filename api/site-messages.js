@@ -4,8 +4,8 @@ const sendError = (response, status, message) => response.status(status).json({ 
 const canManageMessages = (profile) => profile?.role === 'dos' || profile?.is_admin;
 
 export default async function handler(request, response) {
-  if (!['GET', 'POST', 'PATCH'].includes(request.method)) {
-    response.setHeader('Allow', 'GET, POST, PATCH');
+  if (!['GET', 'POST', 'PATCH', 'DELETE'].includes(request.method)) {
+    response.setHeader('Allow', 'GET, POST, PATCH, DELETE');
     return sendError(response, 405, 'Method not allowed.');
   }
 
@@ -16,6 +16,7 @@ export default async function handler(request, response) {
       const body = request.body || {};
       const senderName = String(body.name || '').trim();
       const senderEmail = String(body.email || '').trim().toLowerCase();
+      const senderPhone = String(body.phone || '').trim();
       const subject = String(body.subject || '').trim();
       const message = String(body.message || '').trim();
 
@@ -23,12 +24,16 @@ export default async function handler(request, response) {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(senderEmail) || senderEmail.length > 254) {
         return sendError(response, 400, 'Enter a valid email address.');
       }
+      if (senderPhone.length > 32 || (senderPhone && !/^[+\d().\s-]+$/.test(senderPhone))) {
+        return sendError(response, 400, 'Enter a valid phone number with no more than 32 characters.');
+      }
       if (!subject || subject.length > 200) return sendError(response, 400, 'Enter a subject with no more than 200 characters.');
       if (!message || message.length > 5000) return sendError(response, 400, 'Enter a message with no more than 5,000 characters.');
 
       const { error } = await admin.from('site_messages').insert({
         sender_name: senderName,
         sender_email: senderEmail,
+        sender_phone: senderPhone,
         subject,
         message
       });
@@ -46,7 +51,7 @@ export default async function handler(request, response) {
     if (request.method === 'GET') {
       const { data, error } = await admin
         .from('site_messages')
-        .select('id, sender_name, sender_email, subject, message, is_read, created_at')
+        .select('id, sender_name, sender_email, sender_phone, subject, message, is_read, created_at')
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) return sendError(response, 500, 'Could not load website messages.');
@@ -54,8 +59,22 @@ export default async function handler(request, response) {
     }
 
     const id = String(request.body?.id || '');
-    if (!/^[0-9a-f-]{36}$/i.test(id) || typeof request.body?.isRead !== 'boolean') {
-      return sendError(response, 400, 'A valid message ID and read status are required.');
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return sendError(response, 400, 'A valid message ID is required.');
+
+    if (request.method === 'DELETE') {
+      const { data, error } = await admin
+        .from('site_messages')
+        .delete()
+        .eq('id', id)
+        .select('id')
+        .maybeSingle();
+      if (error) return sendError(response, 500, 'Could not delete this message.');
+      if (!data) return sendError(response, 404, 'Message not found.');
+      return response.status(200).json({ success: true });
+    }
+
+    if (typeof request.body?.isRead !== 'boolean') {
+      return sendError(response, 400, 'A read status is required.');
     }
     const { data, error } = await admin
       .from('site_messages')

@@ -12,6 +12,7 @@ const Contact = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     subject: '',
     message: ''
   });
@@ -29,7 +30,7 @@ const Contact = () => {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Your message could not be sent. Please try again.');
       setIsSubmitted(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
     } catch (error) {
       setSubmitError(error.message || 'Your message could not be sent. Please try again.');
     } finally {
@@ -178,6 +179,20 @@ const Contact = () => {
                         onChange={handleChange}
                         required
                         placeholder="e.g. jean@example.com"
+                        className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-school-blue focus:ring-4 focus:ring-school-blue/10 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <label htmlFor="contact-phone" className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-1">Phone Number <span className="font-normal normal-case tracking-normal">(optional)</span></label>
+                      <input
+                        id="contact-phone"
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        maxLength={32}
+                        autoComplete="tel"
+                        placeholder="e.g. +250 788 123 456"
                         className="w-full px-4 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-school-blue focus:ring-4 focus:ring-school-blue/10 outline-none transition-all"
                       />
                     </div>

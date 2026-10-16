@@ -8,5 +8,8 @@ create table if not exists public.site_messages (
   created_at timestamptz not null default now()
 );
 
+alter table public.site_messages
+  add column if not exists sender_phone text not null default '';
+
 alter table public.site_messages enable row level security;
 revoke all on public.site_messages from public, anon, authenticated;

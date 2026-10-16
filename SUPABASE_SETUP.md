@@ -12,6 +12,7 @@ After the schema, run `supabase/2026-10-resource-access-keys.sql` in the SQL Edi
 For existing projects reporting missing `elearning_quizzes.deadline` or `school_classes.head_teacher_id`, run `supabase/2026-10-dashboard-columns.sql` in the SQL Editor. It adds both columns if needed and reloads the PostgREST schema cache.
 To enable explicitly shared read-only teacher previews for exams, run `supabase/2026-10-exam-preview-sharing.sql` in the SQL Editor. Exam owners control sharing from the exam editor; other teachers cannot edit, delete, or print shared exams.
 For an existing project, run or rerun `supabase/2026-10-school-media.sql` in the SQL Editor to enable DOS-managed Gallery and Student Life photo/video uploads, add album records, and seed the eight built-in Student Life albums. These are public website files up to 100 MB; only DOS and school admins can upload or delete them. New installations receive the same setup from `supabase/schema.sql`.
+For existing projects, run `supabase/2026-10-site-messages.sql` in the SQL Editor to add the optional sender phone field to the DOS website inbox. New installations receive this table from `supabase/schema.sql`.
 What Uses Supabase
 
 The SQL Editor path does not require a database password or CLI login.
