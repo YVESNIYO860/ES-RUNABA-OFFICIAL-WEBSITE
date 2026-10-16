@@ -40,8 +40,18 @@ const Gallery = () => {
   const builtInImages = images.length > 0 ? images : defaultImages;
   const displayedImages = [
     ...uploadedMedia.map((media) => ({ ...media, caption: media.caption || media.title })),
-    ...builtInImages.map((image) => ({ ...image, mediaType: 'image' }))
+    ...builtInImages.map((image) => ({ ...image, albumName: 'School Collection', mediaType: 'image' }))
   ];
+  const albumGroups = [];
+  displayedImages.forEach((image, index) => {
+    const albumName = image.albumName || 'Other uploads';
+    let group = albumGroups.find((album) => album.name === albumName);
+    if (!group) {
+      group = { name: albumName, items: [] };
+      albumGroups.push(group);
+    }
+    group.items.push({ image, index });
+  });
 
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -100,13 +110,20 @@ const Gallery = () => {
         <SchoolMediaUploader
           section="gallery"
           user={user}
+          recentAlbums={[...new Set(uploadedMedia.map(media => media.albumName).filter(Boolean))]}
           onUploaded={(media) => setUploadedMedia(current => [media, ...current])}
         />
       )}
 
       <section className="py-16 md:py-24 px-4 md:px-8 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {displayedImages.map((img, idx) => (
+        {albumGroups.map((album) => (
+          <div key={album.name} className="mb-14 last:mb-0">
+            <div className="mb-5 flex items-end justify-between border-b border-slate-200 pb-3">
+              <h2 className="text-2xl font-bold text-slate-800">{album.name}</h2>
+              <span className="text-sm font-semibold text-slate-500">{album.items.length} {album.items.length === 1 ? 'item' : 'items'}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {album.items.map(({ image: img, index: idx }) => (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -130,7 +147,9 @@ const Gallery = () => {
               </div>
             </motion.div>
           ))}
-        </div>
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* Lightbox */}

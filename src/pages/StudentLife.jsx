@@ -276,6 +276,7 @@ const StudentLife = () => {
 
             {/* Description bar */}
             <div className="shrink-0 bg-black/90 px-6 py-3 text-center">
+              {currentMedia?.albumName && <p className="mb-1 text-xs font-bold uppercase tracking-wider text-school-green">Album: {currentMedia.albumName}</p>}
               <p className="text-white/70 text-sm">{gallery.activity.desc}</p>
             </div>
           </motion.div>
@@ -326,6 +327,7 @@ const StudentLife = () => {
           <SchoolMediaUploader
             section="student-life"
             user={user}
+            recentAlbums={[...new Set(mediaItems.map(media => media.albumName).filter(Boolean))]}
             onUploaded={(media) => setMediaItems(current => [media, ...current])}
           />
         )}

@@ -148,6 +148,7 @@ create table if not exists public.school_updates (
 create table if not exists public.school_media (
   id uuid primary key default gen_random_uuid(),
   section text not null check (section in ('gallery', 'student-life')),
+  album_name text not null default '',
   title text not null,
   caption text not null default '',
   category text not null default '',

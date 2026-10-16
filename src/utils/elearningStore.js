@@ -686,6 +686,7 @@ const mapSchoolMedia = (row) => {
   return {
     id: row.id,
     section: row.section,
+    albumName: row.album_name || '',
     title: row.title,
     caption: row.caption || '',
     category: row.category || '',
@@ -724,6 +725,7 @@ export const uploadSchoolMedia = async (file, media, user) => {
     .from('school_media')
     .insert({
       section: media.section,
+      album_name: media.albumName.trim(),
       title: media.title.trim(),
       caption: media.caption.trim(),
       category: media.category.trim(),

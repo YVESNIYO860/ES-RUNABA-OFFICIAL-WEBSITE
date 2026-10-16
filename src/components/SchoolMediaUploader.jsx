@@ -2,8 +2,10 @@ import React, { useRef, useState } from 'react';
 import { ImagePlus, Plus, Upload, X } from 'lucide-react';
 import { isSupabaseConfigured, uploadSchoolMedia } from '../utils/elearningStore';
 
-const SchoolMediaUploader = ({ section, user, onUploaded }) => {
+const SchoolMediaUploader = ({ section, user, onUploaded, recentAlbums = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [albumChoice, setAlbumChoice] = useState('new');
+  const [newAlbumName, setNewAlbumName] = useState('');
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('');
   const [caption, setCaption] = useState('');
@@ -14,12 +16,14 @@ const SchoolMediaUploader = ({ section, user, onUploaded }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!file || !title.trim()) return;
+    const albumName = albumChoice === 'new' ? newAlbumName.trim() : albumChoice.slice('existing:'.length);
+    if (!file || !title.trim() || !albumName) return;
     setIsUploading(true);
     setError('');
     try {
-      const media = await uploadSchoolMedia(file, { section, title, category, caption }, user);
+      const media = await uploadSchoolMedia(file, { section, albumName, title, category, caption }, user);
       onUploaded(media);
+      setNewAlbumName('');
       setTitle('');
       setCategory('');
       setCaption('');
@@ -51,6 +55,19 @@ const SchoolMediaUploader = ({ section, user, onUploaded }) => {
       {isOpen && (
         <form onSubmit={handleSubmit} className="mx-auto mt-4 grid max-w-7xl grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 lg:grid-cols-4">
           <label className="text-sm font-semibold text-slate-700">
+            Album
+            <select value={albumChoice} onChange={event => setAlbumChoice(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2">
+              <option value="new">Create new album</option>
+              {recentAlbums.map(album => <option key={album} value={`existing:${album}`}>Add to: {album}</option>)}
+            </select>
+          </label>
+          {albumChoice === 'new' && (
+            <label className="text-sm font-semibold text-slate-700">
+              New album name
+              <input required value={newAlbumName} onChange={event => setNewAlbumName(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder="e.g. 2026 Sports Day" />
+            </label>
+          )}
+          <label className="text-sm font-semibold text-slate-700">
             {section === 'gallery' ? 'Title' : 'Activity title'}
             <input required value={title} onChange={event => setTitle(event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2" placeholder={section === 'gallery' ? 'e.g. Science laboratory' : 'e.g. Debate Club'} />
           </label>
@@ -70,7 +87,7 @@ const SchoolMediaUploader = ({ section, user, onUploaded }) => {
           </label>
           <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2 lg:col-span-4">
             <p className="text-xs text-slate-500">Images and videos up to 100 MB are published immediately.</p>
-            <button disabled={!isSupabaseConfigured || isUploading || !file || !title.trim()} type="submit" className="inline-flex items-center gap-2 rounded-md bg-school-green px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
+            <button disabled={!isSupabaseConfigured || isUploading || !file || !title.trim() || (albumChoice === 'new' && !newAlbumName.trim())} type="submit" className="inline-flex items-center gap-2 rounded-md bg-school-green px-4 py-2 text-sm font-bold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50">
               {section === 'gallery' ? <ImagePlus size={17} /> : <Upload size={17} />}
               {isUploading ? 'Uploading...' : 'Publish media'}
             </button>

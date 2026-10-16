@@ -11,6 +11,9 @@ create table if not exists public.school_media (
   created_at timestamptz not null default now()
 );
 
+alter table public.school_media
+  add column if not exists album_name text not null default '';
+
 create index if not exists school_media_section_created_at_idx
   on public.school_media (section, created_at desc);
 
