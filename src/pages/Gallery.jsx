@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
-import { X, Maximize2, Image as ImageIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Maximize2, Image as ImageIcon, Play } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { isSupabaseConfigured, loadSchoolMedia } from '../utils/elearningStore';
+import SchoolMediaUploader from '../components/SchoolMediaUploader';
 
 const Gallery = () => {
-  const { siteContent } = useAuth();
+  const { user, siteContent } = useAuth();
   const branding = siteContent?.general || { schoolName: "ES RUNABA" };
+  const [uploadedMedia, setUploadedMedia] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let isActive = true;
+    loadSchoolMedia({ section: 'gallery' })
+      .then((media) => { if (isActive) setUploadedMedia(media); })
+      .catch((error) => console.error('Failed to load gallery media:', error));
+    return () => { isActive = false; };
+  }, []);
 
   const photoModules = import.meta.glob('../assets/school-photos/*.{jpg,jpeg,png,webp}', { eager: true, as: 'url' });
   const images = Object.entries(photoModules).map(([path, url]) => {
@@ -25,7 +37,11 @@ const Gallery = () => {
     { url: '/slide_sports.png', caption: 'Sports Event' },
   ];
 
-  const displayedImages = images.length > 0 ? images : defaultImages;
+  const builtInImages = images.length > 0 ? images : defaultImages;
+  const displayedImages = [
+    ...uploadedMedia.map((media) => ({ ...media, caption: media.caption || media.title })),
+    ...builtInImages.map((image) => ({ ...image, mediaType: 'image' }))
+  ];
 
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -80,6 +96,14 @@ const Gallery = () => {
          </div>
       </section>
 
+      {(user?.isAdmin || user?.role === 'dos') && (
+        <SchoolMediaUploader
+          section="gallery"
+          user={user}
+          onUploaded={(media) => setUploadedMedia(current => [media, ...current])}
+        />
+      )}
+
       <section className="py-16 md:py-24 px-4 md:px-8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {displayedImages.map((img, idx) => (
@@ -91,14 +115,14 @@ const Gallery = () => {
               className="group relative cursor-pointer overflow-hidden rounded-2xl bg-slate-200 aspect-square shadow-sm hover:shadow-xl transition-all"
               onClick={() => setSelectedIndex(idx)}
             >
-              <img 
-                src={img.url} 
-                alt={img.caption} 
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
+              {img.mediaType === 'video' ? (
+                <video src={img.url} muted playsInline preload="metadata" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              ) : (
+                <img src={img.url} alt={img.caption} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              )}
               <div className="absolute inset-0 bg-school-blue/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
                 <div className="bg-white/20 p-4 rounded-full">
-                    <Maximize2 className="text-white" size={32} />
+                  {img.mediaType === 'video' ? <Play className="text-white" size={32} /> : <Maximize2 className="text-white" size={32} />}
                 </div>
               </div>
               <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent translate-y-2 group-hover:translate-y-0 transition-transform">
@@ -136,11 +160,11 @@ const Gallery = () => {
           </button>
           
           <div className="max-w-6xl w-full flex flex-col items-center">
-            <img 
-              src={currentImage.url} 
-              alt={currentImage.caption} 
-              className="max-h-[85vh] w-auto rounded-xl shadow-2xl border border-white/10"
-            />
+            {currentImage.mediaType === 'video' ? (
+              <video src={currentImage.url} controls autoPlay playsInline className="max-h-[85vh] max-w-full rounded-xl shadow-2xl border border-white/10" />
+            ) : (
+              <img src={currentImage.url} alt={currentImage.caption} className="max-h-[85vh] w-auto rounded-xl shadow-2xl border border-white/10" />
+            )}
             <div className="mt-6 flex flex-col items-center">
                 <p className="text-white text-2xl font-bold tracking-wide">{currentImage.caption}</p>
                 <div className="mt-4 h-1 w-12 bg-school-green rounded-full"></div>

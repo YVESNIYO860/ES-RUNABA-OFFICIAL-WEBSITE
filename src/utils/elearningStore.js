@@ -681,4 +681,72 @@ export const deleteSchoolEvent = async (id) => {
   if (error) throw error;
 };
 
+const mapSchoolMedia = (row) => {
+  const { data } = supabase.storage.from('school-media').getPublicUrl(row.file_path);
+  return {
+    id: row.id,
+    section: row.section,
+    title: row.title,
+    caption: row.caption || '',
+    category: row.category || '',
+    mediaType: row.media_type,
+    filePath: row.file_path,
+    url: data.publicUrl,
+    isPublished: row.is_published,
+    createdAt: row.created_at
+  };
+};
+
+export const loadSchoolMedia = async ({ section } = {}) => {
+  let query = supabase.from('school_media').select('*').order('created_at', { ascending: false });
+  if (section) query = query.eq('section', section);
+  query = query.eq('is_published', true);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.map(mapSchoolMedia);
+};
+
+export const uploadSchoolMedia = async (file, media, user) => {
+  if (!file || (!user?.isAdmin && user?.role !== 'dos')) throw new Error('Only the Director of Studies can publish school media.');
+  if (!['image/', 'video/'].some((type) => file.type.startsWith(type))) {
+    throw new Error('Choose an image or video file.');
+  }
+  if (file.size > 100 * 1024 * 1024) throw new Error('Media files must be 100 MB or smaller.');
+
+  const safeName = file.name.replace(/[^\w.-]/g, '_');
+  const filePath = `${media.section}/${Date.now()}-${safeName}`;
+  const { error: uploadError } = await supabase.storage
+    .from('school-media')
+    .upload(filePath, file, { upsert: false, contentType: file.type });
+  if (uploadError) throw uploadError;
+
+  const { data, error } = await supabase
+    .from('school_media')
+    .insert({
+      section: media.section,
+      title: media.title.trim(),
+      caption: media.caption.trim(),
+      category: media.category.trim(),
+      media_type: file.type.startsWith('video/') ? 'video' : 'image',
+      file_path: filePath,
+      is_published: true,
+      created_by: user.id
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    await supabase.storage.from('school-media').remove([filePath]);
+    throw error;
+  }
+  return mapSchoolMedia(data);
+};
+
+export const deleteSchoolMedia = async (media) => {
+  const { error: deleteError } = await supabase.from('school_media').delete().eq('id', media.id);
+  if (deleteError) throw deleteError;
+  const { error: storageError } = await supabase.storage.from('school-media').remove([media.filePath]);
+  if (storageError) throw storageError;
+};
+
 export { isSupabaseConfigured };

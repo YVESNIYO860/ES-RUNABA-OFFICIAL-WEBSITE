@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X } from 'lucide-react';
+import { Trash2, Plus, LogOut, CheckCircle, Save, Edit3, X, Upload, ImagePlus, Film } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { createSchoolUpdate, deleteSchoolUpdate, isSupabaseConfigured, loadSchoolUpdates, setSchoolUpdateActive, updateSchoolUpdate } from '../utils/elearningStore';
+import { createSchoolUpdate, deleteSchoolMedia, deleteSchoolUpdate, isSupabaseConfigured, loadSchoolMedia, loadSchoolUpdates, setSchoolUpdateActive, updateSchoolUpdate, uploadSchoolMedia } from '../utils/elearningStore';
 
 const SuperAdminDashboard = () => {
   const { user, logout } = useAuth();
   const [items, setItems] = useState([]);
+  const [mediaItems, setMediaItems] = useState([]);
+  const [mediaError, setMediaError] = useState('');
+  const [mediaSection, setMediaSection] = useState('gallery');
+  const [mediaTitle, setMediaTitle] = useState('');
+  const [mediaCaption, setMediaCaption] = useState('');
+  const [mediaCategory, setMediaCategory] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [type, setType] = useState('news');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -18,11 +26,19 @@ const SuperAdminDashboard = () => {
   useEffect(() => {
     if (!user?.isAdmin || !isSupabaseConfigured) return undefined;
     let isActive = true;
-    loadSchoolUpdates()
-      .then(data => { if (isActive) setItems(data); })
-      .catch(loadError => {
-        console.error('Failed to load school updates from Supabase:', loadError);
-        if (isActive) setError(loadError.message || 'Could not load school updates.');
+    Promise.allSettled([loadSchoolUpdates(), loadSchoolMedia()])
+      .then(([updatesResult, mediaResult]) => {
+        if (!isActive) return;
+        if (updatesResult.status === 'fulfilled') setItems(updatesResult.value);
+        else {
+          console.error('Failed to load school updates from Supabase:', updatesResult.reason);
+          setError(updatesResult.reason.message || 'Could not load school updates.');
+        }
+        if (mediaResult.status === 'fulfilled') setMediaItems(mediaResult.value);
+        else {
+          console.error('Failed to load school media from Supabase:', mediaResult.reason);
+          setMediaError(mediaResult.reason.message || 'Could not load school media. Run the school-media SQL setup.');
+        }
       })
       .finally(() => { if (isActive) setLoading(false); });
     return () => { isActive = false; };
@@ -77,6 +93,41 @@ const SuperAdminDashboard = () => {
     } catch (error) {
       console.error('Failed to delete school update:', error);
       setError(error.message || 'Could not delete content.');
+    }
+  };
+
+  const handleMediaUpload = async (event) => {
+    event.preventDefault();
+    if (!mediaFile || !mediaTitle.trim()) return;
+    setMediaBusy(true);
+    setError('');
+    try {
+      const created = await uploadSchoolMedia(mediaFile, {
+        section: mediaSection,
+        title: mediaTitle,
+        caption: mediaCaption,
+        category: mediaCategory
+      }, user);
+      setMediaItems(current => [created, ...current]);
+      setMediaTitle('');
+      setMediaCaption('');
+      setMediaCategory('');
+      setMediaFile(null);
+      event.target.reset();
+    } catch (uploadError) {
+      console.error('Failed to publish school media:', uploadError);
+      setError(uploadError.message || 'Could not upload this media.');
+    } finally {
+      setMediaBusy(false);
+    }
+  };
+
+  const handleMediaDelete = async (media) => {
+    try {
+      await deleteSchoolMedia(media);
+      setMediaItems(current => current.filter(item => item.id !== media.id));
+    } catch (deleteError) {
+      setError(deleteError.message || 'Could not delete this media.');
     }
   };
 
@@ -197,6 +248,72 @@ const SuperAdminDashboard = () => {
             ))}
           </div>
         </div>
+
+        <section className="mt-8 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="p-6 border-b border-slate-100">
+            <h2 className="text-xl font-bold">Gallery & Student Life Media</h2>
+            <p className="text-sm text-slate-500 mt-1">Publish photos and videos to the public website.</p>
+          </div>
+          <form onSubmit={handleMediaUpload} className="p-6 border-b border-slate-100 space-y-4">
+            {mediaError && <p role="alert" className="text-sm font-semibold text-amber-700">{mediaError} Apply `supabase/2026-10-school-media.sql` if this is an existing Supabase project.</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="block text-sm font-bold text-slate-700">
+                Website area
+                <select value={mediaSection} onChange={event => setMediaSection(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-md p-2">
+                  <option value="gallery">School Gallery</option>
+                  <option value="student-life">Student Life</option>
+                </select>
+              </label>
+              <label className="block text-sm font-bold text-slate-700">
+                {mediaSection === 'gallery' ? 'Title' : 'Activity title'}
+                <input required value={mediaTitle} onChange={event => setMediaTitle(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-md p-2" placeholder={mediaSection === 'gallery' ? 'e.g. Science laboratory' : 'e.g. Debate Club'} />
+              </label>
+              {mediaSection === 'student-life' && (
+                <label className="block text-sm font-bold text-slate-700">
+                  Activity category
+                  <input value={mediaCategory} onChange={event => setMediaCategory(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-md p-2" placeholder="Club, Sports, Culture..." />
+                </label>
+              )}
+              <label className="block text-sm font-bold text-slate-700">
+                Caption or description
+                <input value={mediaCaption} onChange={event => setMediaCaption(event.target.value)} className="mt-1 w-full border border-slate-300 rounded-md p-2" placeholder="A short description" />
+              </label>
+              <label className="block text-sm font-bold text-slate-700 md:col-span-2">
+                Photo or video (up to 100 MB)
+                <input required type="file" accept="image/*,video/*" onChange={event => setMediaFile(event.target.files?.[0] || null)} className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:font-bold file:text-slate-700" />
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-slate-500">Uploads appear on the selected public page immediately.</p>
+              <button disabled={mediaBusy} type="submit" className="inline-flex items-center gap-2 rounded-lg bg-school-blue px-5 py-2.5 font-bold text-white hover:bg-slate-800 disabled:opacity-60">
+                {mediaSection === 'gallery' ? <ImagePlus size={18} /> : <Film size={18} />}
+                {mediaBusy ? 'Uploading...' : 'Add media'}
+                {!mediaBusy && <Upload size={16} />}
+              </button>
+            </div>
+            {!isSupabaseConfigured && <p className="text-sm font-semibold text-amber-700">Connect Supabase and apply the school-media setup SQL before uploading.</p>}
+          </form>
+          <div className="divide-y divide-slate-100">
+            {mediaItems.length === 0 && <p className="p-6 text-center text-slate-500">No media has been added yet.</p>}
+            {mediaItems.map(media => (
+              <div key={media.id} className="flex items-center gap-4 p-4 sm:p-5">
+                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-md bg-slate-100">
+                  {media.mediaType === 'video'
+                    ? <video src={media.url} muted preload="metadata" className="h-full w-full object-cover" />
+                    : <img src={media.url} alt="" className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-bold text-slate-800">{media.title}</p>
+                  <p className="text-xs text-slate-500">{media.section === 'gallery' ? 'School Gallery' : `Student Life${media.category ? ` · ${media.category}` : ''}`} · {media.mediaType}</p>
+                  <p className="mt-1 text-xs font-bold text-green-700">Published</p>
+                </div>
+                <button type="button" onClick={() => handleMediaDelete(media)} className="rounded-md p-2 text-red-600 hover:bg-red-50" title="Delete media" aria-label={`Delete ${media.title}`}>
+                  <Trash2 size={19} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Trees, Mic2, Users2, BookHeart, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trophy, Trees, Mic2, Users2, BookHeart, X, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { schoolPhotoUrls } from '../utils/schoolPhotoUrls';
-import { isSupabaseConfigured, loadSchoolEvents } from '../utils/elearningStore';
+import { isSupabaseConfigured, loadSchoolEvents, loadSchoolMedia } from '../utils/elearningStore';
+import SchoolMediaUploader from '../components/SchoolMediaUploader';
 
 const activities = [
   {
@@ -97,9 +98,10 @@ const activities = [
 ];
 
 const StudentLife = () => {
-  const { siteContent } = useAuth();
+  const { user, siteContent } = useAuth();
   const [gallery, setGallery] = useState(null);
   const [events, setEvents] = useState([]);
+  const [mediaItems, setMediaItems] = useState([]);
 
   useEffect(() => {
     let isActive = true;
@@ -116,6 +118,18 @@ const StudentLife = () => {
     fetchEvents();
     return () => { isActive = false; };
   }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let isActive = true;
+    loadSchoolMedia({ section: 'student-life' })
+      .then((media) => { if (isActive) setMediaItems(media); })
+      .catch((error) => console.error('Failed to load student life media:', error));
+    return () => { isActive = false; };
+  }, []);
+
+  const nextPhoto = () => setGallery(g => ({ ...g, photoIndex: (g.photoIndex + 1) % g.activity.items.length }));
+  const prevPhoto = () => setGallery(g => ({ ...g, photoIndex: (g.photoIndex - 1 + g.activity.items.length) % g.activity.items.length }));
 
   // Close on Escape key
   useEffect(() => {
@@ -140,8 +154,34 @@ const StudentLife = () => {
 
   const openGallery = (activity) => setGallery({ activity, photoIndex: 0 });
   const closeGallery = () => setGallery(null);
-  const nextPhoto = () => setGallery(g => ({ ...g, photoIndex: (g.photoIndex + 1) % g.activity.photos.length }));
-  const prevPhoto = () => setGallery(g => ({ ...g, photoIndex: (g.photoIndex - 1 + g.activity.photos.length) % g.activity.photos.length }));
+
+  const normalizeTitle = (title) => title.trim().toLocaleLowerCase();
+  const displayActivities = activities.map((activity) => {
+    const matchingMedia = mediaItems.filter((media) => normalizeTitle(media.title) === normalizeTitle(activity.name));
+    return {
+      ...activity,
+      items: [
+        ...activity.photos.map((url) => ({ url, mediaType: 'image' })),
+        ...matchingMedia.map((media) => ({ ...media, caption: media.caption || media.title }))
+      ]
+    };
+  });
+  const knownTitles = new Set(activities.map((activity) => normalizeTitle(activity.name)));
+  const newActivityMedia = mediaItems.filter((media) => !knownTitles.has(normalizeTitle(media.title)));
+  const customActivities = [...new Set(newActivityMedia.map((media) => normalizeTitle(media.title)))].map((title) => {
+    const group = newActivityMedia.filter((media) => normalizeTitle(media.title) === title);
+    const first = group[0];
+    return {
+      name: first.title,
+      icon: <Users2 size={28} />,
+      category: first.category || 'Activity',
+      desc: first.caption || 'School activity at ES RUNABA.',
+      color: 'bg-teal-700',
+      items: group.map((media) => ({ ...media, caption: media.caption || media.title }))
+    };
+  });
+  const allActivities = [...displayActivities, ...customActivities];
+  const currentMedia = gallery?.activity.items[gallery.photoIndex];
 
   return (
     <div className="pb-20 bg-white">
@@ -163,7 +203,7 @@ const StudentLife = () => {
                 </div>
                 <div>
                   <h3 className="text-white font-bold text-lg leading-tight">{gallery.activity.name}</h3>
-                  <p className="text-white/50 text-xs uppercase tracking-wider">{gallery.activity.category} · Photo {gallery.photoIndex + 1} of {gallery.activity.photos.length}</p>
+                  <p className="text-white/50 text-xs uppercase tracking-wider">{gallery.activity.category} · Item {gallery.photoIndex + 1} of {gallery.activity.items.length}</p>
                 </div>
               </div>
               <button 
@@ -177,16 +217,29 @@ const StudentLife = () => {
             {/* Main Photo */}
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
               <AnimatePresence mode="wait">
-                <motion.img
+                {currentMedia?.mediaType === 'video' ? (
+                  <motion.video
+                    key={gallery.photoIndex}
+                    src={currentMedia.url}
+                    controls
+                    autoPlay
+                    playsInline
+                    initial={{ opacity: 0, scale: 1.03 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : <motion.img
                   key={gallery.photoIndex}
-                  src={gallery.activity.photos[gallery.photoIndex]}
-                  alt={`${gallery.activity.name} photo ${gallery.photoIndex + 1}`}
+                  src={currentMedia?.url}
+                  alt={currentMedia?.caption || `${gallery.activity.name} photo ${gallery.photoIndex + 1}`}
                   initial={{ opacity: 0, scale: 1.03 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                   className="max-h-full max-w-full object-contain"
-                />
+                />}
               </AnimatePresence>
 
               {/* Prev Button */}
@@ -208,13 +261,15 @@ const StudentLife = () => {
 
             {/* Thumbnail Strip */}
             <div className="shrink-0 bg-black/80 border-t border-white/10 px-4 py-3 flex gap-2 overflow-x-auto justify-center">
-              {gallery.activity.photos.map((url, i) => (
+              {gallery.activity.items.map((item, i) => (
                 <button 
                   key={i}
                   onClick={() => setGallery(g => ({ ...g, photoIndex: i }))}
                   className={`w-16 h-12 rounded overflow-hidden border-2 shrink-0 transition-all ${i === gallery.photoIndex ? 'border-school-green scale-110' : 'border-white/20 opacity-50 hover:opacity-80'}`}
                 >
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  {item.mediaType === 'video'
+                    ? <video src={item.url} muted preload="metadata" className="h-full w-full object-cover" />
+                    : <img src={item.url} alt="" className="h-full w-full object-cover" />}
                 </button>
               ))}
             </div>
@@ -267,6 +322,13 @@ const StudentLife = () => {
 
       {/* Activity Grid */}
       <section id="activities" className="py-16 px-4 max-w-7xl mx-auto">
+        {(user?.isAdmin || user?.role === 'dos') && (
+          <SchoolMediaUploader
+            section="student-life"
+            user={user}
+            onUploaded={(media) => setMediaItems(current => [media, ...current])}
+          />
+        )}
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold text-slate-800">Clubs & Activities</h2>
           <p className="text-slate-500 mt-2">Click on any card to open a full photo gallery</p>
@@ -274,15 +336,16 @@ const StudentLife = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {activities.map((act, i) => (
+          {allActivities.map((act) => (
             <motion.button
-              key={i}
+              key={act.name}
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => openGallery(act)}
               className="group relative overflow-hidden rounded-2xl shadow-md cursor-pointer text-left h-44 md:h-52 border-2 border-transparent hover:border-school-green transition-all"
-              style={{ backgroundImage: `url(${act.photos[0]})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              style={act.items[0]?.mediaType !== 'video' ? { backgroundImage: `url(${act.items[0]?.url})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
             >
+              {act.items[0]?.mediaType === 'video' && <video src={act.items[0].url} muted playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover" />}
               {/* Dark overlay */}
               <div className="absolute inset-0 bg-black/50 group-hover:bg-black/30 transition-all"></div>
               {/* Bottom label */}
@@ -295,7 +358,7 @@ const StudentLife = () => {
               </div>
               {/* Hover cue */}
               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-xs px-2 py-1 rounded-full font-bold">
-                View Photos
+                {act.items.some((item) => item.mediaType === 'video') ? <><Play size={12} className="inline mr-1" />View Media</> : 'View Photos'}
               </div>
             </motion.button>
           ))}

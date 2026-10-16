@@ -145,6 +145,19 @@ create table if not exists public.school_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.school_media (
+  id uuid primary key default gen_random_uuid(),
+  section text not null check (section in ('gallery', 'student-life')),
+  title text not null,
+  caption text not null default '',
+  category text not null default '',
+  media_type text not null check (media_type in ('image', 'video')),
+  file_path text not null unique,
+  is_published boolean not null default true,
+  created_by uuid references public.profiles (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.site_messages (
   id uuid primary key default gen_random_uuid(),
   sender_name text not null,
@@ -223,6 +236,7 @@ create index if not exists elearning_quiz_results_student_idx on public.elearnin
 create index if not exists attendance_records_class_date_idx on public.attendance_records (class, attendance_date);
 create index if not exists school_updates_created_at_idx on public.school_updates (created_at desc);
 create index if not exists school_updates_active_announcement_idx on public.school_updates (type, is_active) where type = 'announcement';
+create index if not exists school_media_section_created_at_idx on public.school_media (section, created_at desc);
 
 create or replace function public.current_user_role()
 returns text
@@ -618,6 +632,7 @@ alter table public.attendance_records enable row level security;
 alter table public.site_content enable row level security;
 alter table public.school_events enable row level security;
 alter table public.school_updates enable row level security;
+alter table public.school_media enable row level security;
 alter table public.site_messages enable row level security;
 alter table public.school_classes enable row level security;
 alter table public.school_courses enable row level security;
@@ -636,6 +651,8 @@ grant insert, update, delete on public.school_events to authenticated;
 grant select on public.school_updates to anon, authenticated;
 revoke all on public.site_messages from public, anon, authenticated;
 grant insert, update, delete on public.school_updates to authenticated;
+grant select on public.school_media to anon, authenticated;
+grant insert, update, delete on public.school_media to authenticated;
 grant select on public.school_classes to anon, authenticated;
 grant insert, update, delete on public.school_classes to authenticated;
 grant select, insert, update, delete on public.school_courses to authenticated;
@@ -861,6 +878,17 @@ create policy "school_updates_admin_manage" on public.school_updates
   using (public.is_school_admin())
   with check (public.is_school_admin());
 
+drop policy if exists "school_media_public_read" on public.school_media;
+create policy "school_media_public_read" on public.school_media
+  for select to anon, authenticated
+  using (is_published or public.is_school_admin());
+
+drop policy if exists "school_media_admin_manage" on public.school_media;
+create policy "school_media_admin_manage" on public.school_media
+  for all to authenticated
+  using (public.current_user_role() = 'dos' or public.is_school_admin())
+  with check (public.current_user_role() = 'dos' or public.is_school_admin());
+
 drop policy if exists "school_classes_public_read" on public.school_classes;
 create policy "school_classes_public_read" on public.school_classes
   for select to anon, authenticated
@@ -896,6 +924,21 @@ on conflict (id) do update set public = false, file_size_limit = 26214400, allow
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('student-work', 'student-work', false, 26214400, null)
 on conflict (id) do update set public = false, file_size_limit = 26214400, allowed_mime_types = null;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('school-media', 'school-media', true, 104857600, array['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'])
+on conflict (id) do update set public = true, file_size_limit = 104857600, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "school_media_storage_public_read" on storage.objects;
+create policy "school_media_storage_public_read" on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'school-media');
+
+drop policy if exists "school_media_storage_admin_manage" on storage.objects;
+create policy "school_media_storage_admin_manage" on storage.objects
+  for all to authenticated
+  using (bucket_id = 'school-media' and (public.current_user_role() = 'dos' or public.is_school_admin()))
+  with check (bucket_id = 'school-media' and (public.current_user_role() = 'dos' or public.is_school_admin()));
 
 drop policy if exists "notes_storage_teacher_manage" on storage.objects;
 create policy "notes_storage_teacher_manage" on storage.objects
